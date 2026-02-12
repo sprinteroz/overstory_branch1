@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AgentError } from "../errors.ts";
-import { deployHooks } from "./hooks-deployer.ts";
+import { deployHooks, getCapabilityGuards, getDangerGuards } from "./hooks-deployer.ts";
 
 describe("deployHooks", () => {
 	let tempDir: string;
@@ -268,6 +268,255 @@ describe("deployHooks", () => {
 				expect(err.agentName).toBe("fail-agent");
 				expect(err.code).toBe("AGENT_ERROR");
 			}
+		}
+	});
+
+	test("scout capability adds Write/Edit/NotebookEdit and Bash guards", async () => {
+		const worktreePath = join(tempDir, "scout-wt");
+
+		await deployHooks(worktreePath, "scout-agent", "scout");
+
+		const outputPath = join(worktreePath, ".claude", "settings.local.json");
+		const content = await Bun.file(outputPath).text();
+		const parsed = JSON.parse(content);
+		const preToolUse = parsed.hooks.PreToolUse;
+
+		// Guards appear before the base logging hook
+		const bashGuard = preToolUse.find((h: { matcher: string }) => h.matcher === "Bash");
+		const writeGuard = preToolUse.find((h: { matcher: string }) => h.matcher === "Write");
+		const editGuard = preToolUse.find((h: { matcher: string }) => h.matcher === "Edit");
+		const notebookGuard = preToolUse.find((h: { matcher: string }) => h.matcher === "NotebookEdit");
+
+		expect(bashGuard).toBeDefined();
+		expect(writeGuard).toBeDefined();
+		expect(editGuard).toBeDefined();
+		expect(notebookGuard).toBeDefined();
+
+		// Verify write guard produces a block decision
+		expect(writeGuard.hooks[0].command).toContain('"decision":"block"');
+		expect(writeGuard.hooks[0].command).toContain("read-only");
+	});
+
+	test("reviewer capability adds same guards as scout plus Bash guards", async () => {
+		const worktreePath = join(tempDir, "reviewer-wt");
+
+		await deployHooks(worktreePath, "reviewer-agent", "reviewer");
+
+		const outputPath = join(worktreePath, ".claude", "settings.local.json");
+		const content = await Bun.file(outputPath).text();
+		const parsed = JSON.parse(content);
+		const preToolUse = parsed.hooks.PreToolUse;
+
+		const guardMatchers = preToolUse
+			.filter((h: { matcher: string }) => h.matcher !== "")
+			.map((h: { matcher: string }) => h.matcher);
+
+		expect(guardMatchers).toContain("Bash");
+		expect(guardMatchers).toContain("Write");
+		expect(guardMatchers).toContain("Edit");
+		expect(guardMatchers).toContain("NotebookEdit");
+	});
+
+	test("builder capability gets only Bash danger guards", async () => {
+		const worktreePath = join(tempDir, "builder-wt");
+
+		await deployHooks(worktreePath, "builder-agent", "builder");
+
+		const outputPath = join(worktreePath, ".claude", "settings.local.json");
+		const content = await Bun.file(outputPath).text();
+		const parsed = JSON.parse(content);
+		const preToolUse = parsed.hooks.PreToolUse;
+
+		// Bash danger guard + base logging hook
+		const guardMatchers = preToolUse
+			.filter((h: { matcher: string }) => h.matcher !== "")
+			.map((h: { matcher: string }) => h.matcher);
+
+		expect(guardMatchers).toEqual(["Bash"]);
+	});
+
+	test("lead capability gets only Bash danger guards", async () => {
+		const worktreePath = join(tempDir, "lead-wt");
+
+		await deployHooks(worktreePath, "lead-agent", "lead");
+
+		const outputPath = join(worktreePath, ".claude", "settings.local.json");
+		const content = await Bun.file(outputPath).text();
+		const parsed = JSON.parse(content);
+		const preToolUse = parsed.hooks.PreToolUse;
+
+		const guardMatchers = preToolUse
+			.filter((h: { matcher: string }) => h.matcher !== "")
+			.map((h: { matcher: string }) => h.matcher);
+
+		expect(guardMatchers).toEqual(["Bash"]);
+	});
+
+	test("default capability (no arg) gets only Bash danger guards", async () => {
+		const worktreePath = join(tempDir, "default-wt");
+
+		await deployHooks(worktreePath, "default-agent");
+
+		const outputPath = join(worktreePath, ".claude", "settings.local.json");
+		const content = await Bun.file(outputPath).text();
+		const parsed = JSON.parse(content);
+		const preToolUse = parsed.hooks.PreToolUse;
+
+		const guardMatchers = preToolUse
+			.filter((h: { matcher: string }) => h.matcher !== "")
+			.map((h: { matcher: string }) => h.matcher);
+
+		expect(guardMatchers).toEqual(["Bash"]);
+	});
+
+	test("guards are prepended before base logging hook", async () => {
+		const worktreePath = join(tempDir, "order-wt");
+
+		await deployHooks(worktreePath, "order-agent", "scout");
+
+		const outputPath = join(worktreePath, ".claude", "settings.local.json");
+		const content = await Bun.file(outputPath).text();
+		const parsed = JSON.parse(content);
+		const preToolUse = parsed.hooks.PreToolUse;
+
+		// Guards (matcher != "") should come before base (matcher == "")
+		const baseIdx = preToolUse.findIndex((h: { matcher: string }) => h.matcher === "");
+		const bashIdx = preToolUse.findIndex((h: { matcher: string }) => h.matcher === "Bash");
+		const writeIdx = preToolUse.findIndex((h: { matcher: string }) => h.matcher === "Write");
+
+		expect(bashIdx).toBeLessThan(baseIdx);
+		expect(writeIdx).toBeLessThan(baseIdx);
+	});
+});
+
+describe("getCapabilityGuards", () => {
+	test("returns guards for scout", () => {
+		const guards = getCapabilityGuards("scout");
+		expect(guards.length).toBe(3);
+	});
+
+	test("returns guards for reviewer", () => {
+		const guards = getCapabilityGuards("reviewer");
+		expect(guards.length).toBe(3);
+	});
+
+	test("returns empty for builder", () => {
+		const guards = getCapabilityGuards("builder");
+		expect(guards.length).toBe(0);
+	});
+
+	test("returns empty for lead", () => {
+		const guards = getCapabilityGuards("lead");
+		expect(guards.length).toBe(0);
+	});
+
+	test("returns empty for merger", () => {
+		const guards = getCapabilityGuards("merger");
+		expect(guards.length).toBe(0);
+	});
+
+	test("returns empty for unknown capability", () => {
+		const guards = getCapabilityGuards("unknown");
+		expect(guards.length).toBe(0);
+	});
+});
+
+describe("getDangerGuards", () => {
+	test("returns exactly one Bash guard entry", () => {
+		const guards = getDangerGuards("test-agent");
+		expect(guards).toHaveLength(1);
+		expect(guards[0]?.matcher).toBe("Bash");
+	});
+
+	test("guard command includes agent name for branch validation", () => {
+		const guards = getDangerGuards("my-builder");
+		const command = guards[0]?.hooks[0]?.command ?? "";
+		expect(command).toContain("overstory/my-builder/");
+	});
+
+	test("guard command checks for git push to main", () => {
+		const guards = getDangerGuards("test-agent");
+		const command = guards[0]?.hooks[0]?.command ?? "";
+		expect(command).toContain("git");
+		expect(command).toContain("push");
+		expect(command).toContain("main");
+	});
+
+	test("guard command checks for git push to master", () => {
+		const guards = getDangerGuards("test-agent");
+		const command = guards[0]?.hooks[0]?.command ?? "";
+		expect(command).toContain("master");
+	});
+
+	test("guard command checks for git reset --hard", () => {
+		const guards = getDangerGuards("test-agent");
+		const command = guards[0]?.hooks[0]?.command ?? "";
+		expect(command).toContain("reset");
+		expect(command).toContain("--hard");
+	});
+
+	test("guard command checks for git checkout -b", () => {
+		const guards = getDangerGuards("test-agent");
+		const command = guards[0]?.hooks[0]?.command ?? "";
+		expect(command).toContain("checkout");
+		expect(command).toContain("-b");
+	});
+
+	test("guard hook type is command", () => {
+		const guards = getDangerGuards("test-agent");
+		expect(guards[0]?.hooks[0]?.type).toBe("command");
+	});
+
+	test("all capabilities get Bash danger guards in deployed hooks", async () => {
+		const capabilities = ["builder", "scout", "reviewer", "lead", "merger"];
+		const tempDir = await import("node:fs/promises").then((fs) =>
+			fs.mkdtemp(join(require("node:os").tmpdir(), "overstory-danger-test-")),
+		);
+
+		try {
+			for (const cap of capabilities) {
+				const worktreePath = join(tempDir, `${cap}-wt`);
+				await deployHooks(worktreePath, `${cap}-agent`, cap);
+
+				const outputPath = join(worktreePath, ".claude", "settings.local.json");
+				const content = await Bun.file(outputPath).text();
+				const parsed = JSON.parse(content);
+				const preToolUse = parsed.hooks.PreToolUse;
+
+				const bashGuard = preToolUse.find((h: { matcher: string }) => h.matcher === "Bash");
+				expect(bashGuard).toBeDefined();
+				expect(bashGuard.hooks[0].command).toContain(`overstory/${cap}-agent/`);
+			}
+		} finally {
+			await import("node:fs/promises").then((fs) =>
+				fs.rm(tempDir, { recursive: true, force: true }),
+			);
+		}
+	});
+
+	test("danger guards appear before capability guards in scout", async () => {
+		const tempDir = await import("node:fs/promises").then((fs) =>
+			fs.mkdtemp(join(require("node:os").tmpdir(), "overstory-order-test-")),
+		);
+
+		try {
+			const worktreePath = join(tempDir, "scout-order-wt");
+			await deployHooks(worktreePath, "scout-order", "scout");
+
+			const outputPath = join(worktreePath, ".claude", "settings.local.json");
+			const content = await Bun.file(outputPath).text();
+			const parsed = JSON.parse(content);
+			const preToolUse = parsed.hooks.PreToolUse;
+
+			const bashIdx = preToolUse.findIndex((h: { matcher: string }) => h.matcher === "Bash");
+			const writeIdx = preToolUse.findIndex((h: { matcher: string }) => h.matcher === "Write");
+
+			// Bash danger guard should come before Write capability guard
+			expect(bashIdx).toBeLessThan(writeIdx);
+		} finally {
+			await import("node:fs/promises").then((fs) =>
+				fs.rm(tempDir, { recursive: true, force: true }),
+			);
 		}
 	});
 });
