@@ -30,6 +30,37 @@ function hasFlag(args: string[], flag: string): boolean {
 	return args.includes(flag);
 }
 
+/** Boolean flags that do NOT consume the next arg as a value. */
+const BOOLEAN_FLAGS = new Set(["--json", "--inject", "--unread", "--all", "--help", "-h"]);
+
+/**
+ * Extract positional arguments from an args array, skipping flag-value pairs.
+ *
+ * Iterates through args, skipping `--flag value` pairs for value-bearing flags
+ * and lone boolean flags. Everything else is a positional arg.
+ */
+function getPositionalArgs(args: string[]): string[] {
+	const positional: string[] = [];
+	let i = 0;
+	while (i < args.length) {
+		const arg = args[i];
+		if (arg?.startsWith("-")) {
+			// It's a flag. If it's boolean, skip just it; otherwise skip it + its value.
+			if (BOOLEAN_FLAGS.has(arg)) {
+				i += 1;
+			} else {
+				i += 2; // skip flag + its value
+			}
+		} else {
+			if (arg !== undefined) {
+				positional.push(arg);
+			}
+			i += 1;
+		}
+	}
+	return positional;
+}
+
 /** Format a single message for human-readable output. */
 function formatMessage(msg: MailMessage): string {
 	const readMarker = msg.read ? " " : "*";
@@ -45,7 +76,7 @@ function formatMessage(msg: MailMessage): string {
 
 /**
  * Open a mail store connected to the project's mail.db.
- * Resolves the path relative to cwd/.overstory/mail.db.
+ * The cwd must already be resolved to the canonical project root.
  */
 function openStore(cwd: string) {
 	const dbPath = join(cwd, ".overstory", "mail.db");
@@ -54,7 +85,7 @@ function openStore(cwd: string) {
 
 /**
  * Open a mail client connected to the project's mail.db.
- * Resolves the path relative to cwd/.overstory/mail.db.
+ * The cwd must already be resolved to the canonical project root.
  */
 function openClient(cwd: string) {
 	const store = openStore(cwd);
@@ -180,7 +211,8 @@ function handleList(args: string[], cwd: string): void {
 
 /** overstory mail read */
 function handleRead(args: string[], cwd: string): void {
-	const id = args.find((a) => !a.startsWith("--"));
+	const positional = getPositionalArgs(args);
+	const id = positional[0];
 	if (!id) {
 		throw new ValidationError("Message ID is required for mail read", { field: "id" });
 	}
@@ -200,7 +232,8 @@ function handleRead(args: string[], cwd: string): void {
 
 /** overstory mail reply */
 function handleReply(args: string[], cwd: string): void {
-	const id = args.find((a) => !a.startsWith("--"));
+	const positional = getPositionalArgs(args);
+	const id = positional[0];
 	const body = getFlag(args, "--body");
 	const from = getFlag(args, "--agent") ?? getFlag(args, "--from") ?? "orchestrator";
 

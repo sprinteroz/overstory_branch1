@@ -26,6 +26,7 @@ Thumbs.db
 .overstory/metrics.db-wal
 .overstory/metrics.db-shm
 .overstory/sessions.json
+.overstory/merge-queue.json
 
 # Test artifacts
 coverage/

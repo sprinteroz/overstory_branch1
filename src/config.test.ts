@@ -281,6 +281,37 @@ describe("resolveProjectRoot", () => {
 		expect(result).toBe(repoDir);
 	});
 
+	test("resolves worktree to main root even when config.yaml is committed (regression)", async () => {
+		repoDir = await createTempGitRepo();
+		repoDir = await realpath(repoDir);
+
+		// Commit .overstory/config.yaml so the worktree gets a copy via git
+		// (this is what overstory init does — the file is tracked)
+		await mkdir(join(repoDir, ".overstory"), { recursive: true });
+		await Bun.write(
+			join(repoDir, ".overstory", "config.yaml"),
+			"project:\n  canonicalBranch: main\n",
+		);
+		await runGitInDir(repoDir, ["add", ".overstory/config.yaml"]);
+		await runGitInDir(repoDir, ["commit", "-m", "add overstory config"]);
+
+		// Create a worktree — it will now have .overstory/config.yaml from git
+		const worktreeDir = join(repoDir, ".overstory", "worktrees", "mail-scout");
+		await mkdir(join(repoDir, ".overstory", "worktrees"), { recursive: true });
+		await runGitInDir(repoDir, [
+			"worktree",
+			"add",
+			"-b",
+			"overstory/mail-scout/task-1",
+			worktreeDir,
+		]);
+
+		// Must resolve to main repo root, NOT the worktree
+		// (even though worktree has its own .overstory/config.yaml)
+		const result = await resolveProjectRoot(worktreeDir);
+		expect(result).toBe(repoDir);
+	});
+
 	test("loadConfig resolves correct root from worktree", async () => {
 		repoDir = await createTempGitRepo();
 		// Resolve symlinks (macOS /var -> /private/var) to match git's output

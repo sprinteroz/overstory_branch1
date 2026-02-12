@@ -1,7 +1,7 @@
 {
 	"$schema": "https://biomejs.dev/schemas/1.9.0/schema.json",
 	"files": {
-		"ignore": [".beads/**", ".claude/**", "node_modules/**"]
+		"ignore": [".beads/**", ".claude/**", ".overstory/**", "node_modules/**"]
 	},
 	"organizeImports": {
 		"enabled": true

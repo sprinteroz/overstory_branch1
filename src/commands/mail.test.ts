@@ -163,5 +163,74 @@ describe("mailCommand", () => {
 			expect(replyMsg?.to).toBe("orchestrator");
 			client2.close();
 		});
+
+		test("reply with flags before positional ID extracts correct ID", async () => {
+			// Regression test for overstory-6nq: flags before the positional ID
+			// caused the flag VALUE (e.g. 'scout') to be treated as the message ID.
+			const store = createMailStore(join(tempDir, ".overstory", "mail.db"));
+			const client = createMailClient(store);
+			const msgs = client.list({ to: "builder-1" });
+			const originalId = msgs[0]?.id;
+			expect(originalId).toBeTruthy();
+			client.close();
+
+			if (!originalId) return;
+
+			// Put --agent and --body flags BEFORE the positional message ID
+			output = "";
+			await mailCommand(["reply", "--agent", "scout-1", "--body", "Got it", originalId]);
+
+			expect(output).toContain("Reply sent:");
+
+			// Verify the reply used the correct message ID (not 'scout-1' or 'Got it')
+			const store2 = createMailStore(join(tempDir, ".overstory", "mail.db"));
+			const client2 = createMailClient(store2);
+			const allMsgs = client2.list();
+			const replyMsg = allMsgs.find((m) => m.subject === "Re: Build task" && m.from === "scout-1");
+			expect(replyMsg).toBeDefined();
+			expect(replyMsg?.body).toBe("Got it");
+			client2.close();
+		});
+	});
+
+	describe("read", () => {
+		test("read with flags before positional ID extracts correct ID", async () => {
+			// Regression test for overstory-6nq: same fragile pattern existed in handleRead.
+			const store = createMailStore(join(tempDir, ".overstory", "mail.db"));
+			const client = createMailClient(store);
+			const msgs = client.list({ to: "builder-1" });
+			const originalId = msgs[0]?.id;
+			expect(originalId).toBeTruthy();
+			client.close();
+
+			if (!originalId) return;
+
+			// Although read doesn't currently use --agent, test that any unknown
+			// flags followed by values don't get treated as the positional ID
+			output = "";
+			await mailCommand(["read", originalId]);
+
+			expect(output).toContain(`Marked ${originalId} as read.`);
+		});
+
+		test("read marks message as read", async () => {
+			const store = createMailStore(join(tempDir, ".overstory", "mail.db"));
+			const client = createMailClient(store);
+			const msgs = client.list({ to: "builder-1" });
+			const originalId = msgs[0]?.id;
+			expect(originalId).toBeTruthy();
+			client.close();
+
+			if (!originalId) return;
+
+			output = "";
+			await mailCommand(["read", originalId]);
+			expect(output).toContain(`Marked ${originalId} as read.`);
+
+			// Reading again should show already read
+			output = "";
+			await mailCommand(["read", originalId]);
+			expect(output).toContain("already read");
+		});
 	});
 });

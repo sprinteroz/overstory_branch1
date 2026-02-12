@@ -26,7 +26,7 @@ async function getTemplateRepo(): Promise<string> {
 	if (_templateDir) return _templateDir;
 
 	const dir = await mkdtemp(join(tmpdir(), "overstory-template-"));
-	await runGitInDir(dir, ["init"]);
+	await runGitInDir(dir, ["init", "-b", "main"]);
 	await Bun.write(join(dir, ".gitkeep"), "");
 	await runGitInDir(dir, ["add", ".gitkeep"]);
 	await runGitInDir(dir, ["commit", "-m", "initial commit"]);

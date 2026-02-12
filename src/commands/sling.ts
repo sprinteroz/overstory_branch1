@@ -309,7 +309,7 @@ export async function slingCommand(args: string[]): Promise<void> {
 	// 11. Create tmux session running claude in headless mode (-p)
 	const tmuxSessionName = `overstory-${name}`;
 	const prompt = `Read your assignment in .claude/CLAUDE.md and begin working on task ${taskId}`;
-	const claudeCmd = `claude -p "${prompt}" --dangerously-skip-permissions`;
+	const claudeCmd = `claude -p "${prompt}" --model ${agentDef.model} --dangerously-skip-permissions`;
 	const pid = await createSession(tmuxSessionName, worktreePath, claudeCmd, {
 		OVERSTORY_AGENT_NAME: name,
 	});

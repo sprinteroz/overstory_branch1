@@ -332,13 +332,11 @@ function validateConfig(config: OverstoryConfig): void {
 export async function resolveProjectRoot(startDir: string): Promise<string> {
 	const { existsSync } = require("node:fs") as typeof import("node:fs");
 
-	// If .overstory/config.yaml exists here, we're in the right place
-	if (existsSync(join(startDir, OVERSTORY_DIR, CONFIG_FILENAME))) {
-		return startDir;
-	}
-
-	// We might be inside a git worktree. Find the main repo root
-	// via git's common dir (points to the shared .git directory).
+	// Check git worktree FIRST. When running from an agent worktree
+	// (e.g., .overstory/worktrees/{name}/), the worktree may contain
+	// tracked copies of .overstory/config.yaml. We must resolve to the
+	// main repository root so runtime state (mail.db, metrics.db, etc.)
+	// is shared across all agents, not siloed per worktree.
 	try {
 		const proc = Bun.spawn(["git", "rev-parse", "--git-common-dir"], {
 			cwd: startDir,
@@ -351,12 +349,19 @@ export async function resolveProjectRoot(startDir: string): Promise<string> {
 			const absGitCommon = resolve(startDir, gitCommonDir);
 			// Main repo root is the parent of the .git directory
 			const mainRoot = dirname(absGitCommon);
-			if (existsSync(join(mainRoot, OVERSTORY_DIR, CONFIG_FILENAME))) {
+			// If mainRoot differs from startDir, we're in a worktree — resolve to canonical root
+			if (mainRoot !== startDir && existsSync(join(mainRoot, OVERSTORY_DIR, CONFIG_FILENAME))) {
 				return mainRoot;
 			}
 		}
 	} catch {
 		// git not available, fall through
+	}
+
+	// Not inside a worktree (or git not available).
+	// Check if .overstory/config.yaml exists at startDir.
+	if (existsSync(join(startDir, OVERSTORY_DIR, CONFIG_FILENAME))) {
+		return startDir;
 	}
 
 	// Fallback to the start directory
