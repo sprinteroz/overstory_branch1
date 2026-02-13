@@ -13,7 +13,7 @@
  * See mulch record mx-56558b for why mocking is normally avoided.
  */
 
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { AgentError } from "../errors.ts";
 import {
 	createMoleculePrototype,
@@ -57,6 +57,11 @@ beforeEach(() => {
 describe("molecules", () => {
 	beforeEach(() => {
 		// Restore original spawn before each test
+		Bun.spawn = originalSpawn;
+	});
+
+	afterEach(() => {
+		// Ensure cleanup after each test to prevent mock leaks
 		Bun.spawn = originalSpawn;
 	});
 
