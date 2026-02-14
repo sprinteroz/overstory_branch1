@@ -178,6 +178,19 @@ overstory log <event>                   Log a hook event
 overstory watch                         Start watchdog daemon (Tier 0)
   --interval <ms>                        Health check interval
   --background                           Run as background process
+overstory run list                      List orchestration runs
+overstory run show <id>                 Show run details
+overstory run complete <id>             Mark a run complete
+
+overstory trace                         View agent/bead timeline
+  --agent <name>                         Filter by agent
+  --run <id>                             Filter by run
+
+overstory clean                         Clean up worktrees, sessions, artifacts
+  --completed                            Only finished agents
+  --all                                  Force remove all
+  --run <id>                             Clean a specific run
+
 overstory metrics                       Show session metrics
   --last <n>                             Last N sessions
   --json                                 JSON output
@@ -189,13 +202,13 @@ overstory metrics                       Show session metrics
 - **Dependencies**: Zero runtime dependencies — only Bun built-in APIs
 - **Database**: SQLite via `bun:sqlite` (WAL mode for concurrent access)
 - **Linting**: Biome (formatter + linter)
-- **Testing**: `bun test` (912 tests across 44 files, colocated with source)
+- **Testing**: `bun test` (1435 tests across 55 files, colocated with source)
 - **External CLIs**: `bd` (beads), `mulch`, `git`, `tmux` — invoked as subprocesses
 
 ## Development
 
 ```bash
-# Run tests (912 tests across 44 files)
+# Run tests (1435 tests across 55 files)
 bun test
 
 # Run a single test
@@ -235,7 +248,7 @@ overstory/
     types.ts                      Shared types and interfaces
     config.ts                     Config loader + validation
     errors.ts                     Custom error types
-    commands/                     One file per CLI subcommand (17 commands)
+    commands/                     One file per CLI subcommand (20 commands)
       coordinator.ts              Persistent orchestrator lifecycle
       supervisor.ts               Team lead management
       dashboard.ts                Live TUI dashboard (ANSI, zero deps)
@@ -252,6 +265,9 @@ overstory/
       worktree.ts                 Worktree management
       watch.ts                    Watchdog daemon
       log.ts                      Hook event logging
+      run.ts                      Orchestration run lifecycle
+      trace.ts                    Agent/bead timeline viewing
+      clean.ts                    Worktree/session cleanup
       metrics.ts                  Session metrics
     agents/                       Agent lifecycle management
       manifest.ts                 Agent registry (load + query)

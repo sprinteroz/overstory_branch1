@@ -32,7 +32,7 @@ import { watchCommand } from "./commands/watch.ts";
 import { worktreeCommand } from "./commands/worktree.ts";
 import { OverstoryError, WorktreeError } from "./errors.ts";
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 
 const HELP = `overstory v${VERSION} — Multi-agent orchestration for Claude Code
 

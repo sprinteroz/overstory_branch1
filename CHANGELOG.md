@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-02-13
+
+### Added
+
+#### New CLI Commands
+- `overstory run` command — orchestration run lifecycle management (`list`, `show`, `complete` subcommands) with RunStore backed by sessions.db
+- `overstory trace` command — agent/bead timeline viewing for debugging and post-mortem observability
+- `overstory clean` command — cleanup worktrees, sessions, and artifacts with auto-cleanup on agent teardown
+
+#### Observability & Persistence
+- Run tracking via `run_id` integrated into sling and clean commands
+- `RunStore` in sessions.db for durable run state
+- `SessionStore` (SQLite) — migrated from sessions.json for concurrent access and crash safety
+- Phase 2 CLI query commands and Phase 3 event persistence for the observability pipeline
+
+#### Agent Improvements
+- Project-scoped tmux naming (`overstory-{projectName}-{agentName}`) to prevent cross-project session collisions
+- `ENV_GUARD` on all hooks — prevents hooks from firing outside overstory-managed worktrees
+- Mulch-informed lead decomposition — leader agents use mulch expertise when breaking down tasks
+- Mulch conflict pattern recording — merge resolver records conflict patterns to mulch for future reference
+
+#### MulchClient Expansion
+- New commands and flags for the mulch CLI wrapper
+- `--json` parsing support with corrected types and flag spread
+
+#### Community & Documentation
+- `STEELMAN.md` — comprehensive risk analysis for agent swarm deployments
+- Community files: CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md
+- Package metadata (keywords, repository, homepage) for npm/GitHub presence
+
+#### Testing
+- Test suite grew from 912 to 1435 tests across 55 files (3416 expect() calls)
+
+### Fixed
+
+- Fix `isCanonicalRoot` guard blocking all worktree overlays when dogfooding overstory on itself
+- Fix auto-nudge tmux corruption and deploy coordinator hooks correctly
+- Fix 4 P1 issues: orchestrator nudge routing, bash guard bypass, hook capture isolation, overlay guard
+- Fix 4 P1/P2 issues: ENV_GUARD enforcement, persistent agent state, project-scoped tmux kills, auto-nudge coordinator
+- Strengthen agent orchestration with additional P1 bug fixes
+
+### Changed
+
+- CLI commands grew from 17 to 20 (added run, trace, clean)
+
 ## [0.2.0] - 2026-02-13
 
 ### Added
@@ -122,6 +167,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Biome configuration for formatting and linting
 - TypeScript strict mode with `noUncheckedIndexedAccess`
 
-[Unreleased]: https://github.com/jayminwest/overstory/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/jayminwest/overstory/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/jayminwest/overstory/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jayminwest/overstory/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/jayminwest/overstory/releases/tag/v0.1.0
