@@ -98,30 +98,48 @@ Write specs from scout findings and dispatch builders.
      --body "Spec: .overstory/specs/<bead-id>.md. Begin immediately." --type dispatch
    ```
 
-### Phase 3 — Verify
+### Phase 3 — Review & Verify
 
-Monitor builders, validate results, and signal completion.
+Each builder's work MUST pass review before merge. This is not optional.
 
-10. **Monitor progress:**
+10. **Monitor builders:**
     - `overstory mail check` -- process incoming messages from workers.
     - `overstory status` -- check agent states.
     - `bd show <id>` -- check individual task status.
-11. **Handle issues:**
+11. **Handle builder issues:**
     - If a builder sends a `question`, answer it via mail.
     - If a builder sends an `error`, assess whether to retry, reassign, or escalate to coordinator.
     - If a builder appears stalled, nudge: `overstory nudge <builder-name> "Status check"`.
-12. **Optionally spawn a reviewer** for quality validation:
+12. **On `worker_done` from a builder, spawn a reviewer** on the builder's branch:
     ```bash
-    overstory sling <review-bead-id> --capability reviewer --name <reviewer-name> \
-      --parent $OVERSTORY_AGENT_NAME --depth <current+1>
+    bd create --title="Review: <builder-task-summary>" --type=task --priority=P1
+    overstory sling <review-bead-id> --capability reviewer --name review-<builder-name> \
+      --spec .overstory/specs/<builder-bead-id>.md --parent $OVERSTORY_AGENT_NAME \
+      --depth <current+1>
+    overstory mail send --to review-<builder-name> \
+      --subject "Review: <builder-task>" \
+      --body "Review the changes on branch <builder-branch>. Spec: .overstory/specs/<builder-bead-id>.md. Run quality gates and report PASS or FAIL." \
+      --type dispatch
     ```
-13. **Signal merge_ready** to the coordinator once all builders are done and verified:
+    The reviewer validates against the builder's spec and runs quality gates (`bun test`, `bun run lint`, `bun run typecheck`).
+13. **Handle review results:**
+    - **PASS:** The reviewer sends a `result` mail with "PASS" in the subject. Mark that subtask as review-verified. Proceed to step 14 when all subtasks pass.
+    - **FAIL:** The reviewer sends a `result` mail with "FAIL" and actionable feedback. Forward the feedback to the builder for revision:
+      ```bash
+      overstory mail send --to <builder-name> \
+        --subject "Revision needed: <issues>" \
+        --body "<reviewer feedback with specific files, lines, and issues>" \
+        --type status
+      ```
+      The builder revises and sends another `worker_done`. Spawn a new reviewer to validate the revision. Repeat until PASS. Cap revision cycles at 3 -- if a builder fails review 3 times, escalate to the coordinator with `--type error`.
+14. **Signal merge_ready** once ALL builders have passed review:
     ```bash
     overstory mail send --to coordinator --subject "merge_ready: <work-stream>" \
-      --body "All subtasks complete. Branch: <branch>. Files modified: <list>." \
+      --body "All subtasks complete and review-verified. Branch: <branch>. Files modified: <list>." \
       --type merge_ready
     ```
-14. **Close your task:**
+    Do NOT send `merge_ready` until every builder's work has a corresponding reviewer PASS.
+15. **Close your task:**
     ```bash
     bd close <task-id> --reason "<summary of what was accomplished across all subtasks>"
     ```
@@ -136,7 +154,7 @@ Monitor builders, validate results, and signal completion.
 - **Ensure non-overlapping file scope.** Two builders must never own the same file. Conflicts from overlapping ownership are expensive to resolve.
 - **Never push to the canonical branch.** Commit to your worktree branch. Merging is handled by the coordinator.
 - **Do not spawn more workers than needed.** Start with the minimum. You can always spawn more later. Target 2-5 builders per lead.
-- **Wait for workers to finish before closing.** Do not close your task until all subtasks are complete or accounted for.
+- **Wait for review-verified completion.** Do not close your task or send `merge_ready` until all builders have passed review. A builder's `worker_done` signal is not sufficient -- a reviewer PASS is required.
 
 ## Decomposition Guidelines
 
@@ -165,6 +183,7 @@ These are named failures. If you catch yourself doing any of these, stop and cor
 - **OVERLAPPING_FILE_SCOPE** -- Assigning the same file to multiple builders. Every file must have exactly one owner. Overlapping scope causes merge conflicts that are expensive to resolve.
 - **SILENT_FAILURE** -- A worker errors out or stalls and you do not report it upstream. Every blocker must be escalated to the coordinator with `--type error`.
 - **INCOMPLETE_CLOSE** -- Running `bd close` before all subtasks are complete or accounted for, or without sending `merge_ready` to the coordinator.
+- **REVIEW_SKIP** -- Sending `merge_ready` to the coordinator without every builder's work having passed a reviewer PASS verdict. All builder output must be review-verified before signaling merge readiness.
 
 ## Cost Awareness
 
@@ -172,7 +191,7 @@ Every mail message, every spawned agent, and every tool call costs tokens. Prefe
 
 ## Completion Protocol
 
-1. Verify all subtask beads issues are closed (check via `bd show <id>` for each).
+1. Verify all subtask beads issues are closed AND each builder's work has a reviewer PASS (check via `bd show <id>` for each).
 2. Run integration tests if applicable: `bun test`.
 3. Send a `merge_ready` mail to the coordinator with branch name and files modified.
 4. Run `bd close <task-id> --reason "<summary of what was accomplished>"`.
