@@ -8,17 +8,10 @@
 import { join } from "node:path";
 import { loadConfig } from "../config.ts";
 import { ValidationError } from "../errors.ts";
+import { color } from "../logging/color.ts";
 import { createMetricsStore } from "../metrics/store.ts";
 import { openSessionStore } from "../sessions/compat.ts";
 import type { SessionMetrics } from "../types.ts";
-
-// ANSI escape codes consistent with src/logging/reporter.ts
-const ANSI = {
-	reset: "\x1b[0m",
-	bold: "\x1b[1m",
-	dim: "\x1b[2m",
-	green: "\x1b[32m",
-} as const;
 
 /**
  * Parse a named flag value from args.
@@ -115,11 +108,11 @@ function printCostSummary(sessions: SessionMetrics[]): void {
 	const w = process.stdout.write.bind(process.stdout);
 	const separator = "\u2500".repeat(70);
 
-	w(`${ANSI.bold}Cost Summary${ANSI.reset}\n`);
+	w(`${color.bold}Cost Summary${color.reset}\n`);
 	w(`${"=".repeat(70)}\n`);
 
 	if (sessions.length === 0) {
-		w(`${ANSI.dim}No session data found.${ANSI.reset}\n`);
+		w(`${color.dim}No session data found.${color.reset}\n`);
 		return;
 	}
 
@@ -128,7 +121,7 @@ function printCostSummary(sessions: SessionMetrics[]): void {
 			`${padLeft("Input", 10)}${padLeft("Output", 10)}` +
 			`${padLeft("Cache", 10)}${padLeft("Cost", 10)}\n`,
 	);
-	w(`${ANSI.dim}${separator}${ANSI.reset}\n`);
+	w(`${color.dim}${separator}${color.reset}\n`);
 
 	for (const s of sessions) {
 		const cacheTotal = s.cacheReadTokens + s.cacheCreationTokens;
@@ -142,13 +135,13 @@ function printCostSummary(sessions: SessionMetrics[]): void {
 	}
 
 	const totals = computeTotals(sessions);
-	w(`${ANSI.dim}${separator}${ANSI.reset}\n`);
+	w(`${color.dim}${separator}${color.reset}\n`);
 	w(
-		`${ANSI.green}${ANSI.bold}${padRight("Total", 31)}` +
+		`${color.green}${color.bold}${padRight("Total", 31)}` +
 			`${padLeft(formatNumber(totals.inputTokens), 10)}` +
 			`${padLeft(formatNumber(totals.outputTokens), 10)}` +
 			`${padLeft(formatNumber(totals.cacheTokens), 10)}` +
-			`${padLeft(formatCost(totals.costUsd), 10)}${ANSI.reset}\n`,
+			`${padLeft(formatCost(totals.costUsd), 10)}${color.reset}\n`,
 	);
 }
 
@@ -157,11 +150,11 @@ function printByCapability(sessions: SessionMetrics[]): void {
 	const w = process.stdout.write.bind(process.stdout);
 	const separator = "\u2500".repeat(70);
 
-	w(`${ANSI.bold}Cost by Capability${ANSI.reset}\n`);
+	w(`${color.bold}Cost by Capability${color.reset}\n`);
 	w(`${"=".repeat(70)}\n`);
 
 	if (sessions.length === 0) {
-		w(`${ANSI.dim}No session data found.${ANSI.reset}\n`);
+		w(`${color.dim}No session data found.${color.reset}\n`);
 		return;
 	}
 
@@ -170,7 +163,7 @@ function printByCapability(sessions: SessionMetrics[]): void {
 			`${padLeft("Input", 10)}${padLeft("Output", 10)}` +
 			`${padLeft("Cache", 10)}${padLeft("Cost", 10)}\n`,
 	);
-	w(`${ANSI.dim}${separator}${ANSI.reset}\n`);
+	w(`${color.dim}${separator}${color.reset}\n`);
 
 	const groups = groupByCapability(sessions);
 
@@ -186,14 +179,14 @@ function printByCapability(sessions: SessionMetrics[]): void {
 	}
 
 	const totals = computeTotals(sessions);
-	w(`${ANSI.dim}${separator}${ANSI.reset}\n`);
+	w(`${color.dim}${separator}${color.reset}\n`);
 	w(
-		`${ANSI.green}${ANSI.bold}${padRight("Total", 14)}` +
+		`${color.green}${color.bold}${padRight("Total", 14)}` +
 			`${padLeft(formatNumber(sessions.length), 10)}` +
 			`${padLeft(formatNumber(totals.inputTokens), 10)}` +
 			`${padLeft(formatNumber(totals.outputTokens), 10)}` +
 			`${padLeft(formatNumber(totals.cacheTokens), 10)}` +
-			`${padLeft(formatCost(totals.costUsd), 10)}${ANSI.reset}\n`,
+			`${padLeft(formatCost(totals.costUsd), 10)}${color.reset}\n`,
 	);
 }
 

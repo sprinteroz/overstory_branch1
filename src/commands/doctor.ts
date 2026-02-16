@@ -17,17 +17,7 @@ import { checkStructure } from "../doctor/structure.ts";
 import type { DoctorCategory, DoctorCheck, DoctorCheckFn } from "../doctor/types.ts";
 import { checkVersion } from "../doctor/version.ts";
 import { ValidationError } from "../errors.ts";
-
-// ANSI escape codes consistent with src/commands/trace.ts
-const ANSI = {
-	reset: "\x1b[0m",
-	gray: "\x1b[90m",
-	green: "\x1b[32m",
-	yellow: "\x1b[33m",
-	red: "\x1b[31m",
-	bold: "\x1b[1m",
-	dim: "\x1b[2m",
-} as const;
+import { color } from "../logging/color.ts";
 
 /** Registry of all check modules in execution order. */
 const ALL_CHECKS: Array<{ category: DoctorCategory; fn: DoctorCheckFn }> = [
@@ -64,7 +54,7 @@ function printHumanReadable(
 ): void {
 	const w = process.stdout.write.bind(process.stdout);
 
-	w(`${ANSI.bold}Overstory Doctor${ANSI.reset}\n`);
+	w(`${color.bold}Overstory Doctor${color.reset}\n`);
 	w("================\n\n");
 
 	// Group checks by category
@@ -85,10 +75,10 @@ function printHumanReadable(
 			continue; // Skip empty categories unless verbose
 		}
 
-		w(`${ANSI.bold}[${category}]${ANSI.reset}\n`);
+		w(`${color.bold}[${category}]${color.reset}\n`);
 
 		if (categoryChecks.length === 0) {
-			w(`  ${ANSI.dim}No checks${ANSI.reset}\n`);
+			w(`  ${color.dim}No checks${color.reset}\n`);
 		} else {
 			for (const check of categoryChecks) {
 				// Skip passing checks unless verbose
@@ -98,17 +88,17 @@ function printHumanReadable(
 
 				const icon =
 					check.status === "pass"
-						? `${ANSI.green}✔${ANSI.reset}`
+						? `${color.green}✔${color.reset}`
 						: check.status === "warn"
-							? `${ANSI.yellow}⚠${ANSI.reset}`
-							: `${ANSI.red}✘${ANSI.reset}`;
+							? `${color.yellow}⚠${color.reset}`
+							: `${color.red}✘${color.reset}`;
 
 				w(`  ${icon} ${check.message}\n`);
 
 				// Print details if present
 				if (check.details && check.details.length > 0) {
 					for (const detail of check.details) {
-						w(`    ${ANSI.dim}→ ${detail}${ANSI.reset}\n`);
+						w(`    ${color.dim}→ ${detail}${color.reset}\n`);
 					}
 				}
 			}
@@ -123,7 +113,7 @@ function printHumanReadable(
 	const fail = checks.filter((c) => c.status === "fail").length;
 
 	w(
-		`${ANSI.bold}Summary:${ANSI.reset} ${ANSI.green}${pass} passed${ANSI.reset}, ${ANSI.yellow}${warn} warning${warn === 1 ? "" : "s"}${ANSI.reset}, ${ANSI.red}${fail} failure${fail === 1 ? "" : "s"}${ANSI.reset}\n`,
+		`${color.bold}Summary:${color.reset} ${color.green}${pass} passed${color.reset}, ${color.yellow}${warn} warning${warn === 1 ? "" : "s"}${color.reset}, ${color.red}${fail} failure${fail === 1 ? "" : "s"}${color.reset}\n`,
 	);
 }
 

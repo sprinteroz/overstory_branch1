@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { loadConfig } from "../config.ts";
 import { ValidationError } from "../errors.ts";
 import { createEventStore } from "../events/store.ts";
+import { color } from "../logging/color.ts";
 import { createMetricsStore } from "../metrics/store.ts";
 import { openSessionStore } from "../sessions/compat.ts";
 import type { AgentSession, StoredEvent, ToolStats } from "../types.ts";
@@ -48,15 +49,15 @@ function formatDuration(ms: number): string {
 function getStateIcon(state: AgentSession["state"]): string {
 	switch (state) {
 		case "booting":
-			return "\x1b[33m⏳\x1b[0m"; // Yellow hourglass
+			return `${color.yellow}⏳${color.reset}`; // Yellow hourglass
 		case "working":
-			return "\x1b[32m●\x1b[0m"; // Green circle
+			return `${color.green}●${color.reset}`; // Green circle
 		case "stalled":
-			return "\x1b[33m⚠\x1b[0m"; // Yellow warning
+			return `${color.yellow}⚠${color.reset}`; // Yellow warning
 		case "completed":
-			return "\x1b[34m✓\x1b[0m"; // Blue checkmark
+			return `${color.blue}✓${color.reset}`; // Blue checkmark
 		case "zombie":
-			return "\x1b[31m☠\x1b[0m"; // Red skull
+			return `${color.red}☠${color.reset}`; // Red skull
 		default:
 			return "?";
 	}

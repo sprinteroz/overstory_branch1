@@ -227,4 +227,33 @@ describe("printToConsole", () => {
 		expect(calledWith).toContain("fatal.crash");
 		expect(calledWith).toContain("ERR");
 	});
+
+	test("suppresses non-error output when quiet mode is enabled", () => {
+		const { setQuiet } = require("./color.ts") as { setQuiet: (enabled: boolean) => void };
+
+		logSpy = spyOn(console, "log").mockImplementation(() => {});
+		errorSpy = spyOn(console, "error").mockImplementation(() => {});
+		logSpy.mockClear();
+		errorSpy.mockClear();
+
+		// Enable quiet mode
+		setQuiet(true);
+
+		// info, warn, debug should all be suppressed
+		printToConsole(makeEvent({ level: "info" }), true);
+		printToConsole(makeEvent({ level: "warn" }), true);
+		printToConsole(makeEvent({ level: "debug" }), true);
+
+		expect(logSpy).toHaveBeenCalledTimes(0);
+		expect(errorSpy).toHaveBeenCalledTimes(0);
+
+		// errors should still be output
+		printToConsole(makeEvent({ level: "error" }), true);
+
+		expect(logSpy).toHaveBeenCalledTimes(0);
+		expect(errorSpy).toHaveBeenCalledTimes(1);
+
+		// Restore quiet mode
+		setQuiet(false);
+	});
 });

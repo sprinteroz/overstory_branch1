@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+
 /**
  * Overstory CLI — main entry point and command router.
  *
@@ -34,6 +35,7 @@ import { traceCommand } from "./commands/trace.ts";
 import { watchCommand } from "./commands/watch.ts";
 import { worktreeCommand } from "./commands/worktree.ts";
 import { OverstoryError, WorktreeError } from "./errors.ts";
+import { setQuiet } from "./logging/color.ts";
 
 const VERSION = "0.4.0";
 
@@ -72,6 +74,7 @@ Commands:
 Options:
   --help, -h              Show this help
   --version, -v           Show version
+  --quiet, -q             Suppress non-error output
   --completions <shell>   Generate shell completions (bash, zsh, fish)
 
 Run 'overstory <command> --help' for command-specific help.`;
@@ -140,6 +143,20 @@ function suggestCommand(input: string): string | undefined {
 
 async function main(): Promise<void> {
 	const args = process.argv.slice(2);
+
+	// Parse global flags before command routing
+	const quietIndex = args.indexOf("--quiet");
+	const qIndex = args.indexOf("-q");
+	if (quietIndex !== -1 || qIndex !== -1) {
+		setQuiet(true);
+		// Remove the flag from args so commands do not see it
+		if (quietIndex !== -1) args.splice(quietIndex, 1);
+		if (qIndex !== -1) {
+			const idx = args.indexOf("-q");
+			if (idx !== -1) args.splice(idx, 1);
+		}
+	}
+
 	const command = args[0];
 	const commandArgs = args.slice(1);
 

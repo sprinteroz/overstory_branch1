@@ -9,34 +9,21 @@ import { join } from "node:path";
 import { loadConfig } from "../config.ts";
 import { ValidationError } from "../errors.ts";
 import { createEventStore } from "../events/store.ts";
+import { color } from "../logging/color.ts";
 import { openSessionStore } from "../sessions/compat.ts";
 import type { EventType, StoredEvent } from "../types.ts";
 
-// ANSI escape codes consistent with src/logging/reporter.ts
-const ANSI = {
-	reset: "\x1b[0m",
-	gray: "\x1b[90m",
-	blue: "\x1b[34m",
-	yellow: "\x1b[33m",
-	red: "\x1b[31m",
-	green: "\x1b[32m",
-	cyan: "\x1b[36m",
-	magenta: "\x1b[35m",
-	bold: "\x1b[1m",
-	dim: "\x1b[2m",
-} as const;
-
 /** Labels and colors for each event type. */
 const EVENT_LABELS: Record<EventType, { label: string; color: string }> = {
-	tool_start: { label: "TOOL START", color: ANSI.blue },
-	tool_end: { label: "TOOL END  ", color: ANSI.blue },
-	session_start: { label: "SESSION  +", color: ANSI.green },
-	session_end: { label: "SESSION  -", color: ANSI.yellow },
-	mail_sent: { label: "MAIL SENT ", color: ANSI.cyan },
-	mail_received: { label: "MAIL RECV ", color: ANSI.cyan },
-	spawn: { label: "SPAWN     ", color: ANSI.magenta },
-	error: { label: "ERROR     ", color: ANSI.red },
-	custom: { label: "CUSTOM    ", color: ANSI.gray },
+	tool_start: { label: "TOOL START", color: color.blue },
+	tool_end: { label: "TOOL END  ", color: color.blue },
+	session_start: { label: "SESSION  +", color: color.green },
+	session_end: { label: "SESSION  -", color: color.yellow },
+	mail_sent: { label: "MAIL SENT ", color: color.cyan },
+	mail_received: { label: "MAIL RECV ", color: color.cyan },
+	spawn: { label: "SPAWN     ", color: color.magenta },
+	error: { label: "ERROR     ", color: color.red },
+	custom: { label: "CUSTOM    ", color: color.gray },
 };
 
 /**
@@ -155,15 +142,15 @@ function buildEventDetail(event: StoredEvent): string {
 function printTimeline(events: StoredEvent[], agentName: string, useAbsoluteTime: boolean): void {
 	const w = process.stdout.write.bind(process.stdout);
 
-	w(`${ANSI.bold}Timeline for ${agentName}${ANSI.reset}\n`);
+	w(`${color.bold}Timeline for ${agentName}${color.reset}\n`);
 	w(`${"=".repeat(70)}\n`);
 
 	if (events.length === 0) {
-		w(`${ANSI.dim}No events found.${ANSI.reset}\n`);
+		w(`${color.dim}No events found.${color.reset}\n`);
 		return;
 	}
 
-	w(`${ANSI.dim}${events.length} event${events.length === 1 ? "" : "s"}${ANSI.reset}\n\n`);
+	w(`${color.dim}${events.length} event${events.length === 1 ? "" : "s"}${color.reset}\n\n`);
 
 	let lastDate = "";
 
@@ -174,7 +161,7 @@ function printTimeline(events: StoredEvent[], agentName: string, useAbsoluteTime
 			if (lastDate !== "") {
 				w("\n");
 			}
-			w(`${ANSI.dim}--- ${date} ---${ANSI.reset}\n`);
+			w(`${color.dim}--- ${date} ---${color.reset}\n`);
 			lastDate = date;
 		}
 
@@ -184,22 +171,22 @@ function printTimeline(events: StoredEvent[], agentName: string, useAbsoluteTime
 
 		const eventInfo = EVENT_LABELS[event.eventType] ?? {
 			label: event.eventType.padEnd(10),
-			color: ANSI.gray,
+			color: color.gray,
 		};
 
 		const levelColor =
-			event.level === "error" ? ANSI.red : event.level === "warn" ? ANSI.yellow : "";
-		const levelReset = levelColor ? ANSI.reset : "";
+			event.level === "error" ? color.red : event.level === "warn" ? color.yellow : "";
+		const levelReset = levelColor ? color.reset : "";
 
 		const detail = buildEventDetail(event);
-		const detailSuffix = detail ? ` ${ANSI.dim}${detail}${ANSI.reset}` : "";
+		const detailSuffix = detail ? ` ${color.dim}${detail}${color.reset}` : "";
 
 		const agentLabel =
-			event.agentName !== agentName ? ` ${ANSI.dim}[${event.agentName}]${ANSI.reset}` : "";
+			event.agentName !== agentName ? ` ${color.dim}[${event.agentName}]${color.reset}` : "";
 
 		w(
-			`${ANSI.dim}${timeStr.padStart(10)}${ANSI.reset} ` +
-				`${levelColor}${eventInfo.color}${ANSI.bold}${eventInfo.label}${ANSI.reset}${levelReset}` +
+			`${color.dim}${timeStr.padStart(10)}${color.reset} ` +
+				`${levelColor}${eventInfo.color}${color.bold}${eventInfo.label}${color.reset}${levelReset}` +
 				`${agentLabel}${detailSuffix}\n`,
 		);
 	}

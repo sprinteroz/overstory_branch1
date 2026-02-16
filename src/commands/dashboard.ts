@@ -9,6 +9,7 @@
 import { join } from "node:path";
 import { loadConfig } from "../config.ts";
 import { ValidationError } from "../errors.ts";
+import { color } from "../logging/color.ts";
 import { createMailStore } from "../mail/store.ts";
 import { createMergeQueue } from "../merge/queue.ts";
 import { createMetricsStore } from "../metrics/store.ts";
@@ -16,29 +17,15 @@ import type { MailMessage } from "../types.ts";
 import { gatherStatus, type StatusData } from "./status.ts";
 
 /**
- * ANSI escape codes for rendering.
+ * Terminal control codes (cursor movement, screen clearing).
+ * These are not colors, so they stay separate from the color module.
  */
-const ANSI = {
-	// Cursor control
+const CURSOR = {
 	clear: "\x1b[2J\x1b[H", // Clear screen and home cursor
 	cursorTo: (row: number, col: number) => `\x1b[${row};${col}H`,
 	hideCursor: "\x1b[?25l",
 	showCursor: "\x1b[?25h",
-
-	// Text styling
-	reset: "\x1b[0m",
-	bold: "\x1b[1m",
-	dim: "\x1b[2m",
-
-	// Foreground colors
-	red: "\x1b[31m",
-	green: "\x1b[32m",
-	yellow: "\x1b[33m",
-	blue: "\x1b[34m",
-	magenta: "\x1b[35m",
-	cyan: "\x1b[36m",
-	white: "\x1b[37m",
-};
+} as const;
 
 /**
  * Box drawing characters for panel borders.
@@ -204,7 +191,7 @@ async function loadDashboardData(root: string): Promise<DashboardData> {
  * Render the header bar (line 1).
  */
 function renderHeader(width: number, interval: number): string {
-	const left = `${ANSI.bold}overstory dashboard v0.2.0${ANSI.reset}`;
+	const left = `${color.bold}overstory dashboard v0.2.0${color.reset}`;
 	const now = new Date().toLocaleTimeString();
 	const right = `${now} | refresh: ${interval}ms`;
 	const leftStripped = "overstory dashboard v0.2.0"; // for length calculation
@@ -220,17 +207,17 @@ function renderHeader(width: number, interval: number): string {
 function getStateColor(state: string): string {
 	switch (state) {
 		case "working":
-			return ANSI.green;
+			return color.green;
 		case "booting":
-			return ANSI.yellow;
+			return color.yellow;
 		case "stalled":
-			return ANSI.red;
+			return color.red;
 		case "zombie":
-			return ANSI.dim;
+			return color.dim;
 		case "completed":
-			return ANSI.cyan;
+			return color.cyan;
 		default:
-			return ANSI.white;
+			return color.white;
 	}
 }
 
@@ -267,19 +254,19 @@ function renderAgentPanel(
 	let output = "";
 
 	// Panel header
-	const headerLine = `${BOX.vertical} ${ANSI.bold}Agents${ANSI.reset} (${data.status.agents.length})`;
+	const headerLine = `${BOX.vertical} ${color.bold}Agents${color.reset} (${data.status.agents.length})`;
 	const headerPadding = " ".repeat(
-		width - headerLine.length - 1 + ANSI.bold.length + ANSI.reset.length,
+		width - headerLine.length - 1 + color.bold.length + color.reset.length,
 	);
-	output += `${ANSI.cursorTo(startRow, 1)}${headerLine}${headerPadding}${BOX.vertical}\n`;
+	output += `${CURSOR.cursorTo(startRow, 1)}${headerLine}${headerPadding}${BOX.vertical}\n`;
 
 	// Column headers
 	const colHeaders = `${BOX.vertical} St Name            Capability    State      Bead ID          Duration  Tmux ${BOX.vertical}`;
-	output += `${ANSI.cursorTo(startRow + 1, 1)}${colHeaders}\n`;
+	output += `${CURSOR.cursorTo(startRow + 1, 1)}${colHeaders}\n`;
 
 	// Separator
 	const separator = horizontalLine(width, BOX.tee, BOX.horizontal, BOX.teeRight);
-	output += `${ANSI.cursorTo(startRow + 2, 1)}${separator}\n`;
+	output += `${CURSOR.cursorTo(startRow + 2, 1)}${separator}\n`;
 
 	// Sort agents: active first (working, booting, stalled), then completed, then zombie
 	const agents = [...data.status.agents].sort((a, b) => {
@@ -300,7 +287,7 @@ function renderAgentPanel(
 		if (!agent) continue;
 
 		const icon = getStateIcon(agent.state);
-		const color = getStateColor(agent.state);
+		const stateColor = getStateColor(agent.state);
 		const name = pad(truncate(agent.agentName, 15), 15);
 		const capability = pad(truncate(agent.capability, 12), 12);
 		const state = pad(agent.state, 10);
@@ -312,21 +299,21 @@ function renderAgentPanel(
 		const duration = formatDuration(endTime - new Date(agent.startedAt).getTime());
 		const durationPadded = pad(duration, 9);
 		const tmuxAlive = data.status.tmuxSessions.some((s) => s.name === agent.tmuxSession);
-		const tmuxDot = tmuxAlive ? `${ANSI.green}●${ANSI.reset}` : `${ANSI.red}○${ANSI.reset}`;
+		const tmuxDot = tmuxAlive ? `${color.green}●${color.reset}` : `${color.red}○${color.reset}`;
 
-		const line = `${BOX.vertical} ${color}${icon}${ANSI.reset}  ${name} ${capability} ${color}${state}${ANSI.reset} ${beadId} ${durationPadded} ${tmuxDot}    ${BOX.vertical}`;
-		output += `${ANSI.cursorTo(startRow + 3 + i, 1)}${line}\n`;
+		const line = `${BOX.vertical} ${stateColor}${icon}${color.reset}  ${name} ${capability} ${stateColor}${state}${color.reset} ${beadId} ${durationPadded} ${tmuxDot}    ${BOX.vertical}`;
+		output += `${CURSOR.cursorTo(startRow + 3 + i, 1)}${line}\n`;
 	}
 
 	// Fill remaining rows with empty lines
 	for (let i = visibleAgents.length; i < maxRows; i++) {
 		const emptyLine = `${BOX.vertical}${" ".repeat(width - 2)}${BOX.vertical}`;
-		output += `${ANSI.cursorTo(startRow + 3 + i, 1)}${emptyLine}\n`;
+		output += `${CURSOR.cursorTo(startRow + 3 + i, 1)}${emptyLine}\n`;
 	}
 
 	// Bottom border
 	const bottomBorder = horizontalLine(width, BOX.tee, BOX.horizontal, BOX.teeRight);
-	output += `${ANSI.cursorTo(startRow + 3 + maxRows, 1)}${bottomBorder}\n`;
+	output += `${CURSOR.cursorTo(startRow + 3 + maxRows, 1)}${bottomBorder}\n`;
 
 	return output;
 }
@@ -337,15 +324,15 @@ function renderAgentPanel(
 function getPriorityColor(priority: string): string {
 	switch (priority) {
 		case "urgent":
-			return ANSI.red;
+			return color.red;
 		case "high":
-			return ANSI.yellow;
+			return color.yellow;
 		case "normal":
-			return ANSI.white;
+			return color.white;
 		case "low":
-			return ANSI.dim;
+			return color.dim;
 		default:
-			return ANSI.white;
+			return color.white;
 	}
 }
 
@@ -363,14 +350,14 @@ function renderMailPanel(
 	let output = "";
 
 	const unreadCount = data.status.unreadMailCount;
-	const headerLine = `${BOX.vertical} ${ANSI.bold}Mail${ANSI.reset} (${unreadCount} unread)`;
+	const headerLine = `${BOX.vertical} ${color.bold}Mail${color.reset} (${unreadCount} unread)`;
 	const headerPadding = " ".repeat(
-		panelWidth - headerLine.length - 1 + ANSI.bold.length + ANSI.reset.length,
+		panelWidth - headerLine.length - 1 + color.bold.length + color.reset.length,
 	);
-	output += `${ANSI.cursorTo(startRow, 1)}${headerLine}${headerPadding}${BOX.vertical}\n`;
+	output += `${CURSOR.cursorTo(startRow, 1)}${headerLine}${headerPadding}${BOX.vertical}\n`;
 
 	const separator = horizontalLine(panelWidth, BOX.tee, BOX.horizontal, BOX.cross);
-	output += `${ANSI.cursorTo(startRow + 1, 1)}${separator}\n`;
+	output += `${CURSOR.cursorTo(startRow + 1, 1)}${separator}\n`;
 
 	const maxRows = panelHeight - 3; // header + separator + border
 	const messages = data.recentMail.slice(0, maxRows);
@@ -386,7 +373,7 @@ function renderMailPanel(
 		const subject = truncate(msg.subject, panelWidth - 40);
 		const time = timeAgo(msg.createdAt);
 
-		const line = `${BOX.vertical} ${priorityColor}${priority}${ANSI.reset}${from} → ${to}: ${subject} (${time})`;
+		const line = `${BOX.vertical} ${priorityColor}${priority}${color.reset}${from} → ${to}: ${subject} (${time})`;
 		const padding = " ".repeat(
 			Math.max(
 				0,
@@ -394,18 +381,18 @@ function renderMailPanel(
 					line.length -
 					1 +
 					priorityColor.length +
-					ANSI.reset.length +
+					color.reset.length +
 					priorityColor.length +
-					ANSI.reset.length,
+					color.reset.length,
 			),
 		);
-		output += `${ANSI.cursorTo(startRow + 2 + i, 1)}${line}${padding}${BOX.vertical}\n`;
+		output += `${CURSOR.cursorTo(startRow + 2 + i, 1)}${line}${padding}${BOX.vertical}\n`;
 	}
 
 	// Fill remaining rows with empty lines
 	for (let i = messages.length; i < maxRows; i++) {
 		const emptyLine = `${BOX.vertical}${" ".repeat(panelWidth - 2)}${BOX.vertical}`;
-		output += `${ANSI.cursorTo(startRow + 2 + i, 1)}${emptyLine}\n`;
+		output += `${CURSOR.cursorTo(startRow + 2 + i, 1)}${emptyLine}\n`;
 	}
 
 	return output;
@@ -417,15 +404,15 @@ function renderMailPanel(
 function getMergeStatusColor(status: string): string {
 	switch (status) {
 		case "pending":
-			return ANSI.yellow;
+			return color.yellow;
 		case "merging":
-			return ANSI.blue;
+			return color.blue;
 		case "conflict":
-			return ANSI.red;
+			return color.red;
 		case "merged":
-			return ANSI.green;
+			return color.green;
 		default:
-			return ANSI.white;
+			return color.white;
 	}
 }
 
@@ -443,14 +430,14 @@ function renderMergeQueuePanel(
 	const panelWidth = width - startCol + 1;
 	let output = "";
 
-	const headerLine = `${BOX.vertical} ${ANSI.bold}Merge Queue${ANSI.reset} (${data.mergeQueue.length})`;
+	const headerLine = `${BOX.vertical} ${color.bold}Merge Queue${color.reset} (${data.mergeQueue.length})`;
 	const headerPadding = " ".repeat(
-		panelWidth - headerLine.length - 1 + ANSI.bold.length + ANSI.reset.length,
+		panelWidth - headerLine.length - 1 + color.bold.length + color.reset.length,
 	);
-	output += `${ANSI.cursorTo(startRow, startCol)}${headerLine}${headerPadding}${BOX.vertical}\n`;
+	output += `${CURSOR.cursorTo(startRow, startCol)}${headerLine}${headerPadding}${BOX.vertical}\n`;
 
 	const separator = horizontalLine(panelWidth, BOX.cross, BOX.horizontal, BOX.teeRight);
-	output += `${ANSI.cursorTo(startRow + 1, startCol)}${separator}\n`;
+	output += `${CURSOR.cursorTo(startRow + 1, startCol)}${separator}\n`;
 
 	const maxRows = panelHeight - 3; // header + separator + border
 	const entries = data.mergeQueue.slice(0, maxRows);
@@ -464,17 +451,17 @@ function renderMergeQueuePanel(
 		const agent = truncate(entry.agentName, 15);
 		const branch = truncate(entry.branchName, panelWidth - 30);
 
-		const line = `${BOX.vertical} ${statusColor}${status}${ANSI.reset} ${agent} ${branch}`;
+		const line = `${BOX.vertical} ${statusColor}${status}${color.reset} ${agent} ${branch}`;
 		const padding = " ".repeat(
-			Math.max(0, panelWidth - line.length - 1 + statusColor.length + ANSI.reset.length),
+			Math.max(0, panelWidth - line.length - 1 + statusColor.length + color.reset.length),
 		);
-		output += `${ANSI.cursorTo(startRow + 2 + i, startCol)}${line}${padding}${BOX.vertical}\n`;
+		output += `${CURSOR.cursorTo(startRow + 2 + i, startCol)}${line}${padding}${BOX.vertical}\n`;
 	}
 
 	// Fill remaining rows with empty lines
 	for (let i = entries.length; i < maxRows; i++) {
 		const emptyLine = `${BOX.vertical}${" ".repeat(panelWidth - 2)}${BOX.vertical}`;
-		output += `${ANSI.cursorTo(startRow + 2 + i, startCol)}${emptyLine}\n`;
+		output += `${CURSOR.cursorTo(startRow + 2 + i, startCol)}${emptyLine}\n`;
 	}
 
 	return output;
@@ -492,13 +479,13 @@ function renderMetricsPanel(
 	let output = "";
 
 	const separator = horizontalLine(width, BOX.tee, BOX.horizontal, BOX.teeRight);
-	output += `${ANSI.cursorTo(startRow, 1)}${separator}\n`;
+	output += `${CURSOR.cursorTo(startRow, 1)}${separator}\n`;
 
-	const headerLine = `${BOX.vertical} ${ANSI.bold}Metrics${ANSI.reset}`;
+	const headerLine = `${BOX.vertical} ${color.bold}Metrics${color.reset}`;
 	const headerPadding = " ".repeat(
-		width - headerLine.length - 1 + ANSI.bold.length + ANSI.reset.length,
+		width - headerLine.length - 1 + color.bold.length + color.reset.length,
 	);
-	output += `${ANSI.cursorTo(startRow + 1, 1)}${headerLine}${headerPadding}${BOX.vertical}\n`;
+	output += `${CURSOR.cursorTo(startRow + 1, 1)}${headerLine}${headerPadding}${BOX.vertical}\n`;
 
 	const totalSessions = data.metrics.totalSessions;
 	const avgDuration = formatDuration(data.metrics.avgDuration);
@@ -508,10 +495,10 @@ function renderMetricsPanel(
 
 	const metricsLine = `${BOX.vertical} Total sessions: ${totalSessions} | Avg duration: ${avgDuration} | By capability: ${byCapability}`;
 	const metricsPadding = " ".repeat(Math.max(0, width - metricsLine.length - 1));
-	output += `${ANSI.cursorTo(startRow + 2, 1)}${metricsLine}${metricsPadding}${BOX.vertical}\n`;
+	output += `${CURSOR.cursorTo(startRow + 2, 1)}${metricsLine}${metricsPadding}${BOX.vertical}\n`;
 
 	const bottomBorder = horizontalLine(width, BOX.bottomLeft, BOX.horizontal, BOX.bottomRight);
-	output += `${ANSI.cursorTo(startRow + 3, 1)}${bottomBorder}\n`;
+	output += `${CURSOR.cursorTo(startRow + 3, 1)}${bottomBorder}\n`;
 
 	return output;
 }
@@ -523,7 +510,7 @@ function renderDashboard(data: DashboardData, interval: number): void {
 	const width = process.stdout.columns ?? 100;
 	const height = process.stdout.rows ?? 30;
 
-	let output = ANSI.clear;
+	let output = CURSOR.clear;
 
 	// Header (rows 1-2)
 	output += renderHeader(width, interval);
@@ -591,14 +578,14 @@ export async function dashboardCommand(args: string[]): Promise<void> {
 	const root = config.project.root;
 
 	// Hide cursor
-	process.stdout.write(ANSI.hideCursor);
+	process.stdout.write(CURSOR.hideCursor);
 
 	// Clean exit on Ctrl+C
 	let running = true;
 	process.on("SIGINT", () => {
 		running = false;
-		process.stdout.write(ANSI.showCursor);
-		process.stdout.write(ANSI.clear);
+		process.stdout.write(CURSOR.showCursor);
+		process.stdout.write(CURSOR.clear);
 		process.exit(0);
 	});
 

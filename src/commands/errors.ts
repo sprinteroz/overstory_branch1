@@ -10,17 +10,8 @@ import { join } from "node:path";
 import { loadConfig } from "../config.ts";
 import { ValidationError } from "../errors.ts";
 import { createEventStore } from "../events/store.ts";
+import { color } from "../logging/color.ts";
 import type { StoredEvent } from "../types.ts";
-
-// ANSI escape codes consistent with src/logging/reporter.ts
-const ANSI = {
-	reset: "\x1b[0m",
-	gray: "\x1b[90m",
-	red: "\x1b[31m",
-	yellow: "\x1b[33m",
-	bold: "\x1b[1m",
-	dim: "\x1b[2m",
-} as const;
 
 /**
  * Parse a named flag value from args.
@@ -118,15 +109,15 @@ function groupByAgent(events: StoredEvent[]): Map<string, StoredEvent[]> {
 function printErrors(events: StoredEvent[]): void {
 	const w = process.stdout.write.bind(process.stdout);
 
-	w(`${ANSI.bold}${ANSI.red}Errors${ANSI.reset}\n`);
+	w(`${color.bold}${color.red}Errors${color.reset}\n`);
 	w(`${"=".repeat(70)}\n`);
 
 	if (events.length === 0) {
-		w(`${ANSI.dim}No errors found.${ANSI.reset}\n`);
+		w(`${color.dim}No errors found.${color.reset}\n`);
 		return;
 	}
 
-	w(`${ANSI.dim}${events.length} error${events.length === 1 ? "" : "s"}${ANSI.reset}\n\n`);
+	w(`${color.dim}${events.length} error${events.length === 1 ? "" : "s"}${color.reset}\n\n`);
 
 	const grouped = groupByAgent(events);
 
@@ -138,7 +129,7 @@ function printErrors(events: StoredEvent[]): void {
 		firstGroup = false;
 
 		w(
-			`${ANSI.bold}${agentName}${ANSI.reset} ${ANSI.dim}(${agentEvents.length} error${agentEvents.length === 1 ? "" : "s"})${ANSI.reset}\n`,
+			`${color.bold}${agentName}${color.reset} ${color.dim}(${agentEvents.length} error${agentEvents.length === 1 ? "" : "s"})${color.reset}\n`,
 		);
 
 		for (const event of agentEvents) {
@@ -147,10 +138,10 @@ function printErrors(events: StoredEvent[]): void {
 			const timestamp = date ? `${date} ${time}` : time;
 
 			const detail = buildErrorDetail(event);
-			const detailSuffix = detail ? ` ${ANSI.dim}${detail}${ANSI.reset}` : "";
+			const detailSuffix = detail ? ` ${color.dim}${detail}${color.reset}` : "";
 
 			w(
-				`  ${ANSI.dim}${timestamp}${ANSI.reset} ${ANSI.red}${ANSI.bold}ERROR${ANSI.reset}${detailSuffix}\n`,
+				`  ${color.dim}${timestamp}${color.reset} ${color.red}${color.bold}ERROR${color.reset}${detailSuffix}\n`,
 			);
 		}
 	}
