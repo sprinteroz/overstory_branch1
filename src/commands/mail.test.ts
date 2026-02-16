@@ -851,11 +851,7 @@ describe("mailCommand", () => {
 			const messages = client.list();
 			const broadcastMsgs = messages.filter((m) => m.subject === "Team update");
 			expect(broadcastMsgs.length).toBe(3);
-			expect(broadcastMsgs.map((m) => m.to).sort()).toEqual([
-				"builder-1",
-				"builder-2",
-				"scout-1",
-			]);
+			expect(broadcastMsgs.map((m) => m.to).sort()).toEqual(["builder-1", "builder-2", "scout-1"]);
 			client.close();
 		});
 
@@ -968,15 +964,7 @@ describe("mailCommand", () => {
 			// Instead, test a capability group with no members
 			let error: Error | null = null;
 			try {
-				await mailCommand([
-					"send",
-					"--to",
-					"@reviewers",
-					"--subject",
-					"Test",
-					"--body",
-					"Body",
-				]);
+				await mailCommand(["send", "--to", "@reviewers", "--subject", "Test", "--body", "Body"]);
 			} catch (e) {
 				error = e as Error;
 			}
@@ -990,15 +978,7 @@ describe("mailCommand", () => {
 
 			let error: Error | null = null;
 			try {
-				await mailCommand([
-					"send",
-					"--to",
-					"@unknown",
-					"--subject",
-					"Test",
-					"--body",
-					"Body",
-				]);
+				await mailCommand(["send", "--to", "@unknown", "--subject", "Test", "--body", "Body"]);
 			} catch (e) {
 				error = e as Error;
 			}
@@ -1036,15 +1016,7 @@ describe("mailCommand", () => {
 			eventStore.close(); // Just to initialize the DB
 
 			output = "";
-			await mailCommand([
-				"send",
-				"--to",
-				"@builders",
-				"--subject",
-				"Test",
-				"--body",
-				"Body",
-			]);
+			await mailCommand(["send", "--to", "@builders", "--subject", "Test", "--body", "Body"]);
 
 			// Check events by agent (orchestrator is the sender)
 			const eventStore2 = createEventStore(eventsDbPath);
@@ -1087,9 +1059,10 @@ describe("mailCommand", () => {
 			expect(nudgeFiles).toContain("builder-2.json");
 
 			// Verify nudge content
-			const nudge1 = JSON.parse(
-				await Bun.file(join(nudgesDir, "builder-1.json")).text(),
-			) as { reason: string; subject: string };
+			const nudge1 = JSON.parse(await Bun.file(join(nudgesDir, "builder-1.json")).text()) as {
+				reason: string;
+				subject: string;
+			};
 			expect(nudge1.reason).toBe("urgent priority");
 			expect(nudge1.subject).toBe("Urgent task");
 		});
@@ -1116,9 +1089,9 @@ describe("mailCommand", () => {
 			expect(nudgeFiles).toContain("builder-1.json");
 			expect(nudgeFiles).toContain("builder-2.json");
 
-			const nudge1 = JSON.parse(
-				await Bun.file(join(nudgesDir, "builder-1.json")).text(),
-			) as { reason: string };
+			const nudge1 = JSON.parse(await Bun.file(join(nudgesDir, "builder-1.json")).text()) as {
+				reason: string;
+			};
 			expect(nudge1.reason).toBe("error");
 		});
 	});
