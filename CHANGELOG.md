@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-02-16
+
+### Added
+
+#### New CLI Commands & Flags
+- `overstory --completions <shell>` — shell completion generation for bash, zsh, and fish
+- `--quiet` / `-q` global flag — suppress non-error output across all commands
+- `overstory mail send --to @all` — broadcast messaging with group addresses (`@all`, `@builders`, `@scouts`, `@reviewers`, `@leads`, `@mergers`, etc.)
+
+#### Output Control
+- Central `NO_COLOR` convention support (`src/logging/color.ts`) — respects `NO_COLOR`, `FORCE_COLOR`, and `TERM=dumb` environment variables per https://no-color.org
+- All ANSI color output now goes through centralized color module instead of inline escape codes
+
+#### Infrastructure
+- Merge queue migrated from JSON file to SQLite (`merge-queue.db`) for durability and concurrent access
+
+#### Testing
+- Test suite grew from 1612 to 1673 tests across 69 files (4267 expect() calls)
+
+### Fixed
+- Freeze duration counter for completed/zombie agents in status and dashboard displays
+
 ## [0.4.0] - 2026-02-15
 
 ### Added
@@ -192,7 +214,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Biome configuration for formatting and linting
 - TypeScript strict mode with `noUncheckedIndexedAccess`
 
-[Unreleased]: https://github.com/jayminwest/overstory/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/jayminwest/overstory/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/jayminwest/overstory/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/jayminwest/overstory/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/jayminwest/overstory/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jayminwest/overstory/compare/v0.1.0...v0.2.0

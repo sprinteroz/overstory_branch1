@@ -37,7 +37,7 @@ import { worktreeCommand } from "./commands/worktree.ts";
 import { OverstoryError, WorktreeError } from "./errors.ts";
 import { setQuiet } from "./logging/color.ts";
 
-const VERSION = "0.4.0";
+const VERSION = "0.4.1";
 
 const HELP = `overstory v${VERSION} — Multi-agent orchestration for Claude Code
 

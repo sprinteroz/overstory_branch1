@@ -35,9 +35,9 @@ Coordinator (persistent orchestrator at project root)
 ### Key Architecture
 
 - **Agent Definitions**: Two-layer system — base `.md` files define the HOW (workflow), per-task overlays define the WHAT (task scope). Base definition content is injected into spawned agent overlays automatically.
-- **Messaging**: Custom SQLite mail system with typed protocol — 8 message types (`worker_done`, `merge_ready`, `dispatch`, `escalation`, etc.) for structured agent coordination
+- **Messaging**: Custom SQLite mail system with typed protocol — 8 message types (`worker_done`, `merge_ready`, `dispatch`, `escalation`, etc.) for structured agent coordination, plus broadcast messaging with group addresses (`@all`, `@builders`, etc.)
 - **Worktrees**: Each agent gets an isolated git worktree — no file conflicts between agents
-- **Merge**: FIFO merge queue with 4-tier conflict resolution
+- **Merge**: FIFO merge queue (SQLite-backed) with 4-tier conflict resolution
 - **Watchdog**: Tiered health monitoring — Tier 0 mechanical daemon (tmux/pid liveness), Tier 1 AI-assisted failure triage, Tier 2 monitor agent for continuous fleet patrol
 - **Tool Enforcement**: PreToolUse hooks mechanically block file modifications for non-implementation agents and dangerous git operations for all agents
 - **Task Groups**: Batch coordination with auto-close when all member issues complete
@@ -139,6 +139,7 @@ overstory hooks status                  Check if hooks are installed
 
 overstory mail send                     Send a message
   --to <agent>  --subject <text>  --body <text>
+  --to @all | @builders | @scouts ...    Broadcast to group addresses
   --type <status|question|result|error>
   --priority <low|normal|high|urgent>    (urgent/high auto-nudges recipient)
 
@@ -228,6 +229,10 @@ overstory costs                         Token/cost analysis and breakdown
 overstory metrics                       Show session metrics
   --last <n>                             Last N sessions
   --json                                 JSON output
+
+Global Flags:
+  --quiet, -q                            Suppress non-error output
+  --completions <shell>                  Generate shell completions (bash, zsh, fish)
 ```
 
 ## Tech Stack
@@ -236,13 +241,13 @@ overstory metrics                       Show session metrics
 - **Dependencies**: Zero runtime dependencies — only Bun built-in APIs
 - **Database**: SQLite via `bun:sqlite` (WAL mode for concurrent access)
 - **Linting**: Biome (formatter + linter)
-- **Testing**: `bun test` (1612 tests across 66 files, colocated with source)
+- **Testing**: `bun test` (1673 tests across 69 files, colocated with source)
 - **External CLIs**: `bd` (beads), `mulch`, `git`, `tmux` — invoked as subprocesses
 
 ## Development
 
 ```bash
-# Run tests (1612 tests across 66 files)
+# Run tests (1673 tests across 69 files)
 bun test
 
 # Run a single test
@@ -282,7 +287,7 @@ overstory/
     types.ts                      Shared types and interfaces
     config.ts                     Config loader + validation
     errors.ts                     Custom error types
-    commands/                     One file per CLI subcommand (26 commands)
+    commands/                     One file per CLI subcommand (27 commands)
       coordinator.ts              Persistent orchestrator lifecycle
       supervisor.ts               Team lead management
       dashboard.ts                Live TUI dashboard (ANSI, zero deps)
@@ -309,6 +314,7 @@ overstory/
       replay.ts                   Interleaved event replay
       costs.ts                    Token/cost analysis
       metrics.ts                  Session metrics
+      completions.ts              Shell completion generation (bash/zsh/fish)
     agents/                       Agent lifecycle management
       manifest.ts                 Agent registry (load + query)
       overlay.ts                  Dynamic CLAUDE.md overlay generator
@@ -317,10 +323,10 @@ overstory/
       lifecycle.ts                Handoff orchestration
       hooks-deployer.ts           Deploy hooks + tool enforcement
     worktree/                     Git worktree + tmux management
-    mail/                         SQLite mail system (typed protocol)
+    mail/                         SQLite mail system (typed protocol, broadcast)
     merge/                        FIFO queue + conflict resolution
     watchdog/                     Tiered health monitoring (daemon, triage, health)
-    logging/                      Multi-format logger + sanitizer + reporter
+    logging/                      Multi-format logger + sanitizer + reporter + color control
     metrics/                      SQLite metrics + transcript parsing
     doctor/                       Health check modules (9 checks)
     beads/                        bd CLI wrapper + molecules

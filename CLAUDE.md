@@ -50,7 +50,7 @@ Purpose-built messaging via `bun:sqlite` in `.overstory/mail.db`. WAL mode for c
 ```
 overstory/                        # This repo (the overstory tool itself)
   src/
-    index.ts                      # CLI entry point (command router, 24 commands)
+    index.ts                      # CLI entry point (command router, 26 commands)
     types.ts                      # ALL shared types and interfaces
     config.ts                     # Config loader + defaults + validation
     errors.ts                     # Custom error types (extend OverstoryError)
@@ -81,6 +81,7 @@ overstory/                        # This repo (the overstory tool itself)
       run.ts                      # overstory run list/show/complete
       costs.ts                    # overstory costs (token/cost analysis)
       metrics.ts                  # overstory metrics
+      completions.ts              # overstory --completions (shell completions)
     agents/                       # Agent lifecycle management
       manifest.ts                 # Agent registry (load + query capabilities)
       overlay.ts                  # Dynamic CLAUDE.md overlay generator
@@ -103,6 +104,7 @@ overstory/                        # This repo (the overstory tool itself)
     mail/
       store.ts                    # SQLite mail storage (bun:sqlite, WAL mode)
       client.ts                   # Mail operations (send/check/list/read/reply)
+      broadcast.ts                # Group address resolution (@all, @builders, etc.)
     mulch/
       client.ts                   # mulch CLI wrapper
     merge/
@@ -116,6 +118,7 @@ overstory/                        # This repo (the overstory tool itself)
       logger.ts                   # Multi-format logger (human + NDJSON)
       sanitizer.ts                # Secret redaction
       reporter.ts                 # Console reporter (ANSI colors)
+      color.ts                    # Central color control (NO_COLOR, --quiet)
     metrics/
       store.ts                    # SQLite metrics storage
       summary.ts                  # Metrics reporting
@@ -147,7 +150,7 @@ target-project/
     agent-manifest.json           # Agent registry
     hooks.json                    # Central hooks config
     current-run.txt               # Active run ID
-    merge-queue.json              # FIFO merge queue
+    merge-queue.db                # FIFO merge queue (SQLite, WAL mode)
     agents/{name}/                # Agent state + identity
       identity.yaml               # Persistent agent CV
       checkpoint.json             # Session checkpoint for recovery
