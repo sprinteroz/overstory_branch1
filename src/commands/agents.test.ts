@@ -236,6 +236,7 @@ describe("discoverAgents", () => {
 
 describe("agentsCommand", () => {
 	let tempDir: string;
+	let originalCwd: string;
 	let originalStdoutWrite: typeof process.stdout.write;
 	let stdoutBuffer: string;
 
@@ -293,6 +294,7 @@ logging:
 		});
 
 		// Change to temp dir
+		originalCwd = process.cwd();
 		process.chdir(tempDir);
 	});
 
@@ -314,6 +316,7 @@ logging:
 
 	afterEach(async () => {
 		process.stdout.write = originalStdoutWrite;
+		process.chdir(originalCwd);
 		await rm(tempDir, { recursive: true, force: true });
 	});
 });

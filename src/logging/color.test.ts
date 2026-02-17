@@ -1,4 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { dirname, join } from "node:path";
+
+// Resolve the project root from this file's location (src/logging/ -> project root)
+const projectRoot = join(dirname(import.meta.dir), "..");
 
 describe("color module", () => {
 	// Test via subprocess to control env vars at import time
@@ -11,7 +15,7 @@ describe("color module", () => {
 				'import { color, colorsEnabled } from "./src/logging/color.ts"; console.log(JSON.stringify({ colorsEnabled, reset: color.reset }))',
 			],
 			{
-				cwd: process.cwd(),
+				cwd: projectRoot,
 				stdout: "pipe",
 				stderr: "pipe",
 				env: { ...process.env, NO_COLOR: undefined, FORCE_COLOR: undefined, TERM: undefined },
@@ -32,7 +36,7 @@ describe("color module", () => {
 				'import { color, colorsEnabled } from "./src/logging/color.ts"; console.log(JSON.stringify({ colorsEnabled, reset: color.reset }))',
 			],
 			{
-				cwd: process.cwd(),
+				cwd: projectRoot,
 				stdout: "pipe",
 				stderr: "pipe",
 				env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: undefined },
@@ -53,7 +57,7 @@ describe("color module", () => {
 				'import { color, colorsEnabled } from "./src/logging/color.ts"; console.log(JSON.stringify({ colorsEnabled, reset: color.reset }))',
 			],
 			{
-				cwd: process.cwd(),
+				cwd: projectRoot,
 				stdout: "pipe",
 				stderr: "pipe",
 				env: { ...process.env, TERM: "dumb", NO_COLOR: undefined, FORCE_COLOR: undefined },
@@ -74,7 +78,7 @@ describe("color module", () => {
 				'import { color, colorsEnabled } from "./src/logging/color.ts"; console.log(JSON.stringify({ colorsEnabled, reset: color.reset }))',
 			],
 			{
-				cwd: process.cwd(),
+				cwd: projectRoot,
 				stdout: "pipe",
 				stderr: "pipe",
 				env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "1" },
@@ -95,7 +99,7 @@ describe("color module", () => {
 				'import { color, colorsEnabled } from "./src/logging/color.ts"; console.log(JSON.stringify({ colorsEnabled, reset: color.reset }))',
 			],
 			{
-				cwd: process.cwd(),
+				cwd: projectRoot,
 				stdout: "pipe",
 				stderr: "pipe",
 				env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: undefined },
