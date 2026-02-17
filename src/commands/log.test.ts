@@ -4,10 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ValidationError } from "../errors.ts";
 import { createEventStore } from "../events/store.ts";
+import { createMailClient } from "../mail/client.ts";
+import { createMailStore } from "../mail/store.ts";
 import { createMetricsStore } from "../metrics/store.ts";
+import type { MulchClient } from "../mulch/client.ts";
 import { createSessionStore } from "../sessions/store.ts";
-import type { AgentSession, StoredEvent } from "../types.ts";
-import { logCommand } from "./log.ts";
+import type { AgentSession, MulchLearnResult, StoredEvent } from "../types.ts";
+import { autoRecordExpertise, logCommand } from "./log.ts";
 
 /**
  * Tests for `overstory log` command.
@@ -52,6 +55,33 @@ describe("logCommand", () => {
 
 	function output(): string {
 		return chunks.join("");
+	}
+
+	/**
+	 * Fake MulchClient for testing autoRecordExpertise.
+	 * Only learn() and record() are implemented — other methods are stubs.
+	 * Justified: we are testing orchestration logic, not the mulch CLI itself.
+	 */
+	function createFakeMulchClient(
+		learnResult: MulchLearnResult,
+		opts?: { recordShouldFail?: boolean },
+	): {
+		client: MulchClient;
+		recordCalls: Array<{ domain: string; options: Record<string, unknown> }>;
+	} {
+		const recordCalls: Array<{ domain: string; options: Record<string, unknown> }> = [];
+		const client = {
+			async learn() {
+				return learnResult;
+			},
+			async record(domain: string, options: Record<string, unknown>) {
+				if (opts?.recordShouldFail) {
+					throw new Error("mulch record failed");
+				}
+				recordCalls.push({ domain, options });
+			},
+		} as unknown as MulchClient;
+		return { client, recordCalls };
 	}
 
 	test("--help flag shows help text", async () => {
@@ -559,7 +589,7 @@ describe("logCommand", () => {
 		expect(out).toContain("--stdin");
 	});
 
-	test("session-end does not crash when mulch learn fails", async () => {
+	test("session-end does not crash when mulch learn/record fails", async () => {
 		// Create sessions.db with a builder agent (non-persistent)
 		const dbPath = join(tempDir, ".overstory", "sessions.db");
 		const session: AgentSession = {
@@ -584,7 +614,7 @@ describe("logCommand", () => {
 		store.upsert(session);
 		store.close();
 
-		// session-end should complete without throwing even if mulch learn fails
+		// session-end should complete without throwing even if mulch learn/record fails
 		await expect(
 			logCommand(["session-end", "--agent", "mulch-fail-agent"]),
 		).resolves.toBeUndefined();
@@ -598,7 +628,7 @@ describe("logCommand", () => {
 		expect(updatedSession?.state).toBe("completed");
 	});
 
-	test("session-end skips mulch learn for coordinator (persistent agent)", async () => {
+	test("session-end skips mulch auto-record for coordinator (persistent agent)", async () => {
 		// Create sessions.db with a coordinator agent
 		const dbPath = join(tempDir, ".overstory", "sessions.db");
 		const session: AgentSession = {
@@ -625,7 +655,7 @@ describe("logCommand", () => {
 
 		await logCommand(["session-end", "--agent", "coordinator-mulch"]);
 
-		// Verify no mail.db was created (mulch learn was skipped)
+		// Verify no mail.db was created (mulch auto-record was skipped)
 		const mailDbPath = join(tempDir, ".overstory", "mail.db");
 		const mailDbFile = Bun.file(mailDbPath);
 		expect(await mailDbFile.exists()).toBe(false);
@@ -637,6 +667,117 @@ describe("logCommand", () => {
 
 		expect(updatedSession).toBeDefined();
 		expect(updatedSession?.state).toBe("working");
+	});
+
+	test("autoRecordExpertise calls record for each suggested domain", async () => {
+		const learnResult: MulchLearnResult = {
+			success: true,
+			command: "mulch learn",
+			changedFiles: ["src/foo.ts", "src/bar.ts"],
+			suggestedDomains: ["typescript", "cli"],
+			unmatchedFiles: [],
+		};
+		const { client, recordCalls } = createFakeMulchClient(learnResult);
+		const mailDbPath = join(tempDir, ".overstory", "auto-record-mail.db");
+
+		const result = await autoRecordExpertise({
+			mulchClient: client,
+			agentName: "test-builder",
+			capability: "builder",
+			beadId: "bead-123",
+			mailDbPath,
+			parentAgent: "parent-lead",
+		});
+
+		expect(result).toEqual(["typescript", "cli"]);
+		expect(recordCalls).toHaveLength(2);
+		expect(recordCalls[0]?.domain).toBe("typescript");
+		expect(recordCalls[0]?.options).toMatchObject({
+			type: "reference",
+			tags: ["auto-session-end", "builder"],
+			evidenceBead: "bead-123",
+		});
+		expect(recordCalls[1]?.domain).toBe("cli");
+	});
+
+	test("autoRecordExpertise sends mail with auto-recorded subject", async () => {
+		const learnResult: MulchLearnResult = {
+			success: true,
+			command: "mulch learn",
+			changedFiles: ["src/foo.ts"],
+			suggestedDomains: ["typescript"],
+			unmatchedFiles: [],
+		};
+		const { client } = createFakeMulchClient(learnResult);
+		const mailDbPath = join(tempDir, ".overstory", "auto-record-mail2.db");
+
+		await autoRecordExpertise({
+			mulchClient: client,
+			agentName: "test-builder",
+			capability: "builder",
+			beadId: "bead-456",
+			mailDbPath,
+			parentAgent: "parent-lead",
+		});
+
+		const mailStore = createMailStore(mailDbPath);
+		const mailClient = createMailClient(mailStore);
+		const messages = mailClient.list({ to: "parent-lead" });
+		mailClient.close();
+
+		expect(messages).toHaveLength(1);
+		expect(messages[0]?.subject).toBe("mulch: auto-recorded insights in typescript");
+		expect(messages[0]?.body).toContain("Auto-recorded expertise in: typescript");
+	});
+
+	test("autoRecordExpertise continues when individual record calls fail", async () => {
+		const learnResult: MulchLearnResult = {
+			success: true,
+			command: "mulch learn",
+			changedFiles: ["src/foo.ts"],
+			suggestedDomains: ["typescript", "cli"],
+			unmatchedFiles: [],
+		};
+		const { client } = createFakeMulchClient(learnResult, { recordShouldFail: true });
+		const mailDbPath = join(tempDir, ".overstory", "auto-record-fail.db");
+
+		const result = await autoRecordExpertise({
+			mulchClient: client,
+			agentName: "test-builder",
+			capability: "builder",
+			beadId: null,
+			mailDbPath,
+			parentAgent: null,
+		});
+
+		// All records failed, so no domains recorded and no mail sent
+		expect(result).toEqual([]);
+		const mailFile = Bun.file(mailDbPath);
+		expect(await mailFile.exists()).toBe(false);
+	});
+
+	test("autoRecordExpertise returns empty when no domains suggested", async () => {
+		const learnResult: MulchLearnResult = {
+			success: true,
+			command: "mulch learn",
+			changedFiles: ["src/foo.ts"],
+			suggestedDomains: [],
+			unmatchedFiles: [],
+		};
+		const { client, recordCalls } = createFakeMulchClient(learnResult);
+		const mailDbPath = join(tempDir, ".overstory", "auto-record-empty.db");
+
+		const result = await autoRecordExpertise({
+			mulchClient: client,
+			agentName: "test-builder",
+			capability: "builder",
+			beadId: null,
+			mailDbPath,
+			parentAgent: null,
+		});
+
+		expect(result).toEqual([]);
+		expect(recordCalls).toHaveLength(0);
 	});
 });
 

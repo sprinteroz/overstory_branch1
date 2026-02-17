@@ -21,7 +21,7 @@ import { createMailClient } from "../mail/client.ts";
 import { createMailStore } from "../mail/store.ts";
 import { createMetricsStore } from "../metrics/store.ts";
 import { estimateCost, parseTranscriptUsage } from "../metrics/transcript.ts";
-import { createMulchClient } from "../mulch/client.ts";
+import { createMulchClient, type MulchClient } from "../mulch/client.ts";
 import { openSessionStore } from "../sessions/compat.ts";
 import type { AgentSession } from "../types.ts";
 
@@ -206,6 +206,63 @@ async function resolveTranscriptPath(
 	}
 
 	return null;
+}
+
+/**
+ * Auto-record expertise from mulch learn results.
+ * Called during session-end for non-persistent agents.
+ * Records a reference entry for each suggested domain at the canonical root,
+ * then sends a slim notification mail to the parent agent.
+ *
+ * @returns List of successfully recorded domains
+ */
+export async function autoRecordExpertise(params: {
+	mulchClient: MulchClient;
+	agentName: string;
+	capability: string;
+	beadId: string | null;
+	mailDbPath: string;
+	parentAgent: string | null;
+}): Promise<string[]> {
+	const learnResult = await params.mulchClient.learn({ since: "HEAD~1" });
+	if (learnResult.suggestedDomains.length === 0) {
+		return [];
+	}
+
+	const recordedDomains: string[] = [];
+	const filesList = learnResult.changedFiles.join(", ");
+
+	for (const domain of learnResult.suggestedDomains) {
+		try {
+			await params.mulchClient.record(domain, {
+				type: "reference",
+				description: `${params.capability} agent ${params.agentName} completed work in this domain. Files: ${filesList}`,
+				tags: ["auto-session-end", params.capability],
+				evidenceBead: params.beadId ?? undefined,
+			});
+			recordedDomains.push(domain);
+		} catch {
+			// Non-fatal per domain: skip failed records
+		}
+	}
+
+	if (recordedDomains.length > 0) {
+		const mailStore = createMailStore(params.mailDbPath);
+		const mailClient = createMailClient(mailStore);
+		const recipient = params.parentAgent ?? "orchestrator";
+		const domainsList = recordedDomains.join(", ");
+		mailClient.send({
+			from: params.agentName,
+			to: recipient,
+			subject: `mulch: auto-recorded insights in ${domainsList}`,
+			body: `Session completed. Auto-recorded expertise in: ${domainsList}.\n\nChanged files: ${filesList}`,
+			type: "status",
+			priority: "low",
+		});
+		mailClient.close();
+	}
+
+	return recordedDomains;
 }
 
 /**
@@ -498,38 +555,22 @@ export async function logCommand(args: string[]): Promise<void> {
 						// Non-fatal: metrics recording should not break session-end handling
 					}
 
-					// Extract learning suggestions via mulch learn (post-session).
+					// Auto-record expertise via mulch learn + record (post-session).
 					// Skip persistent agents whose Stop hook fires every turn.
 					if (!PERSISTENT_CAPABILITIES.has(agentSession.capability)) {
 						try {
 							const mulchClient = createMulchClient(config.project.root);
-							const learnResult = await mulchClient.learn({ since: "HEAD~1" });
-							if (learnResult.suggestedDomains.length > 0 || learnResult.changedFiles.length > 0) {
-								const mailDbPath = join(config.project.root, ".overstory", "mail.db");
-								const mailStore = createMailStore(mailDbPath);
-								const mailClient = createMailClient(mailStore);
-								const recipient = agentSession.parentAgent ?? "orchestrator";
-								const domainsList = learnResult.suggestedDomains.join(", ");
-								const filesList = learnResult.changedFiles.join(", ");
-								let body = "Session completed. Mulch detected changes worth recording.";
-								if (learnResult.suggestedDomains.length > 0) {
-									body += `\n\nSuggested domains: ${domainsList}`;
-								}
-								if (learnResult.changedFiles.length > 0) {
-									body += `\n\nChanged files: ${filesList}`;
-								}
-								mailClient.send({
-									from: agentName,
-									to: recipient,
-									subject: `mulch_learn: learning suggestions from ${agentName}`,
-									body,
-									type: "status",
-									priority: "low",
-								});
-								mailClient.close();
-							}
+							const mailDbPath = join(config.project.root, ".overstory", "mail.db");
+							await autoRecordExpertise({
+								mulchClient,
+								agentName,
+								capability: agentSession.capability,
+								beadId,
+								mailDbPath,
+								parentAgent: agentSession.parentAgent,
+							});
 						} catch {
-							// Non-fatal: mulch learn should not break session-end handling
+							// Non-fatal: mulch learn/record should not break session-end handling
 						}
 					}
 				}
