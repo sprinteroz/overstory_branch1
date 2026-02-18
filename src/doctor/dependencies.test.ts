@@ -63,6 +63,18 @@ describe("checkDependencies", () => {
 		expect(toolNames).toContain("mulch availability");
 	});
 
+	test("includes bd CGO support check when bd is available", async () => {
+		const checks = await checkDependencies(mockConfig, "/tmp/.overstory");
+
+		const bdCheck = checks.find((c) => c.name === "bd availability");
+		if (bdCheck?.status === "pass") {
+			const cgoCheck = checks.find((c) => c.name === "bd CGO support");
+			expect(cgoCheck).toBeDefined();
+			expect(cgoCheck?.category).toBe("dependencies");
+			expect(["pass", "warn", "fail"]).toContain(cgoCheck?.status ?? "");
+		}
+	});
+
 	test("all checks have required DoctorCheck fields", async () => {
 		const checks = await checkDependencies(mockConfig, "/tmp/.overstory");
 
