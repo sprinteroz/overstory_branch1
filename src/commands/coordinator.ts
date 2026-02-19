@@ -402,18 +402,14 @@ async function startCoordinator(args: string[], deps: CoordinatorDeps = {}): Pro
 		if (monitorFlag) {
 			if (!config.watchdog.tier2Enabled) {
 				if (!json)
-					process.stderr.write(
-						"  Monitor:  skipped (watchdog.tier2Enabled is false in config)\n",
-					);
+					process.stderr.write("  Monitor:  skipped (watchdog.tier2Enabled is false in config)\n");
 			} else {
 				const monitorResult = await monitor.start([]);
 				if (monitorResult) {
 					monitorPid = monitorResult.pid;
-					if (!json)
-						process.stdout.write(`  Monitor:  started (PID ${monitorResult.pid})\n`);
+					if (!json) process.stdout.write(`  Monitor:  started (PID ${monitorResult.pid})\n`);
 				} else {
-					if (!json)
-						process.stderr.write("  Monitor:  failed to start or already running\n");
+					if (!json) process.stderr.write("  Monitor:  failed to start or already running\n");
 				}
 			}
 		}

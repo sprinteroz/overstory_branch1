@@ -217,7 +217,12 @@ async function handleClean(
 			process.stdout.write(
 				`${JSON.stringify({ cleaned, failed, skipped, pruned: pruneCount, mailPurged })}\n`,
 			);
-		} else if (cleaned.length === 0 && pruneCount === 0 && failed.length === 0 && skipped.length === 0) {
+		} else if (
+			cleaned.length === 0 &&
+			pruneCount === 0 &&
+			failed.length === 0 &&
+			skipped.length === 0
+		) {
 			process.stdout.write("No worktrees to clean.\n");
 		} else {
 			if (cleaned.length > 0) {

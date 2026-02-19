@@ -144,10 +144,7 @@ export async function isBranchMerged(
 		stderr: "pipe",
 	});
 
-	const [stderr, exitCode] = await Promise.all([
-		new Response(proc.stderr).text(),
-		proc.exited,
-	]);
+	const [stderr, exitCode] = await Promise.all([new Response(proc.stderr).text(), proc.exited]);
 
 	if (exitCode === 0) return true;
 	if (exitCode === 1) return false;

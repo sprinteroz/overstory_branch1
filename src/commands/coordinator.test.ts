@@ -1343,9 +1343,7 @@ describe("monitor integration", () => {
 			};
 
 			try {
-				await captureStdout(() =>
-					coordinatorCommand(["start", "--monitor", "--no-attach"], deps),
-				);
+				await captureStdout(() => coordinatorCommand(["start", "--monitor", "--no-attach"], deps));
 			} finally {
 				Bun.sleep = originalSleep;
 				process.stderr.write = origStderrWrite;

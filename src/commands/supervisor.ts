@@ -20,10 +20,10 @@ import { createManifestLoader, resolveModel } from "../agents/manifest.ts";
 import { createBeadsClient } from "../beads/client.ts";
 import { loadConfig } from "../config.ts";
 import { AgentError, ValidationError } from "../errors.ts";
-import { isRunningAsRoot } from "./sling.ts";
 import { openSessionStore } from "../sessions/compat.ts";
 import type { AgentSession } from "../types.ts";
 import { createSession, isSessionAlive, killSession, sendKeys } from "../worktree/tmux.ts";
+import { isRunningAsRoot } from "./sling.ts";
 
 /**
  * Build the supervisor startup beacon.
