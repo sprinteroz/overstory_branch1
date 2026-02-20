@@ -7,11 +7,20 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ValidationError } from "../errors.ts";
-import { dashboardCommand, filterAgentsByRun, horizontalLine, pad, truncate } from "./dashboard.ts";
+import { createSessionStore } from "../sessions/store.ts";
+import {
+	closeDashboardStores,
+	dashboardCommand,
+	filterAgentsByRun,
+	horizontalLine,
+	openDashboardStores,
+	pad,
+	truncate,
+} from "./dashboard.ts";
 
 describe("dashboardCommand", () => {
 	let chunks: string[];
@@ -191,5 +200,109 @@ describe("filterAgentsByRun", () => {
 
 	test("empty agents list returns empty", () => {
 		expect(filterAgentsByRun([], "run-001")).toEqual([]);
+	});
+});
+
+describe("openDashboardStores", () => {
+	let tempDir: string;
+
+	beforeEach(async () => {
+		tempDir = await mkdtemp(join(tmpdir(), "dashboard-stores-test-"));
+	});
+
+	afterEach(async () => {
+		await rm(tempDir, { recursive: true, force: true });
+	});
+
+	test("sessionStore is non-null when .overstory/ has sessions.db", async () => {
+		// Create the .overstory directory and seed a sessions.db via createSessionStore
+		const overstoryDir = join(tempDir, ".overstory");
+		await mkdir(overstoryDir, { recursive: true });
+		// createSessionStore creates and initialises sessions.db
+		const seeder = createSessionStore(join(overstoryDir, "sessions.db"));
+		seeder.close();
+
+		const stores = openDashboardStores(tempDir);
+		try {
+			expect(stores.sessionStore).not.toBeNull();
+		} finally {
+			closeDashboardStores(stores);
+		}
+	});
+
+	test("mailStore is null when mail.db does not exist", async () => {
+		const overstoryDir = join(tempDir, ".overstory");
+		await mkdir(overstoryDir, { recursive: true });
+		const seeder = createSessionStore(join(overstoryDir, "sessions.db"));
+		seeder.close();
+
+		const stores = openDashboardStores(tempDir);
+		try {
+			expect(stores.mailStore).toBeNull();
+		} finally {
+			closeDashboardStores(stores);
+		}
+	});
+
+	test("mergeQueue is null when merge-queue.db does not exist", async () => {
+		const overstoryDir = join(tempDir, ".overstory");
+		await mkdir(overstoryDir, { recursive: true });
+		const seeder = createSessionStore(join(overstoryDir, "sessions.db"));
+		seeder.close();
+
+		const stores = openDashboardStores(tempDir);
+		try {
+			expect(stores.mergeQueue).toBeNull();
+		} finally {
+			closeDashboardStores(stores);
+		}
+	});
+
+	test("metricsStore is null when metrics.db does not exist", async () => {
+		const overstoryDir = join(tempDir, ".overstory");
+		await mkdir(overstoryDir, { recursive: true });
+		const seeder = createSessionStore(join(overstoryDir, "sessions.db"));
+		seeder.close();
+
+		const stores = openDashboardStores(tempDir);
+		try {
+			expect(stores.metricsStore).toBeNull();
+		} finally {
+			closeDashboardStores(stores);
+		}
+	});
+});
+
+describe("closeDashboardStores", () => {
+	let tempDir: string;
+
+	beforeEach(async () => {
+		tempDir = await mkdtemp(join(tmpdir(), "dashboard-close-test-"));
+	});
+
+	afterEach(async () => {
+		await rm(tempDir, { recursive: true, force: true });
+	});
+
+	test("closing stores does not throw", async () => {
+		const overstoryDir = join(tempDir, ".overstory");
+		await mkdir(overstoryDir, { recursive: true });
+		const seeder = createSessionStore(join(overstoryDir, "sessions.db"));
+		seeder.close();
+
+		const stores = openDashboardStores(tempDir);
+		expect(() => closeDashboardStores(stores)).not.toThrow();
+	});
+
+	test("closing already-closed stores does not throw (best-effort)", async () => {
+		const overstoryDir = join(tempDir, ".overstory");
+		await mkdir(overstoryDir, { recursive: true });
+		const seeder = createSessionStore(join(overstoryDir, "sessions.db"));
+		seeder.close();
+
+		const stores = openDashboardStores(tempDir);
+		closeDashboardStores(stores);
+		// Second close should not throw due to best-effort try/catch
+		expect(() => closeDashboardStores(stores)).not.toThrow();
 	});
 });
