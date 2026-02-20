@@ -35,7 +35,7 @@ export function invalidateStatusCache(): void {
 	tmuxCache = null;
 }
 
-async function getCachedWorktrees(
+export async function getCachedWorktrees(
 	root: string,
 	ttlMs: number = DEFAULT_CACHE_TTL_MS,
 ): Promise<Array<{ path: string; branch: string; head: string }>> {
@@ -48,7 +48,7 @@ async function getCachedWorktrees(
 	return data;
 }
 
-async function getCachedTmuxSessions(
+export async function getCachedTmuxSessions(
 	ttlMs: number = DEFAULT_CACHE_TTL_MS,
 ): Promise<Array<{ name: string; pid: number }>> {
 	const now = Date.now();

@@ -9,15 +9,18 @@
  * Use --all to show data across all runs.
  */
 
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfig } from "../config.ts";
 import { ValidationError } from "../errors.ts";
 import { color } from "../logging/color.ts";
-import { createMailStore } from "../mail/store.ts";
-import { createMergeQueue } from "../merge/queue.ts";
-import { createMetricsStore } from "../metrics/store.ts";
+import { createMailStore, type MailStore } from "../mail/store.ts";
+import { createMergeQueue, type MergeQueue } from "../merge/queue.ts";
+import { createMetricsStore, type MetricsStore } from "../metrics/store.ts";
+import { openSessionStore } from "../sessions/compat.ts";
+import type { SessionStore } from "../sessions/store.ts";
 import type { MailMessage } from "../types.ts";
-import { gatherStatus, type StatusData } from "./status.ts";
+import { getCachedTmuxSessions, getCachedWorktrees, type StatusData } from "./status.ts";
 
 /**
  * Terminal control codes (cursor movement, screen clearing).
@@ -127,6 +130,85 @@ export function filterAgentsByRun<T extends { runId: string | null }>(
 	return agents.filter((a) => a.runId === runId || a.runId === null);
 }
 
+/**
+ * Pre-opened database handles for the dashboard poll loop.
+ * Stores are opened once and reused across ticks to avoid
+ * repeated open/close/PRAGMA/WAL checkpoint overhead.
+ */
+export interface DashboardStores {
+	sessionStore: SessionStore;
+	mailStore: MailStore | null;
+	mergeQueue: MergeQueue | null;
+	metricsStore: MetricsStore | null;
+}
+
+/**
+ * Open all database connections needed by the dashboard.
+ * Returns null handles for databases that do not exist on disk.
+ */
+export function openDashboardStores(root: string): DashboardStores {
+	const overstoryDir = join(root, ".overstory");
+	const { store: sessionStore } = openSessionStore(overstoryDir);
+
+	let mailStore: MailStore | null = null;
+	try {
+		const mailDbPath = join(overstoryDir, "mail.db");
+		if (existsSync(mailDbPath)) {
+			mailStore = createMailStore(mailDbPath);
+		}
+	} catch {
+		// mail db might not be openable
+	}
+
+	let mergeQueue: MergeQueue | null = null;
+	try {
+		const queuePath = join(overstoryDir, "merge-queue.db");
+		if (existsSync(queuePath)) {
+			mergeQueue = createMergeQueue(queuePath);
+		}
+	} catch {
+		// queue db might not be openable
+	}
+
+	let metricsStore: MetricsStore | null = null;
+	try {
+		const metricsDbPath = join(overstoryDir, "metrics.db");
+		if (existsSync(metricsDbPath)) {
+			metricsStore = createMetricsStore(metricsDbPath);
+		}
+	} catch {
+		// metrics db might not be openable
+	}
+
+	return { sessionStore, mailStore, mergeQueue, metricsStore };
+}
+
+/**
+ * Close all dashboard database connections.
+ */
+export function closeDashboardStores(stores: DashboardStores): void {
+	try {
+		stores.sessionStore.close();
+	} catch {
+		/* best effort */
+	}
+	try {
+		stores.mailStore?.close();
+	} catch {
+		/* best effort */
+	}
+	try {
+		stores.mergeQueue?.close();
+	} catch {
+		/* best effort */
+	}
+	try {
+		stores.metricsStore?.close();
+	} catch {
+		/* best effort */
+	}
+}
+
 interface DashboardData {
 	currentRunId?: string | null;
 	status: StatusData;
@@ -154,71 +236,132 @@ async function readCurrentRunId(overstoryDir: string): Promise<string | null> {
 }
 
 /**
- * Load all data sources for the dashboard.
+ * Load all data sources for the dashboard using pre-opened store handles.
  * When runId is provided, all panels are scoped to agents in that run.
+ * No stores are opened or closed here — that is the caller's responsibility.
  */
-async function loadDashboardData(root: string, runId?: string | null): Promise<DashboardData> {
-	const rawStatus = await gatherStatus(root, "orchestrator", false);
+async function loadDashboardData(
+	root: string,
+	stores: DashboardStores,
+	runId?: string | null,
+): Promise<DashboardData> {
+	// Get all sessions from the pre-opened session store
+	const allSessions = stores.sessionStore.getAll();
+
+	// Get worktrees and tmux sessions via cached subprocess helpers
+	const worktrees = await getCachedWorktrees(root);
+	const tmuxSessions = await getCachedTmuxSessions();
+
+	// Reconcile zombie states inline (same logic as gatherStatus)
+	const tmuxSessionNames = new Set(tmuxSessions.map((s) => s.name));
+	for (const session of allSessions) {
+		if (
+			session.state === "booting" ||
+			session.state === "working" ||
+			session.state === "stalled"
+		) {
+			const tmuxAlive = tmuxSessionNames.has(session.tmuxSession);
+			if (!tmuxAlive) {
+				try {
+					stores.sessionStore.updateState(session.agentName, "zombie");
+					session.state = "zombie";
+				} catch {
+					// Best effort: don't fail dashboard if update fails
+				}
+			}
+		}
+	}
 
 	// If run-scoped, filter agents to only those belonging to the current run.
 	// Also includes null-runId sessions (e.g. coordinator) per filterAgentsByRun logic.
-	const filteredAgents = filterAgentsByRun(rawStatus.agents, runId);
+	const filteredAgents = filterAgentsByRun(allSessions, runId);
 
-	const status: StatusData = { ...rawStatus, agents: filteredAgents };
+	// Count unread mail
+	let unreadMailCount = 0;
+	if (stores.mailStore) {
+		try {
+			const unread = stores.mailStore.getAll({ to: "orchestrator", unread: true });
+			unreadMailCount = unread.length;
+		} catch {
+			// best effort
+		}
+	}
 
-	// Load recent mail
+	// Count merge queue pending entries
+	let mergeQueueCount = 0;
+	if (stores.mergeQueue) {
+		try {
+			mergeQueueCount = stores.mergeQueue.list("pending").length;
+		} catch {
+			// best effort
+		}
+	}
+
+	// Count recent metrics sessions
+	let recentMetricsCount = 0;
+	if (stores.metricsStore) {
+		try {
+			recentMetricsCount = stores.metricsStore.getRecentSessions(100).length;
+		} catch {
+			// best effort
+		}
+	}
+
+	const status: StatusData = {
+		currentRunId: runId,
+		agents: filteredAgents,
+		worktrees,
+		tmuxSessions,
+		unreadMailCount,
+		mergeQueueCount,
+		recentMetricsCount,
+	};
+
+	// Load recent mail from pre-opened mail store
 	let recentMail: MailMessage[] = [];
-	try {
-		const mailDbPath = join(root, ".overstory", "mail.db");
-		const mailFile = Bun.file(mailDbPath);
-		if (await mailFile.exists()) {
-			const mailStore = createMailStore(mailDbPath);
+	if (stores.mailStore) {
+		try {
 			if (runId && filteredAgents.length > 0) {
 				const agentNames = new Set(filteredAgents.map((a) => a.agentName));
 				// Fetch a small batch to filter from; can't push agent-set filter into SQL
-				const allMail = mailStore.getAll({ limit: 50 });
+				const allMail = stores.mailStore.getAll({ limit: 50 });
 				recentMail = allMail
 					.filter((m) => agentNames.has(m.from) || agentNames.has(m.to))
 					.slice(0, 5);
 			} else {
-				recentMail = mailStore.getAll({ limit: 5 });
+				recentMail = stores.mailStore.getAll({ limit: 5 });
 			}
-			mailStore.close();
+		} catch {
+			// best effort
 		}
-	} catch {
-		// Mail db might not exist
 	}
 
-	// Load merge queue
-	let mergeQueue: Array<{ branchName: string; agentName: string; status: string }> = [];
-	try {
-		const queuePath = join(root, ".overstory", "merge-queue.db");
-		const queue = createMergeQueue(queuePath);
-		let entries = queue.list();
-		if (runId && filteredAgents.length > 0) {
-			const agentNames = new Set(filteredAgents.map((a) => a.agentName));
-			entries = entries.filter((e) => agentNames.has(e.agentName));
+	// Load merge queue entries from pre-opened merge queue
+	let mergeQueueEntries: Array<{ branchName: string; agentName: string; status: string }> = [];
+	if (stores.mergeQueue) {
+		try {
+			let entries = stores.mergeQueue.list();
+			if (runId && filteredAgents.length > 0) {
+				const agentNames = new Set(filteredAgents.map((a) => a.agentName));
+				entries = entries.filter((e) => agentNames.has(e.agentName));
+			}
+			mergeQueueEntries = entries.map((e) => ({
+				branchName: e.branchName,
+				agentName: e.agentName,
+				status: e.status,
+			}));
+		} catch {
+			// best effort
 		}
-		mergeQueue = entries.map((e) => ({
-			branchName: e.branchName,
-			agentName: e.agentName,
-			status: e.status,
-		}));
-		queue.close();
-	} catch {
-		// Queue db might not exist
 	}
 
-	// Load metrics
+	// Load metrics from pre-opened metrics store
 	let totalSessions = 0;
 	let avgDuration = 0;
 	const byCapability: Record<string, number> = {};
-	try {
-		const metricsDbPath = join(root, ".overstory", "metrics.db");
-		const metricsFile = Bun.file(metricsDbPath);
-		if (await metricsFile.exists()) {
-			const store = createMetricsStore(metricsDbPath);
-			const sessions = store.getRecentSessions(100);
+	if (stores.metricsStore) {
+		try {
+			const sessions = stores.metricsStore.getRecentSessions(100);
 
 			const filtered =
 				runId && filteredAgents.length > 0
@@ -235,28 +378,27 @@ async function loadDashboardData(root: string, runId?: string | null): Promise<D
 				const completedSessions = filtered.filter((s) => s.completedAt !== null);
 				if (completedSessions.length > 0) {
 					avgDuration =
-						completedSessions.reduce((sum, s) => sum + s.durationMs, 0) / completedSessions.length;
+						completedSessions.reduce((sum, s) => sum + s.durationMs, 0) /
+						completedSessions.length;
 				}
 			} else {
-				avgDuration = store.getAverageDuration();
+				avgDuration = stores.metricsStore.getAverageDuration();
 			}
 
 			for (const session of filtered) {
 				const cap = session.capability;
 				byCapability[cap] = (byCapability[cap] ?? 0) + 1;
 			}
-
-			store.close();
+		} catch {
+			// best effort
 		}
-	} catch {
-		// Metrics db might not exist
 	}
 
 	return {
 		currentRunId: runId,
 		status,
 		recentMail,
-		mergeQueue,
+		mergeQueue: mergeQueueEntries,
 		metrics: { totalSessions, avgDuration, byCapability },
 	};
 }
@@ -664,6 +806,9 @@ export async function dashboardCommand(args: string[]): Promise<void> {
 		runId = await readCurrentRunId(overstoryDir);
 	}
 
+	// Open stores once for the entire poll loop lifetime
+	const stores = openDashboardStores(root);
+
 	// Hide cursor
 	process.stdout.write(CURSOR.hideCursor);
 
@@ -671,6 +816,7 @@ export async function dashboardCommand(args: string[]): Promise<void> {
 	let running = true;
 	process.on("SIGINT", () => {
 		running = false;
+		closeDashboardStores(stores);
 		process.stdout.write(CURSOR.showCursor);
 		process.stdout.write(CURSOR.clear);
 		process.exit(0);
@@ -678,7 +824,7 @@ export async function dashboardCommand(args: string[]): Promise<void> {
 
 	// Poll loop
 	while (running) {
-		const data = await loadDashboardData(root, runId);
+		const data = await loadDashboardData(root, stores, runId);
 		renderDashboard(data, interval);
 		await Bun.sleep(interval);
 	}
