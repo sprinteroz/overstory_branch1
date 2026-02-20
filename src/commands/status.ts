@@ -92,7 +92,11 @@ export async function gatherStatus(
 
 	let sessions: AgentSession[];
 	try {
-		sessions = runId ? store.getByRun(runId) : store.getAll();
+		// When run-scoped, also include sessions with null runId (e.g. coordinator)
+		// because SQL WHERE run_id = $run_id never matches NULL rows.
+		sessions = runId
+			? [...store.getByRun(runId), ...store.getAll().filter((s) => s.runId === null)]
+			: store.getAll();
 
 		const worktrees = await listWorktrees(root);
 

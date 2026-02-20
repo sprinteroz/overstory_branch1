@@ -1,9 +1,17 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createSessionStore } from "../sessions/store.ts";
+import { createTempGitRepo } from "../test-helpers.ts";
 import type { AgentSession } from "../types.ts";
-import { printStatus, type StatusData, statusCommand, type VerboseAgentDetail } from "./status.ts";
+import {
+	gatherStatus,
+	printStatus,
+	type StatusData,
+	statusCommand,
+	type VerboseAgentDetail,
+} from "./status.ts";
 
 /**
  * Tests for the --verbose flag in overstory status.
@@ -279,6 +287,61 @@ describe("run scoping", () => {
 
 		const out = helpChunks.join("");
 		expect(out).toContain("--all");
+	});
+
+	test("gatherStatus includes null-runId sessions when run-scoped", async () => {
+		// Use a real git repo so listWorktrees() doesn't throw
+		const tempDir = await createTempGitRepo();
+		const overstoryDir = join(tempDir, ".overstory");
+		await mkdir(overstoryDir, { recursive: true });
+
+		// Seed sessions.db with three sessions:
+		//   coordinator: runId=null
+		//   builder-1:   runId="run-001" (in-scope)
+		//   builder-2:   runId="run-002" (out-of-scope)
+		const store = createSessionStore(join(overstoryDir, "sessions.db"));
+		const now = new Date().toISOString();
+		for (const session of [
+			makeAgent({
+				agentName: "coordinator",
+				capability: "coordinator",
+				runId: null,
+				tmuxSession: "overstory-fake-coordinator",
+			}),
+			makeAgent({
+				id: "sess-002",
+				agentName: "builder-1",
+				capability: "builder",
+				runId: "run-001",
+				tmuxSession: "overstory-fake-builder-1",
+			}),
+			makeAgent({
+				id: "sess-003",
+				agentName: "builder-2",
+				capability: "builder",
+				runId: "run-002",
+				tmuxSession: "overstory-fake-builder-2",
+			}),
+		] as AgentSession[]) {
+			session.startedAt = now;
+			session.lastActivity = now;
+			store.upsert(session);
+		}
+		store.close();
+
+		try {
+			const result = await gatherStatus(tempDir, "orchestrator", false, "run-001");
+			const names = result.agents.map((a) => a.agentName);
+
+			// coordinator (null runId) must appear
+			expect(names).toContain("coordinator");
+			// in-scope builder must appear
+			expect(names).toContain("builder-1");
+			// out-of-scope builder must NOT appear
+			expect(names).not.toContain("builder-2");
+		} finally {
+			await rm(tempDir, { recursive: true, force: true });
+		}
 	});
 });
 

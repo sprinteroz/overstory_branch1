@@ -11,7 +11,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ValidationError } from "../errors.ts";
-import { dashboardCommand } from "./dashboard.ts";
+import { dashboardCommand, filterAgentsByRun } from "./dashboard.ts";
 
 describe("dashboardCommand", () => {
 	let chunks: string[];
@@ -104,5 +104,38 @@ describe("dashboardCommand", () => {
 		const out = output();
 
 		expect(out).toContain("current run");
+	});
+});
+
+describe("filterAgentsByRun", () => {
+	type Stub = { runId: string | null; name: string };
+
+	const coordinator: Stub = { runId: null, name: "coordinator" };
+	const builder1: Stub = { runId: "run-001", name: "builder-1" };
+	const builder2: Stub = { runId: "run-002", name: "builder-2" };
+	const agents = [coordinator, builder1, builder2];
+
+	test("no runId returns all agents", () => {
+		expect(filterAgentsByRun(agents, null)).toEqual(agents);
+		expect(filterAgentsByRun(agents, undefined)).toEqual(agents);
+	});
+
+	test("run-scoped includes matching runId agents", () => {
+		const result = filterAgentsByRun(agents, "run-001");
+		expect(result.map((a) => a.name)).toContain("builder-1");
+	});
+
+	test("run-scoped includes null-runId agents (coordinator)", () => {
+		const result = filterAgentsByRun(agents, "run-001");
+		expect(result.map((a) => a.name)).toContain("coordinator");
+	});
+
+	test("run-scoped excludes agents from other runs", () => {
+		const result = filterAgentsByRun(agents, "run-001");
+		expect(result.map((a) => a.name)).not.toContain("builder-2");
+	});
+
+	test("empty agents list returns empty", () => {
+		expect(filterAgentsByRun([], "run-001")).toEqual([]);
 	});
 });

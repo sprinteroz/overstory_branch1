@@ -111,6 +111,18 @@ function horizontalLine(width: number, left: string, _middle: string, right: str
 	return left + BOX.horizontal.repeat(width - 2) + right;
 }
 
+/**
+ * Filter agents by run ID. When run-scoped, also includes sessions with null
+ * runId (e.g. coordinator) because SQL WHERE run_id = ? never matches NULL.
+ */
+export function filterAgentsByRun<T extends { runId: string | null }>(
+	agents: T[],
+	runId: string | null | undefined,
+): T[] {
+	if (!runId) return agents;
+	return agents.filter((a) => a.runId === runId || a.runId === null);
+}
+
 interface DashboardData {
 	currentRunId?: string | null;
 	status: StatusData;
@@ -144,10 +156,9 @@ async function readCurrentRunId(overstoryDir: string): Promise<string | null> {
 async function loadDashboardData(root: string, runId?: string | null): Promise<DashboardData> {
 	const rawStatus = await gatherStatus(root, "orchestrator", false);
 
-	// If run-scoped, filter agents to only those belonging to the current run
-	const filteredAgents = runId
-		? rawStatus.agents.filter((a) => a.runId === runId)
-		: rawStatus.agents;
+	// If run-scoped, filter agents to only those belonging to the current run.
+	// Also includes null-runId sessions (e.g. coordinator) per filterAgentsByRun logic.
+	const filteredAgents = filterAgentsByRun(rawStatus.agents, runId);
 
 	const status: StatusData = { ...rawStatus, agents: filteredAgents };
 
