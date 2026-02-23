@@ -106,7 +106,7 @@ overstory/                        # This repo (the overstory tool itself)
       analyzer.ts                 # Session insight analyzer for auto-expertise
     seeds/
       client.ts                   # sd CLI wrapper (--json parsing)
-      molecules.ts                # Molecule management helpers
+      templates.ts                # Template management helpers
     mail/
       store.ts                    # SQLite mail storage (bun:sqlite, WAL mode)
       client.ts                   # Mail operations (send/check/list/read/reply)
@@ -499,7 +499,7 @@ sd close <id> --reason "summary"      # Complete work
 sd sync                               # Sync with git
 ```
 
-Issues are tracked in `.seeds/issues.jsonl`. Seeds owns all task lifecycle (create, assign, close, dependencies, molecules). Overstory wraps `sd` via `src/seeds/client.ts`.
+Issues are tracked in `.seeds/issues.jsonl`. Seeds owns all task lifecycle (create, assign, close, dependencies, templates). Overstory wraps `sd` via `src/seeds/client.ts`.
 
 ### mulch -- Structured Expertise
 
