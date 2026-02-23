@@ -1,16 +1,24 @@
 import { dirname, join, resolve } from "node:path";
 import { ConfigError, ValidationError } from "./errors.ts";
-import type { OverstoryConfig } from "./types.ts";
+import type { OverstoryConfig, QualityGate } from "./types.ts";
 
 /**
  * Default configuration with all fields populated.
  * Used as the base; file-loaded values are merged on top.
  */
+/** Default quality gates used when no qualityGates are configured in config.yaml. */
+export const DEFAULT_QUALITY_GATES: QualityGate[] = [
+	{ name: "Tests", command: "bun test", description: "all tests must pass" },
+	{ name: "Lint", command: "bun run lint", description: "zero errors" },
+	{ name: "Typecheck", command: "bun run typecheck", description: "no TypeScript errors" },
+];
+
 export const DEFAULT_CONFIG: OverstoryConfig = {
 	project: {
 		name: "",
 		root: "",
 		canonicalBranch: "main",
+		qualityGates: DEFAULT_QUALITY_GATES,
 	},
 	agents: {
 		manifestPath: ".overstory/agent-manifest.json",
@@ -116,6 +124,67 @@ function parseYaml(text: string): Record<string, unknown> {
 		// Array item: "- value"
 		if (content.startsWith("- ")) {
 			const value = content.slice(2).trim();
+
+			// Detect object array item: "- key: val" where key is a plain identifier.
+			// Quoted scalars (starting with " or ') are not object items.
+			const objColonIdx = value.indexOf(":");
+			const isObjectItem =
+				objColonIdx > 0 &&
+				!value.startsWith('"') &&
+				!value.startsWith("'") &&
+				/^[\w-]+$/.test(value.slice(0, objColonIdx).trim());
+
+			if (isObjectItem) {
+				// Parse the first key:value pair of the new object item.
+				const itemKey = value.slice(0, objColonIdx).trim();
+				const itemVal = value.slice(objColonIdx + 1).trim();
+				const newItem: Record<string, unknown> = {};
+				if (itemVal !== "") {
+					newItem[itemKey] = parseValue(itemVal);
+				} else {
+					newItem[itemKey] = {};
+				}
+
+				// Find the array this item belongs to and push the new item.
+				// Case A: parent.obj already has an array as last value.
+				const lastKey = findLastKey(parent.obj);
+				if (lastKey !== null) {
+					const existing = parent.obj[lastKey];
+					if (Array.isArray(existing)) {
+						existing.push(newItem);
+						stack.push({ indent, obj: newItem });
+						continue;
+					}
+				}
+
+				// Case B: grandparent has an empty {} for this array's key — convert it.
+				if (stack.length >= 2) {
+					const grandparent = stack[stack.length - 2];
+					if (grandparent) {
+						const gpKey = findLastKey(grandparent.obj);
+						if (gpKey !== null) {
+							const gpVal = grandparent.obj[gpKey];
+							if (
+								gpVal !== null &&
+								gpVal !== undefined &&
+								typeof gpVal === "object" &&
+								!Array.isArray(gpVal) &&
+								Object.keys(gpVal as Record<string, unknown>).length === 0
+							) {
+								const arr: unknown[] = [newItem];
+								grandparent.obj[gpKey] = arr;
+								// Pop the now-stale nested {} so the grandparent becomes parent.
+								stack.pop();
+								stack.push({ indent, obj: newItem });
+								continue;
+							}
+						}
+					}
+				}
+				continue;
+			}
+
+			// Scalar array item.
 			// Find the key this array belongs to.
 			// First check parent.obj directly (for inline arrays or subsequent items).
 			const lastKey = findLastKey(parent.obj);
@@ -464,6 +533,35 @@ function validateConfig(config: OverstoryConfig): void {
 					{
 						field: `providers.${name}.authTokenEnv`,
 						value: provider.authTokenEnv,
+					},
+				);
+			}
+		}
+	}
+
+	// qualityGates: if present, validate each entry
+	if (config.project.qualityGates) {
+		for (let i = 0; i < config.project.qualityGates.length; i++) {
+			const gate = config.project.qualityGates[i];
+			if (!gate) continue;
+			if (!gate.name || typeof gate.name !== "string") {
+				throw new ValidationError(`project.qualityGates[${i}].name must be a non-empty string`, {
+					field: `project.qualityGates[${i}].name`,
+					value: gate.name,
+				});
+			}
+			if (!gate.command || typeof gate.command !== "string") {
+				throw new ValidationError(`project.qualityGates[${i}].command must be a non-empty string`, {
+					field: `project.qualityGates[${i}].command`,
+					value: gate.command,
+				});
+			}
+			if (!gate.description || typeof gate.description !== "string") {
+				throw new ValidationError(
+					`project.qualityGates[${i}].description must be a non-empty string`,
+					{
+						field: `project.qualityGates[${i}].description`,
+						value: gate.description,
 					},
 				);
 			}

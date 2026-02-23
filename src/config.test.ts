@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DEFAULT_CONFIG, loadConfig, resolveProjectRoot } from "./config.ts";
+import { DEFAULT_CONFIG, DEFAULT_QUALITY_GATES, loadConfig, resolveProjectRoot } from "./config.ts";
 import { ValidationError } from "./errors.ts";
 import { cleanupTempDir, createTempGitRepo, runGitInDir } from "./test-helpers.ts";
 
@@ -560,6 +560,60 @@ models:
 		}
 		expect(capturedStderr).not.toContain("WARNING");
 	});
+
+	test("custom qualityGates from config.yaml are loaded", async () => {
+		await writeConfig(`
+project:
+  canonicalBranch: main
+  qualityGates:
+    - name: Test
+      command: pytest
+      description: all tests pass
+    - name: Lint
+      command: ruff check .
+      description: no lint errors
+`);
+		const config = await loadConfig(tempDir);
+		expect(config.project.qualityGates?.length).toBe(2);
+		expect(config.project.qualityGates?.[0]?.command).toBe("pytest");
+		expect(config.project.qualityGates?.[1]?.command).toBe("ruff check .");
+	});
+
+	test("rejects qualityGate with empty name", async () => {
+		await writeConfig(`
+project:
+  canonicalBranch: main
+  qualityGates:
+    - name: ""
+      command: pytest
+      description: all tests pass
+`);
+		await expect(loadConfig(tempDir)).rejects.toThrow(ValidationError);
+	});
+
+	test("rejects qualityGate with empty command", async () => {
+		await writeConfig(`
+project:
+  canonicalBranch: main
+  qualityGates:
+    - name: Test
+      command: ""
+      description: all tests pass
+`);
+		await expect(loadConfig(tempDir)).rejects.toThrow(ValidationError);
+	});
+
+	test("rejects qualityGate with empty description", async () => {
+		await writeConfig(`
+project:
+  canonicalBranch: main
+  qualityGates:
+    - name: Test
+      command: pytest
+      description: ""
+`);
+		await expect(loadConfig(tempDir)).rejects.toThrow(ValidationError);
+	});
 });
 
 describe("resolveProjectRoot", () => {
@@ -695,5 +749,20 @@ describe("DEFAULT_CONFIG", () => {
 		expect(DEFAULT_CONFIG.watchdog.tier0IntervalMs).toBe(30_000);
 		expect(DEFAULT_CONFIG.watchdog.staleThresholdMs).toBe(300_000);
 		expect(DEFAULT_CONFIG.watchdog.zombieThresholdMs).toBe(600_000);
+	});
+
+	test("includes default qualityGates", () => {
+		expect(DEFAULT_CONFIG.project.qualityGates).toBeDefined();
+		expect(DEFAULT_CONFIG.project.qualityGates?.length).toBe(3);
+		expect(DEFAULT_CONFIG.project.qualityGates?.[0]?.command).toBe("bun test");
+		expect(DEFAULT_CONFIG.project.qualityGates?.[1]?.command).toBe("bun run lint");
+		expect(DEFAULT_CONFIG.project.qualityGates?.[2]?.command).toBe("bun run typecheck");
+	});
+
+	test("DEFAULT_QUALITY_GATES matches the project default gates", () => {
+		expect(DEFAULT_QUALITY_GATES).toHaveLength(3);
+		expect(DEFAULT_QUALITY_GATES[0]?.name).toBe("Tests");
+		expect(DEFAULT_QUALITY_GATES[1]?.name).toBe("Lint");
+		expect(DEFAULT_QUALITY_GATES[2]?.name).toBe("Typecheck");
 	});
 });

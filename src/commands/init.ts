@@ -124,8 +124,22 @@ function serializeObject(obj: Record<string, unknown>, lines: string[], depth: n
 			} else {
 				lines.push(`${indent}${key}:`);
 				const itemIndent = "  ".repeat(depth + 1);
+				const propIndent = "  ".repeat(depth + 2);
 				for (const item of value) {
-					lines.push(`${itemIndent}- ${formatYamlValue(item)}`);
+					if (item !== null && typeof item === "object" && !Array.isArray(item)) {
+						// Object array item: "- firstKey: firstVal\n  otherKey: otherVal"
+						const entries = Object.entries(item as Record<string, unknown>);
+						if (entries.length > 0) {
+							const [firstKey, firstVal] = entries[0] ?? [];
+							lines.push(`${itemIndent}- ${firstKey}: ${formatYamlValue(firstVal)}`);
+							for (let j = 1; j < entries.length; j++) {
+								const [k, v] = entries[j] ?? [];
+								lines.push(`${propIndent}${k}: ${formatYamlValue(v)}`);
+							}
+						}
+					} else {
+						lines.push(`${itemIndent}- ${formatYamlValue(item)}`);
+					}
 				}
 			}
 		} else {
