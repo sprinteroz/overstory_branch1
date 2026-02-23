@@ -15,6 +15,54 @@ import { join } from "node:path";
 import { loadConfig } from "../config.ts";
 import { ValidationError } from "../errors.ts";
 
+interface HookEntry {
+	matcher: string;
+	hooks: ReadonlyArray<{ type: string; command: string }>;
+}
+
+function isDuplicateEntry(a: HookEntry, b: HookEntry): boolean {
+	if (a.matcher !== b.matcher) return false;
+	if (a.hooks.length !== b.hooks.length) return false;
+	return a.hooks.every((cmd, i) => {
+		const bCmd = b.hooks[i];
+		return bCmd !== undefined && bCmd.type === cmd.type && bCmd.command === cmd.command;
+	});
+}
+
+/**
+ * Merge two hook maps by event type, deduplicating entries with identical
+ * matcher + command list pairs. Preserves all existing entries and appends
+ * only non-duplicate incoming entries per event type.
+ */
+export function mergeHooksByEventType(
+	existing: Record<string, unknown[]>,
+	incoming: Record<string, unknown[]>,
+): Record<string, unknown[]> {
+	const merged: Record<string, unknown[]> = { ...existing };
+
+	for (const [eventType, incomingEntries] of Object.entries(incoming)) {
+		if (!(eventType in merged)) {
+			merged[eventType] = incomingEntries;
+			continue;
+		}
+
+		const existingEntries = merged[eventType] ?? [];
+		const toAdd: unknown[] = [];
+
+		for (const entry of incomingEntries) {
+			const incomingEntry = entry as HookEntry;
+			const isDupe = existingEntries.some((e) => isDuplicateEntry(e as HookEntry, incomingEntry));
+			if (!isDupe) {
+				toAdd.push(entry);
+			}
+		}
+
+		merged[eventType] = [...existingEntries, ...toAdd];
+	}
+
+	return merged;
+}
+
 const HOOKS_HELP = `overstory hooks — Manage orchestrator hooks
 
 Usage: overstory hooks <subcommand>
@@ -79,7 +127,11 @@ async function installHooks(args: string[]): Promise<void> {
 	}
 
 	// Merge: set hooks from source, preserve other keys
-	targetConfig.hooks = sourceHooks.hooks;
+	const existingHooks = targetConfig.hooks as Record<string, unknown[]> | undefined;
+	const incomingHooks = sourceHooks.hooks as Record<string, unknown[]>;
+	targetConfig.hooks = existingHooks
+		? mergeHooksByEventType(existingHooks, incomingHooks)
+		: incomingHooks;
 
 	// Write
 	await mkdir(targetDir, { recursive: true });

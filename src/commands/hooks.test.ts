@@ -11,7 +11,7 @@ import { mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { ValidationError } from "../errors.ts";
 import { cleanupTempDir, createTempGitRepo } from "../test-helpers.ts";
-import { hooksCommand } from "./hooks.ts";
+import { hooksCommand, mergeHooksByEventType } from "./hooks.ts";
 
 let tempDir: string;
 const originalCwd = process.cwd();
@@ -153,7 +153,7 @@ describe("hooks install", () => {
 		expect(content).toContain("old");
 	});
 
-	test("--force overwrites existing hooks", async () => {
+	test("--force merges existing hooks (not overwrites)", async () => {
 		await Bun.write(
 			join(tempDir, ".overstory", "hooks.json"),
 			`${JSON.stringify(SAMPLE_HOOKS, null, "\t")}\n`,
@@ -161,15 +161,27 @@ describe("hooks install", () => {
 
 		const claudeDir = join(tempDir, ".claude");
 		await mkdir(claudeDir, { recursive: true });
+		const existingSettings = {
+			hooks: {
+				UserInput: [
+					{
+						matcher: "",
+						hooks: [{ type: "command", command: "echo user-hook" }],
+					},
+				],
+			},
+		};
 		await Bun.write(
 			join(claudeDir, "settings.local.json"),
-			`${JSON.stringify({ hooks: { old: "hooks" } }, null, "\t")}\n`,
+			`${JSON.stringify(existingSettings, null, "\t")}\n`,
 		);
 
 		await captureStdout(() => hooksCommand(["install", "--force"]));
 
 		const content = await Bun.file(join(claudeDir, "settings.local.json")).text();
-		expect(content).not.toContain("old");
+		// Existing user hook is preserved
+		expect(content).toContain("user-hook");
+		// Overstory hooks are added
 		expect(content).toContain("overstory prime");
 	});
 
@@ -238,6 +250,162 @@ describe("hooks uninstall", () => {
 
 		const output = await captureStdout(() => hooksCommand(["uninstall"]));
 		expect(output).toContain("No hooks found");
+	});
+});
+
+describe("hooks install merge behavior", () => {
+	test("--force merges overstory hooks into existing user hooks", async () => {
+		await Bun.write(
+			join(tempDir, ".overstory", "hooks.json"),
+			`${JSON.stringify(SAMPLE_HOOKS, null, "\t")}\n`,
+		);
+
+		const claudeDir = join(tempDir, ".claude");
+		await mkdir(claudeDir, { recursive: true });
+		const existingSettings = {
+			hooks: {
+				PreToolUse: [
+					{
+						matcher: "Write",
+						hooks: [{ type: "command", command: "echo user-write-hook" }],
+					},
+				],
+			},
+		};
+		await Bun.write(
+			join(claudeDir, "settings.local.json"),
+			`${JSON.stringify(existingSettings, null, "\t")}\n`,
+		);
+
+		await captureStdout(() => hooksCommand(["install", "--force"]));
+
+		const content = await Bun.file(join(claudeDir, "settings.local.json")).text();
+		const parsed = JSON.parse(content) as { hooks: Record<string, unknown[]> };
+		// User's PreToolUse hook preserved
+		expect(content).toContain("user-write-hook");
+		// Overstory's SessionStart hook added
+		expect(content).toContain("overstory prime");
+		// Both event types present
+		expect(parsed.hooks["PreToolUse"]).toBeDefined();
+		expect(parsed.hooks["SessionStart"]).toBeDefined();
+	});
+
+	test("--force deduplicates identical entries", async () => {
+		await Bun.write(
+			join(tempDir, ".overstory", "hooks.json"),
+			`${JSON.stringify(SAMPLE_HOOKS, null, "\t")}\n`,
+		);
+
+		const claudeDir = join(tempDir, ".claude");
+		await mkdir(claudeDir, { recursive: true });
+
+		// First install
+		await captureStdout(() => hooksCommand(["install"]));
+
+		// Second install with --force (same hooks again)
+		await captureStdout(() => hooksCommand(["install", "--force"]));
+
+		const content = await Bun.file(join(claudeDir, "settings.local.json")).text();
+		const parsed = JSON.parse(content) as { hooks: Record<string, unknown[]> };
+
+		// SessionStart should have exactly 1 entry (no duplicate)
+		expect(parsed.hooks["SessionStart"]?.length).toBe(1);
+		// Stop should have exactly 1 entry (no duplicate)
+		expect(parsed.hooks["Stop"]?.length).toBe(1);
+	});
+
+	test("--force preserves existing event types not in source", async () => {
+		await Bun.write(
+			join(tempDir, ".overstory", "hooks.json"),
+			`${JSON.stringify(SAMPLE_HOOKS, null, "\t")}\n`,
+		);
+
+		const claudeDir = join(tempDir, ".claude");
+		await mkdir(claudeDir, { recursive: true });
+		const existingSettings = {
+			hooks: {
+				Notification: [
+					{
+						matcher: "",
+						hooks: [{ type: "command", command: "echo notification-hook" }],
+					},
+				],
+			},
+		};
+		await Bun.write(
+			join(claudeDir, "settings.local.json"),
+			`${JSON.stringify(existingSettings, null, "\t")}\n`,
+		);
+
+		await captureStdout(() => hooksCommand(["install", "--force"]));
+
+		const content = await Bun.file(join(claudeDir, "settings.local.json")).text();
+		const parsed = JSON.parse(content) as { hooks: Record<string, unknown[]> };
+		// Custom event type preserved
+		expect(parsed.hooks["Notification"]).toBeDefined();
+		expect(content).toContain("notification-hook");
+		// Overstory hooks also present
+		expect(parsed.hooks["SessionStart"]).toBeDefined();
+		expect(parsed.hooks["Stop"]).toBeDefined();
+	});
+
+	test("first install without existing hooks works unchanged", async () => {
+		await Bun.write(
+			join(tempDir, ".overstory", "hooks.json"),
+			`${JSON.stringify(SAMPLE_HOOKS, null, "\t")}\n`,
+		);
+
+		await captureStdout(() => hooksCommand(["install"]));
+
+		const content = await Bun.file(join(tempDir, ".claude", "settings.local.json")).text();
+		const parsed = JSON.parse(content) as { hooks: Record<string, unknown[]> };
+		expect(parsed.hooks["SessionStart"]).toBeDefined();
+		expect(parsed.hooks["Stop"]).toBeDefined();
+		expect(content).toContain("overstory prime");
+	});
+
+	describe("mergeHooksByEventType unit tests", () => {
+		test("copies existing event types not in incoming", () => {
+			const existing = {
+				UserInput: [{ matcher: "", hooks: [{ type: "command", command: "echo a" }] }],
+			};
+			const incoming = {
+				SessionStart: [{ matcher: "", hooks: [{ type: "command", command: "echo b" }] }],
+			};
+			const result = mergeHooksByEventType(existing, incoming);
+			expect(result["UserInput"]).toBeDefined();
+			expect(result["SessionStart"]).toBeDefined();
+		});
+
+		test("appends non-duplicate incoming entries to existing event type", () => {
+			const existing = {
+				PreToolUse: [{ matcher: "Read", hooks: [{ type: "command", command: "echo read" }] }],
+			};
+			const incoming = {
+				PreToolUse: [{ matcher: "Write", hooks: [{ type: "command", command: "echo write" }] }],
+			};
+			const result = mergeHooksByEventType(existing, incoming);
+			expect(result["PreToolUse"]?.length).toBe(2);
+		});
+
+		test("does not add duplicate entries (same matcher + same commands)", () => {
+			const entry = { matcher: "", hooks: [{ type: "command", command: "echo dupe" }] };
+			const existing = { PreToolUse: [entry] };
+			const incoming = { PreToolUse: [entry] };
+			const result = mergeHooksByEventType(existing, incoming);
+			expect(result["PreToolUse"]?.length).toBe(1);
+		});
+
+		test("adds entry with same matcher but different commands", () => {
+			const existing = {
+				PreToolUse: [{ matcher: "", hooks: [{ type: "command", command: "echo a" }] }],
+			};
+			const incoming = {
+				PreToolUse: [{ matcher: "", hooks: [{ type: "command", command: "echo b" }] }],
+			};
+			const result = mergeHooksByEventType(existing, incoming);
+			expect(result["PreToolUse"]?.length).toBe(2);
+		});
 	});
 });
 
