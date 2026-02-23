@@ -509,6 +509,7 @@ export async function slingCommand(args: string[]): Promise<void> {
 			baseDefinition,
 			mulchExpertise,
 			skipScout: skipScout && capability === "lead",
+			qualityGates: config.project.qualityGates,
 		};
 
 		try {

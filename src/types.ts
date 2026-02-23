@@ -24,11 +24,22 @@ export interface ResolvedModel {
 
 // === Project Configuration ===
 
+/** A single quality gate command that agents must pass before reporting completion. */
+export interface QualityGate {
+	/** Display name shown in the overlay (e.g., "Tests"). */
+	name: string;
+	/** Shell command to run (e.g., "bun test"). */
+	command: string;
+	/** Human-readable description of what passing means (e.g., "all tests must pass"). */
+	description: string;
+}
+
 export interface OverstoryConfig {
 	project: {
 		name: string;
 		root: string; // Absolute path to target repo
 		canonicalBranch: string; // "main" | "develop"
+		qualityGates?: QualityGate[];
 	};
 	agents: {
 		manifestPath: string; // Path to agent-manifest.json
@@ -283,6 +294,8 @@ export interface OverlayConfig {
 	mulchExpertise?: string;
 	/** When true, lead agents should skip Phase 1 (scout) and go straight to Phase 2 (build). */
 	skipScout?: boolean;
+	/** Quality gate commands for the agent overlay. Falls back to defaults if undefined. */
+	qualityGates?: QualityGate[];
 }
 
 // === Merge Queue ===

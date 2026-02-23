@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { AgentError } from "../errors.ts";
-import type { OverlayConfig } from "../types.ts";
+import type { OverlayConfig, QualityGate } from "../types.ts";
 
 /**
  * Resolve the path to the overlay template file.
@@ -76,6 +76,13 @@ Your parent has already gathered the context you need.
  * a lightweight section that only tells them to close the issue and report.
  * Writable agents get the full quality gates (tests, lint, build, commit).
  */
+/** Default quality gates used when none are configured. */
+const DEFAULT_GATES: QualityGate[] = [
+	{ name: "Tests", command: "bun test", description: "all tests must pass" },
+	{ name: "Lint", command: "bun run lint", description: "zero errors" },
+	{ name: "Typecheck", command: "bun run typecheck", description: "no TypeScript errors" },
+];
+
 function formatQualityGates(config: OverlayConfig): string {
 	if (READ_ONLY_CAPABILITIES.has(config.capability)) {
 		return [
@@ -91,18 +98,23 @@ function formatQualityGates(config: OverlayConfig): string {
 		].join("\n");
 	}
 
+	const gates =
+		config.qualityGates && config.qualityGates.length > 0 ? config.qualityGates : DEFAULT_GATES;
+
+	const gateLines = gates.map(
+		(gate, i) => `${i + 1}. **${gate.name}:** \`${gate.command}\` — ${gate.description}`,
+	);
+
 	return [
 		"## Quality Gates",
 		"",
 		"Before reporting completion, you MUST pass all quality gates:",
 		"",
-		"1. **Tests:** `bun test` — all tests must pass",
-		"2. **Lint:** `bun run lint` — zero errors",
-		"3. **Typecheck:** `bun run typecheck` — no TypeScript errors",
-		`4. **Commit:** all changes committed to your branch (${config.branchName})`,
-		`5. **Record mulch learnings:** \`mulch record <domain> --type <convention|pattern|failure|decision> --description "..." --outcome-status success --outcome-agent ${config.agentName}\` — capture insights from your work`,
-		`6. **Signal completion:** send \`worker_done\` mail to ${config.parentAgent ?? "orchestrator"}: \`overstory mail send --to ${config.parentAgent ?? "orchestrator"} --subject "Worker done: ${config.beadId}" --body "Quality gates passed." --type worker_done --agent ${config.agentName}\``,
-		`7. **Close issue:** \`bd close ${config.beadId} --reason "summary of changes"\``,
+		...gateLines,
+		`${gateLines.length + 1}. **Commit:** all changes committed to your branch (${config.branchName})`,
+		`${gateLines.length + 2}. **Record mulch learnings:** \`mulch record <domain> --type <convention|pattern|failure|decision> --description "..." --outcome-status success --outcome-agent ${config.agentName}\` — capture insights from your work`,
+		`${gateLines.length + 3}. **Signal completion:** send \`worker_done\` mail to ${config.parentAgent ?? "orchestrator"}: \`overstory mail send --to ${config.parentAgent ?? "orchestrator"} --subject "Worker done: ${config.beadId}" --body "Quality gates passed." --type worker_done --agent ${config.agentName}\``,
+		`${gateLines.length + 4}. **Close issue:** \`bd close ${config.beadId} --reason "summary of changes"\``,
 		"",
 		"Do NOT push to the canonical branch. Your work will be merged by the",
 		"orchestrator via `overstory merge`.",

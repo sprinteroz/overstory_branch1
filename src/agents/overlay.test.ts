@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AgentError } from "../errors.ts";
-import type { OverlayConfig } from "../types.ts";
+import type { OverlayConfig, QualityGate } from "../types.ts";
 import { generateOverlay, isCanonicalRoot, writeOverlay } from "./overlay.ts";
 
 const SAMPLE_BASE_DEFINITION = `# Builder Agent
@@ -357,6 +357,65 @@ describe("generateOverlay", () => {
 		const output = await generateOverlay(config);
 
 		expect(output).not.toContain("{{WORKTREE_PATH}}");
+	});
+
+	test("builder with custom qualityGates uses them instead of defaults", async () => {
+		const gates: QualityGate[] = [
+			{ name: "Test", command: "pytest", description: "all tests pass" },
+			{ name: "Lint", command: "ruff check .", description: "no lint errors" },
+		];
+		const config = makeConfig({ capability: "builder", qualityGates: gates });
+		const output = await generateOverlay(config);
+
+		expect(output).toContain("pytest");
+		expect(output).toContain("ruff check .");
+		expect(output).not.toContain("bun test");
+		expect(output).not.toContain("bun run lint");
+		expect(output).not.toContain("bun run typecheck");
+	});
+
+	test("builder with undefined qualityGates falls back to defaults", async () => {
+		const config = makeConfig({ capability: "builder", qualityGates: undefined });
+		const output = await generateOverlay(config);
+
+		expect(output).toContain("bun test");
+		expect(output).toContain("bun run lint");
+		expect(output).toContain("bun run typecheck");
+	});
+
+	test("builder with empty qualityGates array falls back to defaults", async () => {
+		const config = makeConfig({ capability: "builder", qualityGates: [] });
+		const output = await generateOverlay(config);
+
+		expect(output).toContain("bun test");
+		expect(output).toContain("bun run lint");
+		expect(output).toContain("bun run typecheck");
+	});
+
+	test("custom qualityGates are numbered correctly", async () => {
+		const gates: QualityGate[] = [
+			{ name: "Build", command: "cargo build", description: "compilation succeeds" },
+			{ name: "Test", command: "cargo test", description: "all tests pass" },
+		];
+		const config = makeConfig({ capability: "builder", qualityGates: gates });
+		const output = await generateOverlay(config);
+
+		expect(output).toContain("1. **Build:**");
+		expect(output).toContain("2. **Test:**");
+		// Commit should be item 3
+		expect(output).toContain("3. **Commit:**");
+	});
+
+	test("scout capability ignores qualityGates (stays read-only)", async () => {
+		const gates: QualityGate[] = [
+			{ name: "Test", command: "pytest", description: "all tests pass" },
+		];
+		const config = makeConfig({ capability: "scout", qualityGates: gates });
+		const output = await generateOverlay(config);
+
+		expect(output).toContain("read-only agent");
+		expect(output).not.toContain("pytest");
+		expect(output).not.toContain("Quality Gates");
 	});
 });
 
