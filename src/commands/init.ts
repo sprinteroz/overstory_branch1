@@ -78,7 +78,7 @@ async function detectCanonicalBranch(root: string): Promise<string> {
 		const exitCode = await proc.exited;
 		if (exitCode === 0) {
 			const branch = (await new Response(proc.stdout).text()).trim();
-			if (branch === "main" || branch === "master" || branch === "develop") {
+			if (branch) {
 				return branch;
 			}
 		}

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { cleanupTempDir, createTempGitRepo } from "../test-helpers.ts";
+import { cleanupTempDir, createTempGitRepo, runGitInDir } from "../test-helpers.ts";
 import { initCommand, OVERSTORY_GITIGNORE, OVERSTORY_README } from "./init.ts";
 
 /**
@@ -298,5 +298,50 @@ describe("initCommand: .overstory/README.md", () => {
 		// Verify tampered content preserved (early return)
 		const afterSecondInit = await Bun.file(readmePath).text();
 		expect(afterSecondInit).toBe("# custom content\n");
+	});
+});
+
+describe("initCommand: canonical branch detection", () => {
+	let tempDir: string;
+	let originalCwd: string;
+	let originalWrite: typeof process.stdout.write;
+
+	beforeEach(async () => {
+		tempDir = await createTempGitRepo();
+		originalCwd = process.cwd();
+		// Remove origin remote so detectCanonicalBranch falls through to
+		// current-branch check (otherwise remote HEAD resolves to main regardless)
+		await runGitInDir(tempDir, ["remote", "remove", "origin"]);
+		process.chdir(tempDir);
+
+		// Suppress stdout noise from initCommand
+		originalWrite = process.stdout.write;
+		process.stdout.write = (() => true) as typeof process.stdout.write;
+	});
+
+	afterEach(async () => {
+		process.chdir(originalCwd);
+		process.stdout.write = originalWrite;
+		await cleanupTempDir(tempDir);
+	});
+
+	test("non-standard branch names are accepted as canonicalBranch", async () => {
+		// Switch to a non-standard branch name
+		await runGitInDir(tempDir, ["switch", "-c", "trunk"]);
+
+		await initCommand([]);
+
+		const configPath = join(tempDir, ".overstory", "config.yaml");
+		const content = await Bun.file(configPath).text();
+		expect(content).toContain("canonicalBranch: trunk");
+	});
+
+	test("standard branch names (main) still work as canonicalBranch", async () => {
+		// createTempGitRepo defaults to main branch
+		await initCommand([]);
+
+		const configPath = join(tempDir, ".overstory", "config.yaml");
+		const content = await Bun.file(configPath).text();
+		expect(content).toContain("canonicalBranch: main");
 	});
 });
