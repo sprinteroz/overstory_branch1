@@ -34,7 +34,12 @@ import type { TrackerIssue } from "../tracker/factory.ts";
 import { createTrackerClient, resolveBackend, trackerCliName } from "../tracker/factory.ts";
 import type { AgentSession, OverlayConfig } from "../types.ts";
 import { createWorktree } from "../worktree/manager.ts";
-import { createSession, sendKeys, waitForTuiReady } from "../worktree/tmux.ts";
+import {
+	createSession,
+	ensureTmuxAvailable,
+	sendKeys,
+	waitForTuiReady,
+} from "../worktree/tmux.ts";
 
 /**
  * Calculate how many milliseconds to sleep before spawning a new agent,
@@ -536,6 +541,9 @@ export async function slingCommand(taskId: string, opts: SlingOptions): Promise<
 				recentTasks: [],
 			});
 		}
+
+		// 11b. Preflight: verify tmux is available before attempting session creation
+		await ensureTmuxAvailable();
 
 		// 12. Create tmux session running claude in interactive mode
 		const tmuxSessionName = `overstory-${config.project.name}-${name}`;
