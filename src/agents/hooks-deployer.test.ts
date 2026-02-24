@@ -12,6 +12,7 @@ import {
 	getCapabilityGuards,
 	getDangerGuards,
 	getPathBoundaryGuards,
+	isOverstoryHookEntry,
 } from "./hooks-deployer.ts";
 
 describe("deployHooks", () => {
@@ -360,18 +361,29 @@ describe("deployHooks", () => {
 		expect(exists).toBe(true);
 	});
 
-	test("overwrites existing settings.local.json", async () => {
+	test("preserves non-hooks keys from existing settings.local.json", async () => {
 		const worktreePath = join(tempDir, "worktree");
 		const claudeDir = join(worktreePath, ".claude");
 		const { mkdir } = await import("node:fs/promises");
 		await mkdir(claudeDir, { recursive: true });
-		await Bun.write(join(claudeDir, "settings.local.json"), '{"old": true}');
+		await Bun.write(
+			join(claudeDir, "settings.local.json"),
+			JSON.stringify({
+				permissions: { allow: ["Read"] },
+				env: { FOO: "bar" },
+				$schema: "https://example.com/schema.json",
+			}),
+		);
 
 		await deployHooks(worktreePath, "new-agent");
 
 		const content = await Bun.file(join(claudeDir, "settings.local.json")).text();
+		const parsed = JSON.parse(content);
 		expect(content).toContain("new-agent");
-		expect(content).not.toContain('"old"');
+		expect(parsed.hooks).toBeDefined();
+		expect(parsed.permissions).toEqual({ allow: ["Read"] });
+		expect(parsed.env).toEqual({ FOO: "bar" });
+		expect(parsed.$schema).toBe("https://example.com/schema.json");
 	});
 
 	test("handles agent names with special characters", async () => {
@@ -603,6 +615,279 @@ describe("deployHooks", () => {
 		const writeIdx = preToolUse.findIndex((h: { matcher: string }) => h.matcher === "Write");
 
 		expect(writeIdx).toBeLessThan(baseIdx);
+	});
+
+	test("preserves user hooks alongside overstory hooks", async () => {
+		const worktreePath = join(tempDir, "merge-user-hooks-wt");
+		const claudeDir = join(worktreePath, ".claude");
+		const { mkdir } = await import("node:fs/promises");
+		await mkdir(claudeDir, { recursive: true });
+		await Bun.write(
+			join(claudeDir, "settings.local.json"),
+			JSON.stringify({
+				hooks: {
+					PreToolUse: [
+						{
+							matcher: "Bash",
+							hooks: [{ type: "command", command: "echo user-custom-guard" }],
+						},
+					],
+					SessionStart: [
+						{
+							matcher: "",
+							hooks: [{ type: "command", command: "echo user-session-hook" }],
+						},
+					],
+				},
+			}),
+		);
+
+		await deployHooks(worktreePath, "merge-agent", "builder");
+
+		const content = await Bun.file(join(claudeDir, "settings.local.json")).text();
+		const parsed = JSON.parse(content);
+
+		// User hooks should be preserved
+		const preToolUse = parsed.hooks.PreToolUse;
+		const userBashHook = preToolUse.find(
+			(h: { hooks: Array<{ command: string }> }) =>
+				h.hooks[0]?.command === "echo user-custom-guard",
+		);
+		expect(userBashHook).toBeDefined();
+
+		const sessionStart = parsed.hooks.SessionStart;
+		const userSessionHook = sessionStart.find(
+			(h: { hooks: Array<{ command: string }> }) =>
+				h.hooks[0]?.command === "echo user-session-hook",
+		);
+		expect(userSessionHook).toBeDefined();
+
+		// Overstory hooks should also be present
+		expect(content).toContain("merge-agent");
+		expect(content).toContain("overstory prime");
+	});
+
+	test("overstory hooks appear before user hooks per event type", async () => {
+		const worktreePath = join(tempDir, "order-merge-wt");
+		const claudeDir = join(worktreePath, ".claude");
+		const { mkdir } = await import("node:fs/promises");
+		await mkdir(claudeDir, { recursive: true });
+		await Bun.write(
+			join(claudeDir, "settings.local.json"),
+			JSON.stringify({
+				hooks: {
+					PreToolUse: [
+						{
+							matcher: "Bash",
+							hooks: [{ type: "command", command: "echo user-guard-first" }],
+						},
+					],
+				},
+			}),
+		);
+
+		await deployHooks(worktreePath, "order-merge-agent", "scout");
+
+		const content = await Bun.file(join(claudeDir, "settings.local.json")).text();
+		const parsed = JSON.parse(content);
+		const preToolUse = parsed.hooks.PreToolUse;
+
+		// User hook should be at the end (after all overstory hooks)
+		const userIdx = preToolUse.findIndex(
+			(h: { hooks: Array<{ command: string }> }) => h.hooks[0]?.command === "echo user-guard-first",
+		);
+		const lastOverstoryIdx = preToolUse.reduce(
+			(last: number, h: { hooks: Array<{ command: string }> }, i: number) => {
+				if (
+					h.hooks[0]?.command?.includes("overstory") ||
+					h.hooks[0]?.command?.includes("OVERSTORY_")
+				) {
+					return i;
+				}
+				return last;
+			},
+			-1,
+		);
+
+		expect(userIdx).toBeGreaterThan(lastOverstoryIdx);
+	});
+
+	test("strips stale overstory entries on re-deployment", async () => {
+		const worktreePath = join(tempDir, "stale-strip-wt");
+
+		// First deploy
+		await deployHooks(worktreePath, "stale-agent", "builder");
+
+		// Read the deployed config to count overstory entries
+		const firstContent = await Bun.file(
+			join(worktreePath, ".claude", "settings.local.json"),
+		).text();
+		const firstParsed = JSON.parse(firstContent);
+		const firstPreToolUseCount = firstParsed.hooks.PreToolUse.length;
+
+		// Second deploy (should strip old overstory entries, not accumulate)
+		await deployHooks(worktreePath, "stale-agent", "builder");
+
+		const secondContent = await Bun.file(
+			join(worktreePath, ".claude", "settings.local.json"),
+		).text();
+		const secondParsed = JSON.parse(secondContent);
+		const secondPreToolUseCount = secondParsed.hooks.PreToolUse.length;
+
+		// Same count — idempotent, no accumulation
+		expect(secondPreToolUseCount).toBe(firstPreToolUseCount);
+	});
+
+	test("re-deployment is idempotent with user hooks present", async () => {
+		const worktreePath = join(tempDir, "idempotent-wt");
+		const claudeDir = join(worktreePath, ".claude");
+		const { mkdir } = await import("node:fs/promises");
+		await mkdir(claudeDir, { recursive: true });
+		await Bun.write(
+			join(claudeDir, "settings.local.json"),
+			JSON.stringify({
+				permissions: { allow: ["Read"] },
+				hooks: {
+					PreToolUse: [
+						{
+							matcher: "Bash",
+							hooks: [{ type: "command", command: "echo my-custom-lint" }],
+						},
+					],
+				},
+			}),
+		);
+
+		// Deploy twice
+		await deployHooks(worktreePath, "idem-agent", "coordinator");
+		await deployHooks(worktreePath, "idem-agent", "coordinator");
+
+		const content = await Bun.file(join(claudeDir, "settings.local.json")).text();
+		const parsed = JSON.parse(content);
+
+		// User hook appears exactly once
+		const userHooks = parsed.hooks.PreToolUse.filter(
+			(h: { hooks: Array<{ command: string }> }) => h.hooks[0]?.command === "echo my-custom-lint",
+		);
+		expect(userHooks).toHaveLength(1);
+
+		// Non-hooks keys preserved
+		expect(parsed.permissions).toEqual({ allow: ["Read"] });
+	});
+
+	test("handles malformed existing settings.local.json gracefully", async () => {
+		const worktreePath = join(tempDir, "malformed-wt");
+		const claudeDir = join(worktreePath, ".claude");
+		const { mkdir } = await import("node:fs/promises");
+		await mkdir(claudeDir, { recursive: true });
+		await Bun.write(join(claudeDir, "settings.local.json"), "not valid json{{{");
+
+		// Should not throw — falls back to fresh config
+		await deployHooks(worktreePath, "malformed-agent");
+
+		const content = await Bun.file(join(claudeDir, "settings.local.json")).text();
+		const parsed = JSON.parse(content);
+		expect(parsed.hooks).toBeDefined();
+		expect(content).toContain("malformed-agent");
+	});
+
+	test("preserves user hooks in event types not in template", async () => {
+		const worktreePath = join(tempDir, "custom-event-wt");
+		const claudeDir = join(worktreePath, ".claude");
+		const { mkdir } = await import("node:fs/promises");
+		await mkdir(claudeDir, { recursive: true });
+		await Bun.write(
+			join(claudeDir, "settings.local.json"),
+			JSON.stringify({
+				hooks: {
+					CustomEvent: [
+						{
+							matcher: "",
+							hooks: [{ type: "command", command: "echo custom-event-hook" }],
+						},
+					],
+				},
+			}),
+		);
+
+		await deployHooks(worktreePath, "custom-event-agent");
+
+		const content = await Bun.file(join(claudeDir, "settings.local.json")).text();
+		const parsed = JSON.parse(content);
+
+		// Custom event type should be preserved
+		expect(parsed.hooks.CustomEvent).toBeDefined();
+		expect(parsed.hooks.CustomEvent).toHaveLength(1);
+		expect(parsed.hooks.CustomEvent[0].hooks[0].command).toBe("echo custom-event-hook");
+	});
+});
+
+describe("isOverstoryHookEntry", () => {
+	test("identifies entries with overstory CLI commands", () => {
+		expect(
+			isOverstoryHookEntry({
+				matcher: "",
+				hooks: [{ type: "command", command: "overstory prime --agent test" }],
+			}),
+		).toBe(true);
+	});
+
+	test("identifies entries with OVERSTORY_ env var references", () => {
+		expect(
+			isOverstoryHookEntry({
+				matcher: "Write",
+				hooks: [
+					{
+						type: "command",
+						command: '[ -z "$OVERSTORY_AGENT_NAME" ] && exit 0; echo block',
+					},
+				],
+			}),
+		).toBe(true);
+	});
+
+	test("identifies entries with OVERSTORY_WORKTREE_PATH", () => {
+		expect(
+			isOverstoryHookEntry({
+				matcher: "Bash",
+				hooks: [
+					{
+						type: "command",
+						command: '[ -z "$OVERSTORY_WORKTREE_PATH" ] && exit 0;',
+					},
+				],
+			}),
+		).toBe(true);
+	});
+
+	test("returns false for user hooks without overstory references", () => {
+		expect(
+			isOverstoryHookEntry({
+				matcher: "Bash",
+				hooks: [{ type: "command", command: "echo user-custom-guard" }],
+			}),
+		).toBe(false);
+	});
+
+	test("returns false for empty hooks array", () => {
+		expect(
+			isOverstoryHookEntry({
+				matcher: "",
+				hooks: [],
+			}),
+		).toBe(false);
+	});
+
+	test("checks all hooks in the entry (any match = overstory)", () => {
+		expect(
+			isOverstoryHookEntry({
+				matcher: "",
+				hooks: [
+					{ type: "command", command: "echo user-thing" },
+					{ type: "command", command: "overstory mail check" },
+				],
+			}),
+		).toBe(true);
 	});
 });
 

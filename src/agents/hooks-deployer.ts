@@ -475,12 +475,31 @@ export function getCapabilityGuards(capability: string): HookEntry[] {
 }
 
 /**
+ * Check whether a hook entry is overstory-managed.
+ *
+ * Overstory hook commands always reference either `overstory` (CLI commands)
+ * or `OVERSTORY_` (env var guards like OVERSTORY_AGENT_NAME, OVERSTORY_WORKTREE_PATH).
+ * User hooks will not contain these patterns.
+ */
+export function isOverstoryHookEntry(entry: HookEntry): boolean {
+	return entry.hooks.some(
+		(h) => h.command.includes("overstory") || h.command.includes("OVERSTORY_"),
+	);
+}
+
+/**
  * Deploy hooks config to an agent's worktree as `.claude/settings.local.json`.
  *
  * Reads `templates/hooks.json.tmpl`, replaces `{{AGENT_NAME}}`, then merges
  * capability-specific PreToolUse guards into the resulting config.
  *
- * @param worktreePath - Absolute path to the agent's git worktree
+ * When the target file already exists (e.g. at the project root for coordinator/
+ * supervisor/monitor), preserves non-hooks keys and user-defined hook entries.
+ * Stale overstory hook entries are stripped and replaced with the new set.
+ * Overstory hooks are placed before user hooks per event type so security
+ * guards run first.
+ *
+ * @param worktreePath - Absolute path to the agent's git worktree (or project root)
  * @param agentName - The unique name of the agent
  * @param capability - Agent capability (builder, scout, reviewer, lead, merger)
  * @throws {AgentError} If the template is not found or the write fails
@@ -528,8 +547,6 @@ export async function deployHooks(
 		config.hooks.PreToolUse = [...allGuards, ...preToolUse];
 	}
 
-	const finalContent = `${JSON.stringify(config, null, "\t")}\n`;
-
 	const claudeDir = join(worktreePath, ".claude");
 	const outputPath = join(claudeDir, "settings.local.json");
 
@@ -541,6 +558,43 @@ export async function deployHooks(
 			cause: err instanceof Error ? err : undefined,
 		});
 	}
+
+	// Read existing settings.local.json to preserve user hooks and non-hooks keys
+	let existingConfig: Record<string, unknown> = {};
+	const existingFile = Bun.file(outputPath);
+	if (await existingFile.exists()) {
+		try {
+			const existingContent = await existingFile.text();
+			existingConfig = JSON.parse(existingContent) as Record<string, unknown>;
+		} catch {
+			// Malformed existing file — start fresh
+		}
+	}
+
+	// Separate non-hooks keys (permissions, env, $schema, etc.) from hooks
+	const { hooks: existingHooksRaw, ...nonHooksKeys } = existingConfig;
+
+	// Partition existing hooks: keep user entries, discard stale overstory entries
+	const existingHooks = (existingHooksRaw ?? {}) as Record<string, HookEntry[]>;
+	const userHooks: Record<string, HookEntry[]> = {};
+	for (const [eventType, entries] of Object.entries(existingHooks)) {
+		const userEntries = entries.filter((e) => !isOverstoryHookEntry(e));
+		if (userEntries.length > 0) {
+			userHooks[eventType] = userEntries;
+		}
+	}
+
+	// Merge: overstory hooks first (security guards must run first), then user hooks
+	const mergedHooks: Record<string, HookEntry[]> = {};
+	const allEventTypes = new Set([...Object.keys(config.hooks), ...Object.keys(userHooks)]);
+	for (const eventType of allEventTypes) {
+		const overstoryEntries = config.hooks[eventType] ?? [];
+		const userEntries = userHooks[eventType] ?? [];
+		mergedHooks[eventType] = [...overstoryEntries, ...userEntries];
+	}
+
+	const finalConfig = { ...nonHooksKeys, hooks: mergedHooks };
+	const finalContent = `${JSON.stringify(finalConfig, null, "\t")}\n`;
 
 	try {
 		await Bun.write(outputPath, finalContent);
