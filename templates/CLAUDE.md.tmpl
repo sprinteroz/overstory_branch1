@@ -10,34 +10,34 @@ monitor progress, and merge results.
 
 ```bash
 # Spawn a worker agent
-overstory sling <bead-id> --capability <type> --name <agent-name> \
+ov sling <bead-id> --capability <type> --name <agent-name> \
   [--spec <path>] [--files file1,file2] [--parent <agent>] [--depth <n>]
 
 # Check system status
-overstory status              # Overview of all agents, worktrees, {{TRACKER_NAME}}
-overstory status --json       # Machine-readable output
-overstory status --watch      # Live updating
+ov status              # Overview of all agents, worktrees, {{TRACKER_NAME}}
+ov status --json       # Machine-readable output
+ov status --watch      # Live updating
 
 # Messaging (SQLite-backed, ~1-5ms per query)
-overstory mail send --to <agent> --subject "..." --body "..."
-overstory mail check          # Your inbox
-overstory mail list --unread  # All unread messages
-overstory mail reply <id> --body "..."
+ov mail send --to <agent> --subject "..." --body "..."
+ov mail check          # Your inbox
+ov mail list --unread  # All unread messages
+ov mail reply <id> --body "..."
 
 # Merge completed work
-overstory merge --branch <name>   # Merge a specific branch
-overstory merge --all             # Merge all completed branches
-overstory merge --dry-run --branch <name>  # Preview conflicts
+ov merge --branch <name>   # Merge a specific branch
+ov merge --all             # Merge all completed branches
+ov merge --dry-run --branch <name>  # Preview conflicts
 
 # Worktree management
-overstory worktree list       # Show all worktrees with status
-overstory worktree clean --completed  # Remove finished worktrees
+ov worktree list       # Show all worktrees with status
+ov worktree clean --completed  # Remove finished worktrees
 
 # Context and monitoring
-overstory prime               # Reload context (config, mulch, recent activity)
-overstory watch --background  # Start watchdog daemon
-overstory metrics             # Performance summary
-overstory log <event> --agent <name>  # Hook-driven event logging
+ov prime               # Reload context (config, mulch, recent activity)
+ov watch --background  # Start watchdog daemon
+ov metrics             # Performance summary
+ov log <event> --agent <name>  # Hook-driven event logging
 ```
 
 ## How to Spawn Agents
@@ -46,10 +46,10 @@ overstory log <event> --agent <name>  # Hook-driven event logging
 2. Choose a capability based on the task:
 {{AGENT_DEFINITIONS}}
 3. Assign exclusive file scope so agents do not conflict
-4. Spawn: `overstory sling <bead-id> --capability <type> --name <unique-name> --files src/foo.ts,src/bar.ts`
+4. Spawn: `ov sling <bead-id> --capability <type> --name <unique-name> --files src/foo.ts,src/bar.ts`
 
 Each spawned agent gets its own git worktree, branch, CLAUDE.md overlay, and
-tmux session. Agents communicate via `overstory mail` and report completion
+tmux session. Agents communicate via `ov mail` and report completion
 by closing their {{TRACKER_NAME}} issue (`{{TRACKER_CLI}} close <id> --reason "summary"`).
 
 ## Hierarchical Delegation
@@ -58,10 +58,10 @@ You can spawn **team leads** that themselves spawn sub-workers:
 
 ```
 Orchestrator (this session)
-  └── overstory sling bd-xyz --capability lead --name build-lead
-        ├── overstory sling bd-abc --capability builder --name auth-login
-        ├── overstory sling bd-def --capability builder --name auth-signup
-        └── overstory sling bd-ghi --capability builder --name auth-reset
+  └── ov sling bd-xyz --capability lead --name build-lead
+        ├── ov sling bd-abc --capability builder --name auth-login
+        ├── ov sling bd-def --capability builder --name auth-signup
+        └── ov sling bd-ghi --capability builder --name auth-reset
 ```
 
 Depth limit is configurable (default: 2). Leads use `--parent` and `--depth`
@@ -69,7 +69,7 @@ to track hierarchy.
 
 ## Checking Status
 
-Run `overstory status` to see:
+Run `ov status` to see:
 - Active agents and their states (booting, working, stalled, zombie)
 - Worktree locations and branches
 - Beads issue progress
@@ -83,7 +83,7 @@ All merges target **{{CANONICAL_BRANCH}}**. Agents work on branches named
 ## Conventions
 
 - Agents own files exclusively — no two agents modify the same file
-- Use `overstory mail` for all inter-agent communication (not {{TRACKER_NAME}})
+- Use `ov mail` for all inter-agent communication (not {{TRACKER_NAME}})
 - Use `{{TRACKER_CLI}} close` to report task completion (not mail)
-- Merge via `overstory merge`, not raw `git merge`
+- Merge via `ov merge`, not raw `git merge`
 - Logs live in `.overstory/logs/` — never delete them manually

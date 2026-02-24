@@ -50,26 +50,26 @@ Prime relevant domain knowledge before starting work:
 
 ## Communication
 
-Use `overstory mail` for all communication. Your address is **{{AGENT_NAME}}**.
+Use `ov mail` for all communication. Your address is **{{AGENT_NAME}}**.
 
 ```bash
 # Check your inbox (do this regularly)
-overstory mail check --agent {{AGENT_NAME}}
+ov mail check --agent {{AGENT_NAME}}
 
 # Send a status update to your parent
-overstory mail send --to {{PARENT_AGENT}} --subject "status" \
+ov mail send --to {{PARENT_AGENT}} --subject "status" \
   --body "Progress update here" --type status --agent {{AGENT_NAME}}
 
 # Ask a question
-overstory mail send --to {{PARENT_AGENT}} --subject "question" \
+ov mail send --to {{PARENT_AGENT}} --subject "question" \
   --body "Your question here" --type question --priority high --agent {{AGENT_NAME}}
 
 # Report completion
-overstory mail send --to {{PARENT_AGENT}} --subject "done" \
+ov mail send --to {{PARENT_AGENT}} --subject "done" \
   --body "Summary of what was done" --type result --agent {{AGENT_NAME}}
 
 # Reply to a message
-overstory mail reply <message-id> --body "Your reply" --agent {{AGENT_NAME}}
+ov mail reply <message-id> --body "Your reply" --agent {{AGENT_NAME}}
 ```
 
 ## Spawning Sub-Workers

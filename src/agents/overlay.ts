@@ -31,7 +31,7 @@ function formatMulchDomains(domains: readonly string[]): string {
 	if (domains.length === 0) {
 		return "No specific expertise domains configured";
 	}
-	return `\`\`\`bash\nmulch prime ${domains.join(" ")}\n\`\`\``;
+	return `\`\`\`bash\nml prime ${domains.join(" ")}\n\`\`\``;
 }
 
 /**
@@ -90,9 +90,9 @@ function formatQualityGates(config: OverlayConfig): string {
 			"",
 			"Before reporting completion:",
 			"",
-			`1. **Record mulch learnings:** \`mulch record <domain> --type <convention|pattern|reference> --description "..."\` — capture reusable knowledge from your work`,
+			`1. **Record mulch learnings:** \`ml record <domain> --type <convention|pattern|reference> --description "..."\` — capture reusable knowledge from your work`,
 			`2. **Close issue:** \`${config.trackerCli ?? "bd"} close ${config.taskId} --reason "summary of findings"\``,
-			`3. **Send results:** \`overstory mail send --to ${config.parentAgent ?? "coordinator"} --subject "done" --body "Summary" --type result --agent ${config.agentName}\``,
+			`3. **Send results:** \`ov mail send --to ${config.parentAgent ?? "coordinator"} --subject "done" --body "Summary" --type result --agent ${config.agentName}\``,
 			"",
 			"You are a read-only agent. Do NOT commit, modify files, or run quality gates.",
 		].join("\n");
@@ -112,8 +112,8 @@ function formatQualityGates(config: OverlayConfig): string {
 		"",
 		...gateLines,
 		`${gateLines.length + 1}. **Commit:** all changes committed to your branch (${config.branchName})`,
-		`${gateLines.length + 2}. **Record mulch learnings:** \`mulch record <domain> --type <convention|pattern|failure|decision> --description "..." --outcome-status success --outcome-agent ${config.agentName}\` — capture insights from your work`,
-		`${gateLines.length + 3}. **Signal completion:** send \`worker_done\` mail to ${config.parentAgent ?? "coordinator"}: \`overstory mail send --to ${config.parentAgent ?? "coordinator"} --subject "Worker done: ${config.taskId}" --body "Quality gates passed." --type worker_done --agent ${config.agentName}\``,
+		`${gateLines.length + 2}. **Record mulch learnings:** \`ml record <domain> --type <convention|pattern|failure|decision> --description "..." --outcome-status success --outcome-agent ${config.agentName}\` — capture insights from your work`,
+		`${gateLines.length + 3}. **Signal completion:** send \`worker_done\` mail to ${config.parentAgent ?? "coordinator"}: \`ov mail send --to ${config.parentAgent ?? "coordinator"} --subject "Worker done: ${config.taskId}" --body "Quality gates passed." --type worker_done --agent ${config.agentName}\``,
 		`${gateLines.length + 4}. **Close issue:** \`${config.trackerCli ?? "bd"} close ${config.taskId} --reason "summary of changes"\``,
 		"",
 		"Do NOT push to the canonical branch. Your work will be merged by the",
@@ -132,7 +132,7 @@ function formatConstraints(config: OverlayConfig): string {
 			"",
 			"- You are **read-only**: do NOT modify, create, or delete any files",
 			"- Do NOT commit, push, or make any git state changes",
-			`- Report completion via \`${config.trackerCli ?? "bd"} close\` AND \`overstory mail send --type result\``,
+			`- Report completion via \`${config.trackerCli ?? "bd"} close\` AND \`ov mail send --type result\``,
 			"- If you encounter a blocking issue, send mail with `--priority urgent --type error`",
 		].join("\n");
 	}
@@ -145,7 +145,7 @@ function formatConstraints(config: OverlayConfig): string {
 		"- Only modify files in your File Scope",
 		`- Commit only to your branch: ${config.branchName}`,
 		"- Never push to the canonical branch",
-		`- Report completion via \`${config.trackerCli ?? "bd"} close\` AND \`overstory mail send --type result\``,
+		`- Report completion via \`${config.trackerCli ?? "bd"} close\` AND \`ov mail send --type result\``,
 		"- If you encounter a blocking issue, send mail with `--priority urgent --type error`",
 	].join("\n");
 }
@@ -159,10 +159,10 @@ function formatCanSpawn(config: OverlayConfig): string {
 		return "You may NOT spawn sub-workers.";
 	}
 	return [
-		"You may spawn sub-workers using `overstory sling`. Example:",
+		"You may spawn sub-workers using `ov sling`. Example:",
 		"",
 		"```bash",
-		"overstory sling <task-id> --capability builder --name <worker-name> \\",
+		"ov sling <task-id> --capability builder --name <worker-name> \\",
 		`  --parent ${config.agentName} --depth ${config.depth + 1}`,
 		"```",
 	].join("\n");

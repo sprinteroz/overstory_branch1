@@ -134,7 +134,7 @@ describe("generateOverlay", () => {
 		const config = makeConfig({ mulchDomains: ["typescript", "testing"] });
 		const output = await generateOverlay(config);
 
-		expect(output).toContain("mulch prime typescript testing");
+		expect(output).toContain("ml prime typescript testing");
 	});
 
 	test("empty mulch domains shows fallback text", async () => {
@@ -159,7 +159,7 @@ describe("generateOverlay", () => {
 		});
 		const output = await generateOverlay(config);
 
-		expect(output).toContain("overstory sling");
+		expect(output).toContain("ov sling");
 		expect(output).toContain("--parent lead-alpha");
 		expect(output).toContain("--depth 2");
 	});
@@ -267,7 +267,7 @@ describe("generateOverlay", () => {
 		const output = await generateOverlay(config);
 
 		expect(output).toContain("bd close overstory-task1");
-		expect(output).toContain("overstory mail send --to lead-alpha");
+		expect(output).toContain("ov mail send --to lead-alpha");
 	});
 
 	test("reviewer completion section uses coordinator when no parent", async () => {
@@ -284,8 +284,8 @@ describe("generateOverlay", () => {
 		const config = makeConfig({ agentName: "worker-42" });
 		const output = await generateOverlay(config);
 
-		expect(output).toContain("overstory mail check --agent worker-42");
-		expect(output).toContain("overstory mail send --to");
+		expect(output).toContain("ov mail check --agent worker-42");
+		expect(output).toContain("ov mail send --to");
 	});
 
 	test("output includes base agent definition content (Layer 1)", async () => {
