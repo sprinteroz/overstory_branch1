@@ -11,7 +11,7 @@ Project-agnostic swarm system for Claude Code agent orchestration. Overstory tur
 
 ## How It Works
 
-CLAUDE.md + hooks + the `overstory` CLI turn your Claude Code session into a multi-agent orchestrator. A persistent coordinator agent manages task decomposition and dispatch, while a mechanical watchdog daemon monitors agent health in the background.
+CLAUDE.md + hooks + the `ov` CLI turn your Claude Code session into a multi-agent orchestrator. A persistent coordinator agent manages task decomposition and dispatch, while a mechanical watchdog daemon monitors agent health in the background.
 
 ```
 Coordinator (persistent orchestrator at project root)
@@ -70,55 +70,55 @@ bun link
 ```bash
 # Initialize overstory in your project
 cd your-project
-overstory init
+ov init
 
 # Install hooks into .claude/settings.local.json
-overstory hooks install
+ov hooks install
 
 # Start a coordinator (persistent orchestrator)
-overstory coordinator start
+ov coordinator start
 
 # Or spawn individual worker agents
-overstory sling <task-id> --capability builder --name my-builder
+ov sling <task-id> --capability builder --name my-builder
 
 # Check agent status
-overstory status
+ov status
 
 # Live dashboard for monitoring the fleet
-overstory dashboard
+ov dashboard
 
 # Nudge a stalled agent
-overstory nudge <agent-name>
+ov nudge <agent-name>
 
 # Check mail from agents
-overstory mail check --inject
+ov mail check --inject
 ```
 
 ## CLI Reference
 
 ```
-overstory agents discover               Discover agents by capability/state/parent
+ov agents discover               Discover agents by capability/state/parent
   --capability <type>                    Filter by capability type
   --state <state>                        Filter by agent state
   --parent <name>                        Filter by parent agent
   --json                                 JSON output
 
-overstory init                          Initialize .overstory/ in current project
+ov init                          Initialize .overstory/ in current project
                                         (deploys agent definitions automatically)
 
-overstory coordinator start             Start persistent coordinator agent
+ov coordinator start             Start persistent coordinator agent
   --attach / --no-attach                 TTY-aware tmux attach (default: auto)
   --watchdog                             Auto-start watchdog daemon with coordinator
   --monitor                              Auto-start Tier 2 monitor agent
-overstory coordinator stop              Stop coordinator
-overstory coordinator status            Show coordinator state
+ov coordinator stop              Stop coordinator
+ov coordinator status            Show coordinator state
 
-overstory supervisor start              Start per-project supervisor agent
+ov supervisor start              Start per-project supervisor agent
   --attach / --no-attach                 TTY-aware tmux attach (default: auto)
-overstory supervisor stop               Stop supervisor
-overstory supervisor status             Show supervisor state
+ov supervisor stop               Stop supervisor
+ov supervisor status             Show supervisor state
 
-overstory sling <task-id>              Spawn a worker agent
+ov sling <task-id>              Spawn a worker agent
   --capability <type>                    builder | scout | reviewer | lead | merger
                                          | coordinator | supervisor | monitor
   --name <name>                          Unique agent name
@@ -130,127 +130,127 @@ overstory sling <task-id>              Spawn a worker agent
   --skip-task-check                      Skip task existence validation
   --json                                 JSON output
 
-overstory stop <agent-name>            Terminate a running agent
+ov stop <agent-name>            Terminate a running agent
   --clean-worktree                       Remove the agent's worktree (best-effort)
   --json                                 JSON output
 
-overstory prime                         Load context for orchestrator/agent
+ov prime                         Load context for orchestrator/agent
   --agent <name>                         Per-agent priming
   --compact                              Restore from checkpoint (compaction)
 
-overstory status                        Show all active agents, worktrees, tracker state
+ov status                        Show all active agents, worktrees, tracker state
   --json                                 JSON output
   --verbose                              Show detailed agent info
   --all                                  Show all runs (default: current run only)
 
-overstory dashboard                     Live TUI dashboard for agent monitoring
+ov dashboard                     Live TUI dashboard for agent monitoring
   --interval <ms>                        Refresh interval (default: 2000)
   --all                                  Show all runs (default: current run only)
 
-overstory hooks install                 Install orchestrator hooks to .claude/settings.local.json
+ov hooks install                 Install orchestrator hooks to .claude/settings.local.json
   --force                                Overwrite existing hooks
-overstory hooks uninstall               Remove orchestrator hooks
-overstory hooks status                  Check if hooks are installed
+ov hooks uninstall               Remove orchestrator hooks
+ov hooks status                  Check if hooks are installed
 
-overstory mail send                     Send a message
+ov mail send                     Send a message
   --to <agent>  --subject <text>  --body <text>
   --to @all | @builders | @scouts ...    Broadcast to group addresses
   --type <status|question|result|error>
   --priority <low|normal|high|urgent>    (urgent/high auto-nudges recipient)
 
-overstory mail check                    Check inbox (unread messages)
+ov mail check                    Check inbox (unread messages)
   --agent <name>  --inject  --json
   --debounce <ms>                        Skip if checked within window
 
-overstory mail list                     List messages with filters
+ov mail list                     List messages with filters
   --from <name>  --to <name>  --unread
 
-overstory mail read <id>                Mark message as read
-overstory mail reply <id> --body <text> Reply in same thread
+ov mail read <id>                Mark message as read
+ov mail reply <id> --body <text> Reply in same thread
 
-overstory nudge <agent> [message]       Send a text nudge to an agent
+ov nudge <agent> [message]       Send a text nudge to an agent
   --from <name>                          Sender name (default: orchestrator)
   --force                                Skip debounce check
   --json                                 JSON output
 
-overstory group create <name>           Create a task group for batch tracking
-overstory group status <name>           Show group progress
-overstory group add <name> <issue-id>   Add issue to group
-overstory group list                    List all groups
+ov group create <name>           Create a task group for batch tracking
+ov group status <name>           Show group progress
+ov group add <name> <issue-id>   Add issue to group
+ov group list                    List all groups
 
-overstory merge                         Merge agent branches into canonical
+ov merge                         Merge agent branches into canonical
   --branch <name>                        Specific branch
   --all                                  All completed branches
   --into <branch>                        Target branch (default: session-branch.txt > canonicalBranch)
   --dry-run                              Check for conflicts only
 
-overstory worktree list                 List worktrees with status
-overstory worktree clean                Remove completed worktrees
+ov worktree list                 List worktrees with status
+ov worktree clean                Remove completed worktrees
   --completed                            Only finished agents
   --all                                  Force remove all
   --force                                Delete even if branches are unmerged
 
-overstory monitor start                 Start Tier 2 monitor agent
-overstory monitor stop                  Stop monitor agent
-overstory monitor status                Show monitor state
+ov monitor start                 Start Tier 2 monitor agent
+ov monitor stop                  Stop monitor agent
+ov monitor status                Show monitor state
 
-overstory log <event>                   Log a hook event
-overstory watch                         Start watchdog daemon (Tier 0)
+ov log <event>                   Log a hook event
+ov watch                         Start watchdog daemon (Tier 0)
   --interval <ms>                        Health check interval
   --background                           Run as background process
-overstory run list                      List orchestration runs
-overstory run show <id>                 Show run details
-overstory run complete <id>             Mark a run complete
+ov run list                      List orchestration runs
+ov run show <id>                 Show run details
+ov run complete <id>             Mark a run complete
 
-overstory trace                         View agent/bead timeline
+ov trace                         View agent/bead timeline
   --agent <name>                         Filter by agent
   --run <id>                             Filter by run
 
-overstory clean                         Clean up worktrees, sessions, artifacts
+ov clean                         Clean up worktrees, sessions, artifacts
   --completed                            Only finished agents
   --all                                  Force remove all
   --run <id>                             Clean a specific run
 
-overstory doctor                        Run health checks on overstory setup
+ov doctor                        Run health checks on overstory setup
   --json                                 JSON output
   --category <name>                      Run a specific check category only
 
-overstory inspect <agent>               Deep per-agent inspection
+ov inspect <agent>               Deep per-agent inspection
   --json                                 JSON output
   --follow                               Polling mode (refreshes periodically)
   --interval <ms>                        Refresh interval for --follow
   --no-tmux                              Skip tmux capture
   --limit <n>                            Limit events shown
 
-overstory spec write <task-id>          Write a task specification
+ov spec write <task-id>          Write a task specification
   --body <content>                       Spec content (or pipe via stdin)
 
-overstory errors                        Aggregated error view across agents
+ov errors                        Aggregated error view across agents
   --agent <name>                         Filter by agent
   --run <id>                             Filter by run
   --since <ts>  --until <ts>             Time range filter
   --limit <n>  --json
 
-overstory replay                        Interleaved chronological replay
+ov replay                        Interleaved chronological replay
   --run <id>                             Filter by run
   --agent <name>                         Filter by agent(s)
   --since <ts>  --until <ts>             Time range filter
   --limit <n>  --json
 
-overstory feed [options]                Unified real-time event stream across agents
+ov feed [options]                Unified real-time event stream across agents
   --follow, -f                           Continuously poll for new events
   --interval <ms>                        Polling interval (default: 2000)
   --agent <name>  --run <id>             Filter by agent or run
   --json                                 JSON output
 
-overstory logs [options]                Query NDJSON logs across agents
+ov logs [options]                Query NDJSON logs across agents
   --agent <name>                         Filter by agent
   --level <level>                        Filter by log level (debug|info|warn|error)
   --since <ts>  --until <ts>             Time range filter
   --follow                               Tail logs in real time
   --json                                 JSON output
 
-overstory costs                         Token/cost analysis and breakdown
+ov costs                         Token/cost analysis and breakdown
   --live                                 Show real-time token usage for active agents
   --self                                 Show cost for current orchestrator session
   --agent <name>                         Filter by agent
@@ -258,7 +258,7 @@ overstory costs                         Token/cost analysis and breakdown
   --by-capability                        Group by capability type
   --last <n>  --json
 
-overstory metrics                       Show session metrics
+ov metrics                       Show session metrics
   --last <n>                             Last N sessions
   --json                                 JSON output
 
