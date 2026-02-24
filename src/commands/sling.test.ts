@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { resolveModel, resolveProviderEnv } from "../agents/manifest.ts";
 import { HierarchyError } from "../errors.ts";
+import type { AgentManifest, OverstoryConfig } from "../types.ts";
 import {
 	type BeaconOptions,
 	buildBeacon,
@@ -653,5 +655,199 @@ describe("checkRunSessionLimit", () => {
 
 	test("returns false when limit is negative (treated as unlimited)", () => {
 		expect(checkRunSessionLimit(-1, 100)).toBe(false);
+	});
+});
+
+/**
+ * Tests for sling provider env injection building blocks.
+ *
+ * In slingCommand, resolveModel() is called to get the { model, env } for the
+ * spawned agent. The env dict is then spread into createSession's env parameter
+ * alongside OVERSTORY_AGENT_NAME and OVERSTORY_WORKTREE_PATH:
+ *
+ *   const { model, env } = resolveModel(config, manifest, capability, agentDef.model);
+ *   const pid = await createSession(tmuxSessionName, worktreePath, claudeCmd, {
+ *       ...env,
+ *       OVERSTORY_AGENT_NAME: name,
+ *       OVERSTORY_WORKTREE_PATH: worktreePath,
+ *   });
+ *
+ * These tests verify the building blocks: that resolveModel and resolveProviderEnv
+ * produce the correct env dicts for the provider scenarios sling will encounter.
+ */
+
+function makeConfig(
+	models: OverstoryConfig["models"] = {},
+	providers: OverstoryConfig["providers"] = { anthropic: { type: "native" } },
+): OverstoryConfig {
+	return {
+		project: { name: "test", root: "/tmp/test", canonicalBranch: "main" },
+		agents: {
+			manifestPath: ".overstory/agent-manifest.json",
+			baseDir: ".overstory/agent-defs",
+			maxConcurrent: 5,
+			staggerDelayMs: 0,
+			maxDepth: 2,
+			maxSessionsPerRun: 0,
+		},
+		worktrees: { baseDir: ".overstory/worktrees" },
+		taskTracker: { backend: "auto", enabled: false },
+		mulch: { enabled: false, domains: [], primeFormat: "markdown" },
+		merge: { aiResolveEnabled: false, reimagineEnabled: false },
+		providers,
+		watchdog: {
+			tier0Enabled: false,
+			tier0IntervalMs: 30_000,
+			tier1Enabled: false,
+			tier2Enabled: false,
+			staleThresholdMs: 300_000,
+			zombieThresholdMs: 600_000,
+			nudgeIntervalMs: 60_000,
+		},
+		models,
+		logging: { verbose: false, redactSecrets: true },
+	};
+}
+
+function makeManifest(): AgentManifest {
+	return {
+		version: "1.0",
+		agents: {
+			builder: {
+				file: "builder.md",
+				model: "opus",
+				tools: ["Read", "Write", "Edit", "Bash"],
+				capabilities: ["implement"],
+				canSpawn: false,
+				constraints: [],
+			},
+			coordinator: {
+				file: "coordinator.md",
+				model: "sonnet",
+				tools: ["Read", "Bash"],
+				capabilities: ["coordinate"],
+				canSpawn: true,
+				constraints: [],
+			},
+		},
+		capabilityIndex: { implement: ["builder"], coordinate: ["coordinator"] },
+	};
+}
+
+describe("sling provider env injection building blocks", () => {
+	test("resolveModel produces env for gateway provider in config override scenario", () => {
+		const config = makeConfig(
+			{ builder: "openrouter/anthropic/claude-3-5-sonnet" },
+			{ openrouter: { type: "gateway", baseUrl: "https://openrouter.ai/api/v1" } },
+		);
+		const manifest = makeManifest();
+
+		const result = resolveModel(config, manifest, "builder", "sonnet");
+
+		expect(result.model).toBe("sonnet");
+		expect(result.env).toBeDefined();
+		expect(result.env?.ANTHROPIC_BASE_URL).toBe("https://openrouter.ai/api/v1");
+		expect(result.env?.ANTHROPIC_API_KEY).toBe("");
+		expect(result.env?.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe("anthropic/claude-3-5-sonnet");
+	});
+
+	test("env dict from resolveModel can be spread with OVERSTORY_AGENT_NAME and OVERSTORY_WORKTREE_PATH", () => {
+		const config = makeConfig(
+			{ builder: "openrouter/anthropic/claude-3-5-sonnet" },
+			{ openrouter: { type: "gateway", baseUrl: "https://openrouter.ai/api/v1" } },
+		);
+		const manifest = makeManifest();
+
+		const { env } = resolveModel(config, manifest, "builder", "sonnet");
+		// Simulates the spread in slingCommand: { ...env, OVERSTORY_AGENT_NAME: name, OVERSTORY_WORKTREE_PATH: wt }
+		const combined: Record<string, string> = {
+			...(env ?? {}),
+			OVERSTORY_AGENT_NAME: "test-builder",
+			OVERSTORY_WORKTREE_PATH: "/tmp/wt",
+		};
+
+		expect(combined.ANTHROPIC_BASE_URL).toBe("https://openrouter.ai/api/v1");
+		expect(combined.ANTHROPIC_API_KEY).toBe("");
+		expect(combined.OVERSTORY_AGENT_NAME).toBe("test-builder");
+		expect(combined.OVERSTORY_WORKTREE_PATH).toBe("/tmp/wt");
+	});
+
+	test("resolveModel returns no env for native anthropic provider", () => {
+		const config = makeConfig({ builder: "sonnet" }, { anthropic: { type: "native" } });
+		const manifest = makeManifest();
+
+		const result = resolveModel(config, manifest, "builder", "sonnet");
+
+		expect(result.model).toBe("sonnet");
+		expect(result.env).toBeUndefined();
+	});
+
+	test("resolveModel returns no env when model is a simple alias from manifest default", () => {
+		// No models override: manifest builder model "opus" is a simple alias
+		const config = makeConfig({}, {});
+		const manifest = makeManifest();
+
+		const result = resolveModel(config, manifest, "builder", "sonnet");
+
+		expect(result.model).toBe("opus");
+		expect(result.env).toBeUndefined();
+	});
+
+	test("resolveProviderEnv includes ANTHROPIC_AUTH_TOKEN when authTokenEnv var is set", () => {
+		const providers = {
+			openrouter: {
+				type: "gateway" as const,
+				baseUrl: "https://openrouter.ai/api/v1",
+				authTokenEnv: "MY_API_KEY",
+			},
+		};
+		const env = { MY_API_KEY: "sk-test-123" };
+
+		const result = resolveProviderEnv("openrouter", "anthropic/claude-3-5-sonnet", providers, env);
+
+		expect(result).not.toBeNull();
+		expect(result?.ANTHROPIC_AUTH_TOKEN).toBe("sk-test-123");
+	});
+
+	test("resolveProviderEnv omits ANTHROPIC_AUTH_TOKEN when authTokenEnv var is absent", () => {
+		const providers = {
+			openrouter: {
+				type: "gateway" as const,
+				baseUrl: "https://openrouter.ai/api/v1",
+				authTokenEnv: "MY_API_KEY",
+			},
+		};
+		const env: Record<string, string | undefined> = {};
+
+		const result = resolveProviderEnv("openrouter", "anthropic/claude-3-5-sonnet", providers, env);
+
+		expect(result).not.toBeNull();
+		expect(result?.ANTHROPIC_AUTH_TOKEN).toBeUndefined();
+	});
+
+	test("resolveModel produces different env dicts for coordinator and builder with different gateway providers", () => {
+		const config = makeConfig(
+			{
+				coordinator: "openrouter/anthropic/claude-3-5-sonnet",
+				builder: "litellm/anthropic/claude-3-5-haiku",
+			},
+			{
+				openrouter: { type: "gateway", baseUrl: "https://openrouter.ai/api/v1" },
+				litellm: { type: "gateway", baseUrl: "https://litellm.example.com/v1" },
+			},
+		);
+		const manifest = makeManifest();
+
+		const coordinatorResult = resolveModel(config, manifest, "coordinator", "sonnet");
+		const builderResult = resolveModel(config, manifest, "builder", "sonnet");
+
+		expect(coordinatorResult.model).toBe("sonnet");
+		expect(builderResult.model).toBe("sonnet");
+		expect(coordinatorResult.env?.ANTHROPIC_BASE_URL).toBe("https://openrouter.ai/api/v1");
+		expect(builderResult.env?.ANTHROPIC_BASE_URL).toBe("https://litellm.example.com/v1");
+		expect(coordinatorResult.env?.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe(
+			"anthropic/claude-3-5-sonnet",
+		);
+		expect(builderResult.env?.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe("anthropic/claude-3-5-haiku");
 	});
 });
