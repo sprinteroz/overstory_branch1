@@ -33,3 +33,5 @@ watchdog:
 logging:
   verbose: false
   redactSecrets: true
+taskTracker:
+  enabled: false
