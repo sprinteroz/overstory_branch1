@@ -4,7 +4,7 @@
  * Overstory CLI — main entry point and command router.
  *
  * Routes subcommands to their respective handlers in src/commands/.
- * Usage: overstory <command> [args...]
+ * Usage: ov <command> [args...]
  */
 
 import { Command } from "commander";
@@ -113,9 +113,9 @@ function suggestCommand(input: string): string | undefined {
 const program = new Command();
 
 program
-	.name("overstory")
+	.name("ov")
 	.description("Multi-agent orchestration for Claude Code")
-	.version(`overstory v${VERSION}`, "-v, --version")
+	.version(`ov v${VERSION}`, "-v, --version")
 	.option("-q, --quiet", "Suppress non-error output")
 	.option("--json", "JSON output")
 	.option("--verbose", "Verbose output");
@@ -295,7 +295,7 @@ program.on("command:*", (operands) => {
 	if (suggestion) {
 		process.stderr.write(`Did you mean '${suggestion}'?\n`);
 	}
-	process.stderr.write("Run 'overstory --help' for usage.\n");
+	process.stderr.write("Run 'ov --help' for usage.\n");
 	process.exit(1);
 });
 
@@ -307,7 +307,7 @@ if (import.meta.main)
 	main().catch((err: unknown) => {
 		// Friendly message when running outside a git repository
 		if (err instanceof WorktreeError && err.message.includes("not a git repository")) {
-			process.stderr.write("Not in an overstory project. Run 'overstory init' first.\n");
+			process.stderr.write("Not in an overstory project. Run 'ov init' first.\n");
 			process.exit(1);
 		}
 		if (err instanceof OverstoryError) {
