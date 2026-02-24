@@ -792,7 +792,7 @@ describe("worktreeCommand", () => {
 				baseDir: worktreesDir,
 				agentName: "lead-with-seeds",
 				baseBranch: "main",
-				beadId: "task-lead-seeds",
+				taskId: "task-lead-seeds",
 			});
 
 			// Commit a .seeds/ file in the lead worktree
@@ -810,7 +810,7 @@ describe("worktreeCommand", () => {
 					capability: "lead",
 					worktreePath: wtPath,
 					branchName: branch,
-					beadId: "task-lead-seeds",
+					taskId: "task-lead-seeds",
 					state: "completed",
 				}),
 			]);
@@ -845,7 +845,7 @@ describe("worktreeCommand", () => {
 				baseDir: worktreesDir,
 				agentName: "lead-no-seeds",
 				baseBranch: "main",
-				beadId: "task-lead-no-seeds",
+				taskId: "task-lead-no-seeds",
 			});
 
 			// Commit a non-.seeds/ file
@@ -858,7 +858,7 @@ describe("worktreeCommand", () => {
 					capability: "lead",
 					worktreePath: wtPath,
 					branchName: branch,
-					beadId: "task-lead-no-seeds",
+					taskId: "task-lead-no-seeds",
 					state: "completed",
 				}),
 			]);
@@ -883,7 +883,7 @@ describe("worktreeCommand", () => {
 				baseDir: worktreesDir,
 				agentName: "lead-unmerged",
 				baseBranch: "main",
-				beadId: "task-lead-unmerged",
+				taskId: "task-lead-unmerged",
 			});
 
 			// Add unmerged non-.seeds/ commit
@@ -896,7 +896,7 @@ describe("worktreeCommand", () => {
 					capability: "lead",
 					worktreePath: wtPath,
 					branchName: branch,
-					beadId: "task-lead-unmerged",
+					taskId: "task-lead-unmerged",
 					state: "completed",
 				}),
 			]);
@@ -920,7 +920,7 @@ describe("worktreeCommand", () => {
 				baseDir: worktreesDir,
 				agentName: "lead-seeds-json",
 				baseBranch: "main",
-				beadId: "task-seeds-json",
+				taskId: "task-seeds-json",
 			});
 
 			// Commit a .seeds/ file in the lead worktree
@@ -938,7 +938,7 @@ describe("worktreeCommand", () => {
 					capability: "lead",
 					worktreePath: wtPath,
 					branchName: branch,
-					beadId: "task-seeds-json",
+					taskId: "task-seeds-json",
 					state: "completed",
 				}),
 			]);
