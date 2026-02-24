@@ -8,7 +8,13 @@
  */
 
 import { join } from "node:path";
+import { loadConfig } from "../config.ts";
 import { GroupError, ValidationError } from "../errors.ts";
+import {
+	createTrackerClient,
+	type TrackerBackend,
+	type TrackerClient,
+} from "../tracker/factory.ts";
 import type { TaskGroup, TaskGroupProgress } from "../types.ts";
 
 /** Boolean flags that do NOT consume the next arg. */
@@ -71,38 +77,25 @@ async function saveGroups(projectRoot: string, groups: TaskGroup[]): Promise<voi
 }
 
 /**
- * Query a beads issue status via `bd show <id> --json`.
+ * Query a tracker issue status via the tracker client.
  * Returns the status string, or null if the issue cannot be found.
  */
-async function getIssueStatus(id: string): Promise<string | null> {
+async function getIssueStatus(id: string, tracker: TrackerClient): Promise<string | null> {
 	try {
-		const proc = Bun.spawn(["bd", "show", id, "--json"], {
-			stdout: "pipe",
-			stderr: "pipe",
-		});
-		const [stdout, exitCode] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
-		if (exitCode !== 0) {
-			return null;
-		}
-		// bd show --json returns an array with a single element
-		const arr = JSON.parse(stdout) as { status?: string }[];
-		const data = arr[0];
-		if (!data) {
-			return null;
-		}
-		return data.status ?? null;
+		const issue = await tracker.show(id);
+		return issue.status ?? null;
 	} catch {
 		return null;
 	}
 }
 
 /**
- * Validate that a beads issue exists.
+ * Validate that a tracker issue exists.
  */
-async function validateIssueExists(id: string): Promise<void> {
-	const status = await getIssueStatus(id);
+async function validateIssueExists(id: string, tracker: TrackerClient): Promise<void> {
+	const status = await getIssueStatus(id, tracker);
 	if (status === null) {
-		throw new GroupError(`Issue "${id}" not found in beads`, { groupId: id });
+		throw new GroupError(`Issue "${id}" not found in tracker`, { groupId: id });
 	}
 }
 
@@ -121,6 +114,7 @@ async function createGroup(
 	name: string,
 	issueIds: string[],
 	skipValidation = false,
+	tracker?: TrackerClient,
 ): Promise<TaskGroup> {
 	if (!name || name.trim().length === 0) {
 		throw new ValidationError("Group name is required", { field: "name" });
@@ -130,9 +124,9 @@ async function createGroup(
 	}
 
 	// Validate all issues exist
-	if (!skipValidation) {
+	if (!skipValidation && tracker) {
 		for (const id of issueIds) {
-			await validateIssueExists(id);
+			await validateIssueExists(id, tracker);
 		}
 	}
 
@@ -164,6 +158,7 @@ async function addToGroup(
 	groupId: string,
 	issueIds: string[],
 	skipValidation = false,
+	tracker?: TrackerClient,
 ): Promise<TaskGroup> {
 	if (issueIds.length === 0) {
 		throw new ValidationError("At least one issue ID is required", { field: "issueIds" });
@@ -185,9 +180,9 @@ async function addToGroup(
 	}
 
 	// Validate issues exist
-	if (!skipValidation) {
+	if (!skipValidation && tracker) {
 		for (const id of issueIds) {
-			await validateIssueExists(id);
+			await validateIssueExists(id, tracker);
 		}
 	}
 
@@ -242,13 +237,14 @@ async function removeFromGroup(
 }
 
 /**
- * Get progress for a single group. Queries beads for member issue statuses.
+ * Get progress for a single group. Queries the tracker for member issue statuses.
  * Auto-closes the group if all members are closed.
  */
 async function getGroupProgress(
 	projectRoot: string,
 	group: TaskGroup,
 	groups: TaskGroup[],
+	tracker?: TrackerClient,
 ): Promise<TaskGroupProgress> {
 	let completed = 0;
 	let inProgress = 0;
@@ -256,7 +252,7 @@ async function getGroupProgress(
 	let open = 0;
 
 	for (const id of group.memberIssueIds) {
-		const status = await getIssueStatus(id);
+		const status = tracker ? await getIssueStatus(id, tracker) : null;
 		switch (status) {
 			case "closed":
 				completed++;
@@ -360,8 +356,11 @@ export async function groupCommand(args: string[]): Promise<void> {
 	const json = subArgs.includes("--json");
 	const skipValidation = subArgs.includes("--skip-validation");
 
-	const { resolveProjectRoot } = await import("../config.ts");
-	const projectRoot = await resolveProjectRoot(process.cwd());
+	const config = await loadConfig(process.cwd());
+	const projectRoot = config.project.root;
+	const resolvedBackend: TrackerBackend =
+		config.taskTracker.backend === "auto" ? "beads" : config.taskTracker.backend;
+	const tracker = createTrackerClient(resolvedBackend, projectRoot);
 
 	switch (subcommand) {
 		case "create": {
@@ -380,7 +379,7 @@ export async function groupCommand(args: string[]): Promise<void> {
 					{ field: "issueIds" },
 				);
 			}
-			const group = await createGroup(projectRoot, name, issueIds, skipValidation);
+			const group = await createGroup(projectRoot, name, issueIds, skipValidation, tracker);
 			if (json) {
 				process.stdout.write(`${JSON.stringify(group, null, "\t")}\n`);
 			} else {
@@ -400,7 +399,7 @@ export async function groupCommand(args: string[]): Promise<void> {
 				if (!group) {
 					throw new GroupError(`Group "${groupId}" not found`, { groupId });
 				}
-				const progress = await getGroupProgress(projectRoot, group, groups);
+				const progress = await getGroupProgress(projectRoot, group, groups, tracker);
 				if (json) {
 					process.stdout.write(`${JSON.stringify(progress, null, "\t")}\n`);
 				} else {
@@ -418,7 +417,7 @@ export async function groupCommand(args: string[]): Promise<void> {
 				}
 				const progressList: TaskGroupProgress[] = [];
 				for (const group of activeGroups) {
-					const progress = await getGroupProgress(projectRoot, group, groups);
+					const progress = await getGroupProgress(projectRoot, group, groups, tracker);
 					progressList.push(progress);
 				}
 				if (json) {
@@ -449,7 +448,7 @@ export async function groupCommand(args: string[]): Promise<void> {
 					{ field: "issueIds" },
 				);
 			}
-			const group = await addToGroup(projectRoot, groupId, issueIds, skipValidation);
+			const group = await addToGroup(projectRoot, groupId, issueIds, skipValidation, tracker);
 			if (json) {
 				process.stdout.write(`${JSON.stringify(group, null, "\t")}\n`);
 			} else {
