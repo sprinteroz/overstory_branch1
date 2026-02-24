@@ -95,7 +95,7 @@ describe("logsCommand", () => {
 			await logsCommand(["--help"]);
 		});
 
-		expect(output).toContain("overstory logs");
+		expect(output).toContain("logs");
 		expect(output).toContain("--agent");
 		expect(output).toContain("--level");
 		expect(output).toContain("--since");

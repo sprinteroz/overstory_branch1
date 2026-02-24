@@ -78,7 +78,7 @@ describe("errorsCommand", () => {
 			await errorsCommand(["--help"]);
 			const out = output();
 
-			expect(out).toContain("overstory errors");
+			expect(out).toContain("errors");
 			expect(out).toContain("--agent");
 			expect(out).toContain("--run");
 			expect(out).toContain("--json");
@@ -91,7 +91,7 @@ describe("errorsCommand", () => {
 			await errorsCommand(["-h"]);
 			const out = output();
 
-			expect(out).toContain("overstory errors");
+			expect(out).toContain("errors");
 		});
 	});
 

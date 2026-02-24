@@ -102,7 +102,7 @@ describe("inspectCommand", () => {
 		test("--help shows help text", async () => {
 			await inspectCommand(["--help"]);
 			const out = output();
-			expect(out).toContain("overstory inspect");
+			expect(out).toContain("inspect");
 			expect(out).toContain("--json");
 			expect(out).toContain("--follow");
 			expect(out).toContain("--limit");
@@ -112,7 +112,7 @@ describe("inspectCommand", () => {
 		test("-h shows help text", async () => {
 			await inspectCommand(["-h"]);
 			const out = output();
-			expect(out).toContain("overstory inspect");
+			expect(out).toContain("inspect");
 		});
 	});
 

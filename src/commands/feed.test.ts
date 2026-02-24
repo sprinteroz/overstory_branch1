@@ -78,7 +78,7 @@ describe("feedCommand", () => {
 			await feedCommand(["--help"]);
 			const out = output();
 
-			expect(out).toContain("overstory feed");
+			expect(out).toContain("feed");
 			expect(out).toContain("--follow");
 			expect(out).toContain("--agent");
 			expect(out).toContain("--run");
@@ -92,7 +92,7 @@ describe("feedCommand", () => {
 			await feedCommand(["-h"]);
 			const out = output();
 
-			expect(out).toContain("overstory feed");
+			expect(out).toContain("feed");
 		});
 	});
 

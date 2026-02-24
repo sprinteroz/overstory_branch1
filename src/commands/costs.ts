@@ -8,7 +8,7 @@
 
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { Command, CommanderError } from "commander";
+import { Command } from "commander";
 import { loadConfig } from "../config.ts";
 import { ValidationError } from "../errors.ts";
 import { color } from "../logging/color.ts";
@@ -565,17 +565,20 @@ export function createCostsCommand(): Command {
 }
 
 export async function costsCommand(args: string[]): Promise<void> {
-	const program = new Command("overstory").exitOverride().configureOutput({
-		writeOut: (str) => process.stdout.write(str),
-		writeErr: (str) => process.stderr.write(str),
-	});
-	program.addCommand(createCostsCommand());
+	const cmd = createCostsCommand();
+	cmd.exitOverride();
 	try {
-		await program.parseAsync(["node", "overstory", "costs", ...args]);
+		await cmd.parseAsync(args, { from: "user" });
 	} catch (err: unknown) {
-		if (err instanceof CommanderError) {
-			if (err.code === "commander.helpDisplayed" || err.code === "commander.version") return;
-			throw new ValidationError(err.message, { field: "args" });
+		if (err && typeof err === "object" && "code" in err) {
+			const code = (err as { code: string }).code;
+			if (code === "commander.helpDisplayed" || code === "commander.version") {
+				return;
+			}
+			if (code.startsWith("commander.")) {
+				const message = err instanceof Error ? err.message : String(err);
+				throw new ValidationError(message, { field: "args" });
+			}
 		}
 		throw err;
 	}

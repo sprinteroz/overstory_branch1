@@ -11,7 +11,7 @@
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { Command, CommanderError } from "commander";
+import { Command } from "commander";
 import { loadConfig } from "../config.ts";
 import { ValidationError } from "../errors.ts";
 import type { ColorFn } from "../logging/color.ts";
@@ -786,7 +786,7 @@ async function executeDashboard(opts: DashboardOpts): Promise<void> {
 
 export function createDashboardCommand(): Command {
 	return new Command("dashboard")
-		.description("Live TUI dashboard for agent monitoring")
+		.description("Live TUI dashboard for agent monitoring (Ctrl+C to stop)")
 		.option("--interval <ms>", "Poll interval in milliseconds (default: 2000, min: 500)")
 		.option("--all", "Show data from all runs (default: current run only)")
 		.action(async (opts: DashboardOpts) => {
@@ -795,17 +795,20 @@ export function createDashboardCommand(): Command {
 }
 
 export async function dashboardCommand(args: string[]): Promise<void> {
-	const program = new Command("overstory").exitOverride().configureOutput({
-		writeOut: (str) => process.stdout.write(str),
-		writeErr: (str) => process.stderr.write(str),
-	});
-	program.addCommand(createDashboardCommand());
+	const cmd = createDashboardCommand();
+	cmd.exitOverride();
 	try {
-		await program.parseAsync(["node", "overstory", "dashboard", ...args]);
+		await cmd.parseAsync(args, { from: "user" });
 	} catch (err: unknown) {
-		if (err instanceof CommanderError) {
-			if (err.code === "commander.helpDisplayed" || err.code === "commander.version") return;
-			throw new ValidationError(err.message, { field: "args" });
+		if (err && typeof err === "object" && "code" in err) {
+			const code = (err as { code: string }).code;
+			if (code === "commander.helpDisplayed" || code === "commander.version") {
+				return;
+			}
+			if (code.startsWith("commander.")) {
+				const message = err instanceof Error ? err.message : String(err);
+				throw new ValidationError(message, { field: "args" });
+			}
 		}
 		throw err;
 	}

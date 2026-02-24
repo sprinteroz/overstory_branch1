@@ -86,7 +86,7 @@ describe("costsCommand", () => {
 			await costsCommand(["--help"]);
 			const out = output();
 
-			expect(out).toContain("overstory costs");
+			expect(out).toContain("costs");
 			expect(out).toContain("--agent");
 			expect(out).toContain("--run");
 			expect(out).toContain("--by-capability");
@@ -98,7 +98,7 @@ describe("costsCommand", () => {
 			await costsCommand(["-h"]);
 			const out = output();
 
-			expect(out).toContain("overstory costs");
+			expect(out).toContain("costs");
 		});
 	});
 

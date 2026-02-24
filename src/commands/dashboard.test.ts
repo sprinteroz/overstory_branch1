@@ -51,7 +51,7 @@ describe("dashboardCommand", () => {
 		await dashboardCommand(["--help"]);
 		const out = output();
 
-		expect(out).toContain("overstory dashboard");
+		expect(out).toContain("dashboard");
 		expect(out).toContain("--interval");
 		expect(out).toContain("Ctrl+C");
 	});
@@ -60,7 +60,7 @@ describe("dashboardCommand", () => {
 		await dashboardCommand(["-h"]);
 		const out = output();
 
-		expect(out).toContain("overstory dashboard");
+		expect(out).toContain("dashboard");
 		expect(out).toContain("--interval");
 		expect(out).toContain("Ctrl+C");
 	});
