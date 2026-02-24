@@ -1,14 +1,15 @@
 /**
  * CLI command: overstory mail send/check/list/read/reply
  *
- * Parses CLI args and delegates to the mail client.
+ * Parses CLI args via Commander.js and delegates to the mail client.
  * Supports --inject for hook context injection, --json for machine output,
  * and various filters for listing messages.
  */
 
+import { Command } from "commander";
 import { join } from "node:path";
 import { resolveProjectRoot } from "../config.ts";
-import { MailError, ValidationError } from "../errors.ts";
+import { ValidationError } from "../errors.ts";
 import { createEventStore } from "../events/store.ts";
 import { isGroupAddress, resolveGroupAddress } from "../mail/broadcast.ts";
 import { createMailClient } from "../mail/client.ts";
@@ -28,54 +29,6 @@ const AUTO_NUDGE_TYPES: ReadonlySet<MailMessageType> = new Set([
 	"escalation",
 	"merge_failed",
 ]);
-
-/**
- * Parse a named flag value from an args array.
- * Returns the value after the flag, or undefined if not present.
- */
-function getFlag(args: string[], flag: string): string | undefined {
-	const idx = args.indexOf(flag);
-	if (idx === -1 || idx + 1 >= args.length) {
-		return undefined;
-	}
-	return args[idx + 1];
-}
-
-/** Check if a boolean flag is present in the args. */
-function hasFlag(args: string[], flag: string): boolean {
-	return args.includes(flag);
-}
-
-/** Boolean flags that do NOT consume the next arg as a value. */
-const BOOLEAN_FLAGS = new Set(["--json", "--inject", "--unread", "--all", "--help", "-h"]);
-
-/**
- * Extract positional arguments from an args array, skipping flag-value pairs.
- *
- * Iterates through args, skipping `--flag value` pairs for value-bearing flags
- * and lone boolean flags. Everything else is a positional arg.
- */
-function getPositionalArgs(args: string[]): string[] {
-	const positional: string[] = [];
-	let i = 0;
-	while (i < args.length) {
-		const arg = args[i];
-		if (arg?.startsWith("-")) {
-			// It's a flag. If it's boolean, skip just it; otherwise skip it + its value.
-			if (BOOLEAN_FLAGS.has(arg)) {
-				i += 1;
-			} else {
-				i += 2; // skip flag + its value
-			}
-		} else {
-			if (arg !== undefined) {
-				positional.push(arg);
-			}
-			i += 1;
-		}
-	}
-	return positional;
-}
 
 /** Format a single message for human-readable output. */
 function formatMessage(msg: MailMessage): string {
@@ -255,17 +208,58 @@ function openClient(cwd: string) {
 	return client;
 }
 
+// === Typed option interfaces for each subcommand ===
+
+interface SendOpts {
+	to: string;
+	subject: string;
+	body: string;
+	from?: string;
+	agent?: string;
+	type?: string;
+	priority?: string;
+	payload?: string;
+	json?: boolean;
+}
+
+interface CheckOpts {
+	agent?: string;
+	inject?: boolean;
+	json?: boolean;
+	debounce?: string;
+}
+
+interface ListOpts {
+	from?: string;
+	to?: string;
+	agent?: string;
+	unread?: boolean;
+	json?: boolean;
+}
+
+interface ReplyOpts {
+	body: string;
+	from?: string;
+	agent?: string;
+	json?: boolean;
+}
+
+interface PurgeOpts {
+	all?: boolean;
+	days?: string;
+	agent?: string;
+	json?: boolean;
+}
+
 /** overstory mail send */
-async function handleSend(args: string[], cwd: string): Promise<void> {
-	const to = getFlag(args, "--to");
-	const subject = getFlag(args, "--subject");
-	const body = getFlag(args, "--body");
-	const from = getFlag(args, "--agent") ?? getFlag(args, "--from") ?? "orchestrator";
-	const rawPayload = getFlag(args, "--payload");
+async function handleSend(opts: SendOpts, cwd: string): Promise<void> {
+	const { to, subject, body } = opts;
+	const from = opts.agent ?? opts.from ?? "orchestrator";
+	const rawPayload = opts.payload;
 	const VALID_PRIORITIES = ["low", "normal", "high", "urgent"] as const;
 
-	const rawType = getFlag(args, "--type") ?? "status";
-	const rawPriority = getFlag(args, "--priority") ?? "normal";
+	const rawType = opts.type ?? "status";
+	const rawPriority = opts.priority ?? "normal";
 
 	if (!MAIL_MESSAGE_TYPES.includes(rawType as MailMessage["type"])) {
 		throw new ValidationError(
@@ -295,16 +289,6 @@ async function handleSend(args: string[], cwd: string): Promise<void> {
 				value: rawPayload,
 			});
 		}
-	}
-
-	if (!to) {
-		throw new ValidationError("--to is required for mail send", { field: "to" });
-	}
-	if (!subject) {
-		throw new ValidationError("--subject is required for mail send", { field: "subject" });
-	}
-	if (!body) {
-		throw new ValidationError("--body is required for mail send", { field: "body" });
 	}
 
 	// Handle broadcast messages (group addresses)
@@ -383,7 +367,7 @@ async function handleSend(args: string[], cwd: string): Promise<void> {
 			}
 
 			// Output broadcast summary
-			if (hasFlag(args, "--json")) {
+			if (opts.json) {
 				process.stdout.write(
 					`${JSON.stringify({ messageIds, recipientCount: recipients.length })}\n`,
 				);
@@ -442,7 +426,7 @@ async function handleSend(args: string[], cwd: string): Promise<void> {
 			// Event recording failure is non-fatal
 		}
 
-		if (hasFlag(args, "--json")) {
+		if (opts.json) {
 			process.stdout.write(`${JSON.stringify({ id })}\n`);
 		} else {
 			process.stdout.write(`✉️  Sent message ${id} to ${to}\n`);
@@ -463,7 +447,7 @@ async function handleSend(args: string[], cwd: string): Promise<void> {
 				subject,
 				messageId: id,
 			});
-			if (!hasFlag(args, "--json")) {
+			if (!opts.json) {
 				process.stdout.write(
 					`📢 Queued nudge for "${to}" (${nudgeReason}, delivered on next prompt)\n`,
 				);
@@ -507,11 +491,11 @@ async function handleSend(args: string[], cwd: string): Promise<void> {
 }
 
 /** overstory mail check */
-async function handleCheck(args: string[], cwd: string): Promise<void> {
-	const agent = getFlag(args, "--agent") ?? "orchestrator";
-	const inject = hasFlag(args, "--inject");
-	const json = hasFlag(args, "--json");
-	const debounceFlag = getFlag(args, "--debounce");
+async function handleCheck(opts: CheckOpts, cwd: string): Promise<void> {
+	const agent = opts.agent ?? "orchestrator";
+	const inject = opts.inject ?? false;
+	const json = opts.json ?? false;
+	const debounceFlag = opts.debounce;
 
 	// Parse debounce interval if provided
 	let debounceMs: number | undefined;
@@ -578,12 +562,12 @@ async function handleCheck(args: string[], cwd: string): Promise<void> {
 }
 
 /** overstory mail list */
-function handleList(args: string[], cwd: string): void {
-	const from = getFlag(args, "--from");
-	// --agent is an alias for --to, providing agent-scoped perspective (like mail check)
-	const to = getFlag(args, "--to") ?? getFlag(args, "--agent");
-	const unread = hasFlag(args, "--unread") ? true : undefined;
-	const json = hasFlag(args, "--json");
+function handleList(opts: ListOpts, cwd: string): void {
+	const from = opts.from;
+	// --to takes precedence over --agent (agent is an alias for recipient filtering)
+	const to = opts.to ?? opts.agent;
+	const unread = opts.unread ? true : undefined;
+	const json = opts.json ?? false;
 
 	const client = openClient(cwd);
 	try {
@@ -607,13 +591,7 @@ function handleList(args: string[], cwd: string): void {
 }
 
 /** overstory mail read */
-function handleRead(args: string[], cwd: string): void {
-	const positional = getPositionalArgs(args);
-	const id = positional[0];
-	if (!id) {
-		throw new ValidationError("Message ID is required for mail read", { field: "id" });
-	}
-
+function handleRead(id: string, cwd: string): void {
 	const client = openClient(cwd);
 	try {
 		const { alreadyRead } = client.markRead(id);
@@ -628,24 +606,15 @@ function handleRead(args: string[], cwd: string): void {
 }
 
 /** overstory mail reply */
-function handleReply(args: string[], cwd: string): void {
-	const positional = getPositionalArgs(args);
-	const id = positional[0];
-	const body = getFlag(args, "--body");
-	const from = getFlag(args, "--agent") ?? getFlag(args, "--from") ?? "orchestrator";
-
-	if (!id) {
-		throw new ValidationError("Message ID is required for mail reply", { field: "id" });
-	}
-	if (!body) {
-		throw new ValidationError("--body is required for mail reply", { field: "body" });
-	}
+function handleReply(id: string, opts: ReplyOpts, cwd: string): void {
+	const body = opts.body;
+	const from = opts.agent ?? opts.from ?? "orchestrator";
 
 	const client = openClient(cwd);
 	try {
 		const replyId = client.reply(id, body, from);
 
-		if (hasFlag(args, "--json")) {
+		if (opts.json) {
 			process.stdout.write(`${JSON.stringify({ id: replyId })}\n`);
 		} else {
 			process.stdout.write(`✉️  Reply sent: ${replyId}\n`);
@@ -656,11 +625,11 @@ function handleReply(args: string[], cwd: string): void {
 }
 
 /** overstory mail purge */
-function handlePurge(args: string[], cwd: string): void {
-	const all = hasFlag(args, "--all");
-	const daysStr = getFlag(args, "--days");
-	const agent = getFlag(args, "--agent");
-	const json = hasFlag(args, "--json");
+function handlePurge(opts: PurgeOpts, cwd: string): void {
+	const all = opts.all ?? false;
+	const daysStr = opts.days;
+	const agent = opts.agent;
+	const json = opts.json ?? false;
 
 	if (!all && daysStr === undefined && agent === undefined) {
 		throw new ValidationError(
@@ -699,73 +668,95 @@ function handlePurge(args: string[], cwd: string): void {
  * Entry point for `overstory mail <subcommand> [args...]`.
  *
  * Subcommands: send, check, list, read, reply, purge.
+ * Uses Commander.js for subcommand routing and option parsing.
  */
-const MAIL_HELP = `overstory mail — Agent messaging system
-
-Usage: overstory mail <subcommand> [args...]
-
-Subcommands:
-  send     Send a message
-             --to <agent>  --subject <text>  --body <text>
-             [--from <name>] [--agent <name> (alias for --from)]
-             [--type <type>] [--priority <low|normal|high|urgent>]
-             [--payload <json>] [--json]
-           Types: status, question, result, error (semantic)
-                  worker_done, merge_ready, merged, merge_failed,
-                  escalation, health_check, dispatch, assign (protocol)
-  check    Check inbox (unread messages)
-             [--agent <name>] [--inject] [--json]
-  list     List messages with filters
-             [--from <name>] [--to <name>] [--agent <name> (alias for --to)]
-             [--unread] [--json]
-  read     Mark a message as read
-             <message-id>
-  reply    Reply to a message
-             <message-id> --body <text> [--from <name>]
-             [--agent <name> (alias for --from)] [--json]
-  purge    Delete old messages
-             --all | --days <n> | --agent <name>
-             [--json]
-
-Options:
-  --help, -h   Show this help`;
-
 export async function mailCommand(args: string[]): Promise<void> {
-	if (args.includes("--help") || args.includes("-h")) {
-		process.stdout.write(`${MAIL_HELP}\n`);
-		return;
-	}
-
-	const subcommand = args[0];
-	const subArgs = args.slice(1);
-
 	// Resolve the actual project root (handles git worktrees).
 	// Mail commands may run from agent worktrees via hooks, so we must
 	// resolve up to the main project root where .overstory/mail.db lives.
 	const root = await resolveProjectRoot(process.cwd());
 
-	switch (subcommand) {
-		case "send":
-			await handleSend(subArgs, root);
-			break;
-		case "check":
-			await handleCheck(subArgs, root);
-			break;
-		case "list":
-			handleList(subArgs, root);
-			break;
-		case "read":
-			handleRead(subArgs, root);
-			break;
-		case "reply":
-			handleReply(subArgs, root);
-			break;
-		case "purge":
-			handlePurge(subArgs, root);
-			break;
-		default:
-			throw new MailError(
-				`Unknown mail subcommand: ${subcommand ?? "(none)"}. Use: send, check, list, read, reply, purge`,
-			);
-	}
+	const program = new Command();
+	program
+		.name("overstory mail")
+		.description("Agent messaging system")
+		.exitOverride();
+
+	program
+		.command("send")
+		.description("Send a message")
+		.requiredOption("--to <agent>", "Recipient agent name")
+		.requiredOption("--subject <text>", "Message subject")
+		.requiredOption("--body <text>", "Message body")
+		.option("--from <name>", "Sender name")
+		.option("--agent <name>", "Alias for --from")
+		.option("--type <type>", "Message type", "status")
+		.option("--priority <level>", "Priority level", "normal")
+		.option("--payload <json>", "Structured JSON payload")
+		.option("--json", "Output as JSON")
+		.exitOverride()
+		.action(async (opts: SendOpts) => {
+			await handleSend(opts, root);
+		});
+
+	program
+		.command("check")
+		.description("Check inbox (unread messages)")
+		.option("--agent <name>", "Agent name")
+		.option("--inject", "Inject format for hook context")
+		.option("--json", "Output as JSON")
+		.option("--debounce <ms>", "Debounce interval in milliseconds")
+		.exitOverride()
+		.action(async (opts: CheckOpts) => {
+			await handleCheck(opts, root);
+		});
+
+	program
+		.command("list")
+		.description("List messages with filters")
+		.option("--from <name>", "Filter by sender")
+		.option("--to <name>", "Filter by recipient")
+		.option("--agent <name>", "Alias for --to (filter by recipient)")
+		.option("--unread", "Show only unread messages")
+		.option("--json", "Output as JSON")
+		.exitOverride()
+		.action((opts: ListOpts) => {
+			handleList(opts, root);
+		});
+
+	program
+		.command("read")
+		.description("Mark a message as read")
+		.argument("<message-id>", "Message ID")
+		.exitOverride()
+		.action((id: string) => {
+			handleRead(id, root);
+		});
+
+	program
+		.command("reply")
+		.description("Reply to a message")
+		.argument("<message-id>", "Message ID to reply to")
+		.requiredOption("--body <text>", "Reply body")
+		.option("--from <name>", "Sender name")
+		.option("--agent <name>", "Alias for --from")
+		.option("--json", "Output as JSON")
+		.exitOverride()
+		.action((id: string, opts: ReplyOpts) => {
+			handleReply(id, opts, root);
+		});
+
+	program
+		.command("purge")
+		.description("Delete old messages")
+		.option("--all", "Purge all messages")
+		.option("--days <n>", "Purge messages older than N days")
+		.option("--agent <name>", "Purge messages for specific agent")
+		.option("--json", "Output as JSON")
+		.exitOverride()
+		.action((opts: PurgeOpts) => {
+			handlePurge(opts, root);
+		});
+
+	await program.parseAsync(["node", "overstory-mail", ...args]);
 }
