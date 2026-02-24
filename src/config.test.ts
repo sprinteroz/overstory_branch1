@@ -265,6 +265,80 @@ providers:
 		expect(config.providers.anthropic).toEqual({ type: "native" });
 	});
 
+	test("multiple providers parsed correctly", async () => {
+		await ensureOverstoryDir();
+		await writeConfig(`
+providers:
+  anthropic:
+    type: native
+  openrouter:
+    type: gateway
+    baseUrl: https://openrouter.ai/api/v1
+    authTokenEnv: OPENROUTER_API_KEY
+  litellm:
+    type: gateway
+    baseUrl: http://localhost:4000
+    authTokenEnv: LITELLM_API_KEY
+`);
+		const config = await loadConfig(tempDir);
+		expect(Object.keys(config.providers).length).toBe(3);
+		expect(config.providers.anthropic).toEqual({ type: "native" });
+		expect(config.providers.openrouter).toEqual({
+			type: "gateway",
+			baseUrl: "https://openrouter.ai/api/v1",
+			authTokenEnv: "OPENROUTER_API_KEY",
+		});
+		expect(config.providers.litellm).toEqual({
+			type: "gateway",
+			baseUrl: "http://localhost:4000",
+			authTokenEnv: "LITELLM_API_KEY",
+		});
+	});
+
+	test("config.local.yaml adds new provider alongside config.yaml providers", async () => {
+		await ensureOverstoryDir();
+		await writeConfig(`
+providers:
+  openrouter:
+    type: gateway
+    baseUrl: https://openrouter.ai/api/v1
+    authTokenEnv: OPENROUTER_API_KEY
+`);
+		await Bun.write(
+			join(tempDir, ".overstory", "config.local.yaml"),
+			`providers:\n  litellm:\n    type: gateway\n    baseUrl: http://localhost:4000\n    authTokenEnv: LITELLM_API_KEY\n`,
+		);
+		const config = await loadConfig(tempDir);
+		// All three providers present: default anthropic + openrouter from config.yaml + litellm from config.local.yaml
+		expect(config.providers.anthropic).toEqual({ type: "native" });
+		expect(config.providers.openrouter).toEqual({
+			type: "gateway",
+			baseUrl: "https://openrouter.ai/api/v1",
+			authTokenEnv: "OPENROUTER_API_KEY",
+		});
+		expect(config.providers.litellm).toEqual({
+			type: "gateway",
+			baseUrl: "http://localhost:4000",
+			authTokenEnv: "LITELLM_API_KEY",
+		});
+	});
+
+	test("simple model strings still work without providers section", async () => {
+		await ensureOverstoryDir();
+		await writeConfig(`
+models:
+  coordinator: sonnet
+  builder: opus
+  monitor: haiku
+`);
+		const config = await loadConfig(tempDir);
+		expect(config.models.coordinator).toBe("sonnet");
+		expect(config.models.builder).toBe("opus");
+		expect(config.models.monitor).toBe("haiku");
+		// Default anthropic provider still present even without explicit providers section
+		expect(config.providers.anthropic).toEqual({ type: "native" });
+	});
+
 	test("migrates deprecated watchdog tier1/tier2 keys to tier0/tier1", async () => {
 		await ensureOverstoryDir();
 		await writeConfig(`
@@ -554,6 +628,28 @@ models:
   coordinator: unknown/model
 `);
 		await expect(loadConfig(tempDir)).rejects.toThrow(ValidationError);
+	});
+
+	test("rejects model ref with deeply nested slashes when provider unknown", async () => {
+		await writeConfig(`
+models:
+  coordinator: unknown/openai/gpt-5.3/latest
+`);
+		await expect(loadConfig(tempDir)).rejects.toThrow(ValidationError);
+	});
+
+	test("accepts model ref with deeply nested slashes when provider exists", async () => {
+		await writeConfig(`
+providers:
+  openrouter:
+    type: gateway
+    baseUrl: https://openrouter.ai/api/v1
+    authTokenEnv: OPENROUTER_API_KEY
+models:
+  coordinator: openrouter/openai/gpt-5.3/variant
+`);
+		const config = await loadConfig(tempDir);
+		expect(config.models.coordinator).toBe("openrouter/openai/gpt-5.3/variant");
 	});
 
 	test("rejects bare invalid model name", async () => {

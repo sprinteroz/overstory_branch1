@@ -635,6 +635,40 @@ describe("resolveModel", () => {
 		const result = resolveModel(config, baseManifest, "coordinator", "opus");
 		expect(result).toEqual({ model: "native-gw/claude-3-5-sonnet" });
 	});
+
+	test("handles deeply nested model ID (slashes in model name)", () => {
+		const config = makeConfig(
+			{ coordinator: "openrouter/openai/gpt-5.3" },
+			{
+				openrouter: {
+					type: "gateway",
+					baseUrl: "https://openrouter.ai/api/v1",
+					authTokenEnv: "OPENROUTER_API_KEY",
+				},
+			},
+		);
+		const result = resolveModel(config, baseManifest, "coordinator", "opus");
+		// First "/" splits provider "openrouter" from model ID "openai/gpt-5.3"
+		expect(result.model).toBe("sonnet");
+		expect(result.env?.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe("openai/gpt-5.3");
+	});
+
+	test("handles model ID with multiple slashes after provider", () => {
+		const config = makeConfig(
+			{ coordinator: "mygateway/org/model/version" },
+			{
+				mygateway: {
+					type: "gateway",
+					baseUrl: "https://mygateway.example.com",
+					authTokenEnv: "MYGATEWAY_KEY",
+				},
+			},
+		);
+		const result = resolveModel(config, baseManifest, "coordinator", "opus");
+		// Provider is "mygateway", model ID is everything after the first "/"
+		expect(result.model).toBe("sonnet");
+		expect(result.env?.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe("org/model/version");
+	});
 });
 
 describe("resolveProviderEnv", () => {
@@ -702,6 +736,58 @@ describe("resolveProviderEnv", () => {
 			},
 			{},
 		);
+		expect(result).not.toHaveProperty("ANTHROPIC_AUTH_TOKEN");
+	});
+
+	test("env always sets ANTHROPIC_API_KEY to empty string", () => {
+		const result = resolveProviderEnv(
+			"openrouter",
+			"openai/gpt-5.3",
+			{
+				openrouter: {
+					type: "gateway",
+					baseUrl: "https://openrouter.ai/api/v1",
+					authTokenEnv: "OPENROUTER_API_KEY",
+				},
+			},
+			{ OPENROUTER_API_KEY: "my-token" },
+		);
+		expect(result).not.toBeNull();
+		expect(result?.ANTHROPIC_API_KEY).toBe("");
+	});
+
+	test("handles authTokenEnv pointing to undefined env var", () => {
+		const result = resolveProviderEnv(
+			"openrouter",
+			"openai/gpt-5.3",
+			{
+				openrouter: {
+					type: "gateway",
+					baseUrl: "https://openrouter.ai/api/v1",
+					authTokenEnv: "MISSING_VAR",
+				},
+			},
+			{},
+		);
+		expect(result).not.toBeNull();
+		expect(result).not.toHaveProperty("ANTHROPIC_AUTH_TOKEN");
+	});
+
+	test("handles authTokenEnv field being undefined", () => {
+		const result = resolveProviderEnv(
+			"mygw",
+			"some-model",
+			{
+				mygw: {
+					type: "gateway",
+					baseUrl: "https://mygw.example.com",
+				},
+			},
+			{},
+		);
+		expect(result).not.toBeNull();
+		expect(result?.ANTHROPIC_BASE_URL).toBe("https://mygw.example.com");
+		expect(result?.ANTHROPIC_API_KEY).toBe("");
 		expect(result).not.toHaveProperty("ANTHROPIC_AUTH_TOKEN");
 	});
 });
