@@ -485,6 +485,11 @@ export function createSupervisorCommand(): Command {
 export async function supervisorCommand(args: string[]): Promise<void> {
 	const cmd = createSupervisorCommand();
 	cmd.exitOverride();
+	cmd.configureOutput({ writeErr: () => {} });
+	for (const sub of cmd.commands) {
+		sub.exitOverride();
+		sub.configureOutput({ writeErr: () => {} });
+	}
 
 	if (args.length === 0) {
 		process.stdout.write(cmd.helpInformation());

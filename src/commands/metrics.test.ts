@@ -77,7 +77,7 @@ describe("metricsCommand", () => {
 		await metricsCommand(["--help"]);
 		const out = output();
 
-		expect(out).toContain("overstory metrics");
+		expect(out).toContain("metrics");
 		expect(out).toContain("--last <n>");
 		expect(out).toContain("--json");
 		expect(out).toContain("--help");
@@ -87,7 +87,7 @@ describe("metricsCommand", () => {
 		await metricsCommand(["-h"]);
 		const out = output();
 
-		expect(out).toContain("overstory metrics");
+		expect(out).toContain("metrics");
 		expect(out).toContain("--last <n>");
 	});
 

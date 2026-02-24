@@ -6,7 +6,7 @@
  */
 
 import { join } from "node:path";
-import { Command, CommanderError } from "commander";
+import { Command } from "commander";
 import { loadConfig } from "../config.ts";
 import { ValidationError } from "../errors.ts";
 import { createMailStore } from "../mail/store.ts";
@@ -378,31 +378,24 @@ export function createStatusCommand(): Command {
 		.option("--verbose", "Show extra detail per agent (worktree, logs, mail timestamps)")
 		.option("--agent <name>", "Show unread mail for this agent (default: orchestrator)")
 		.option("--all", "Show sessions from all runs (default: current run only)")
-		.option(
-			"--watch",
-			"(deprecated) Use 'overstory dashboard' for live monitoring",
-		)
-		.option(
-			"--interval <ms>",
-			"Poll interval for --watch in milliseconds (default: 3000)",
-		)
+		.option("--watch", "(deprecated) Use 'overstory dashboard' for live monitoring")
+		.option("--interval <ms>", "Poll interval for --watch in milliseconds (default: 3000)")
 		.action(async (opts: StatusOpts) => {
 			await executeStatus(opts);
 		});
 }
 
 export async function statusCommand(args: string[]): Promise<void> {
-	const program = new Command("overstory").exitOverride().configureOutput({
-		writeOut: (str) => process.stdout.write(str),
-		writeErr: (str) => process.stderr.write(str),
-	});
-	program.addCommand(createStatusCommand());
+	const cmd = createStatusCommand();
+	cmd.exitOverride();
 	try {
-		await program.parseAsync(["node", "overstory", "status", ...args]);
+		await cmd.parseAsync(args, { from: "user" });
 	} catch (err: unknown) {
-		if (err instanceof CommanderError) {
-			if (err.code === "commander.helpDisplayed" || err.code === "commander.version") return;
-			throw new ValidationError(err.message, { field: "args" });
+		if (err && typeof err === "object" && "code" in err) {
+			const code = (err as { code: string }).code;
+			if (code === "commander.helpDisplayed" || code === "commander.version") {
+				return;
+			}
 		}
 		throw err;
 	}

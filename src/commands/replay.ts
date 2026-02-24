@@ -7,7 +7,7 @@
  */
 
 import { join } from "node:path";
-import { Command, CommanderError } from "commander";
+import { Command } from "commander";
 import { loadConfig } from "../config.ts";
 import { ValidationError } from "../errors.ts";
 import { createEventStore } from "../events/store.ts";
@@ -337,17 +337,16 @@ export function createReplayCommand(): Command {
 }
 
 export async function replayCommand(args: string[]): Promise<void> {
-	const program = new Command("overstory").exitOverride().configureOutput({
-		writeOut: (str) => process.stdout.write(str),
-		writeErr: (str) => process.stderr.write(str),
-	});
-	program.addCommand(createReplayCommand());
+	const cmd = createReplayCommand();
+	cmd.exitOverride();
 	try {
-		await program.parseAsync(["node", "overstory", "replay", ...args]);
+		await cmd.parseAsync(args, { from: "user" });
 	} catch (err: unknown) {
-		if (err instanceof CommanderError) {
-			if (err.code === "commander.helpDisplayed" || err.code === "commander.version") return;
-			throw new ValidationError(err.message, { field: "args" });
+		if (err && typeof err === "object" && "code" in err) {
+			const code = (err as { code: string }).code;
+			if (code === "commander.helpDisplayed" || code === "commander.version") {
+				return;
+			}
 		}
 		throw err;
 	}

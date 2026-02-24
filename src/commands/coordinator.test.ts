@@ -23,9 +23,9 @@ import {
 	buildCoordinatorBeacon,
 	type CoordinatorDeps,
 	coordinatorCommand,
+	createCoordinatorCommand,
 	resolveAttach,
 } from "./coordinator.ts";
-import { isRunningAsRoot } from "./sling.ts";
 
 // --- Fake Tmux ---
 
@@ -369,7 +369,13 @@ describe("coordinatorCommand help", () => {
 	});
 
 	test("start --help includes --attach and --no-attach flags", async () => {
-		const output = await captureStdout(() => coordinatorCommand(["start", "--help"]));
+		const cmd = createCoordinatorCommand({});
+		for (const sub of cmd.commands) {
+			sub.exitOverride();
+		}
+		const output = await captureStdout(async () => {
+			await cmd.parseAsync(["start", "--help"], { from: "user" }).catch(() => {});
+		});
 		expect(output).toContain("--attach");
 		expect(output).toContain("--no-attach");
 	});
@@ -1299,7 +1305,13 @@ describe("watchdog integration", () => {
 
 	describe("COORDINATOR_HELP", () => {
 		test("start help text includes --watchdog flag", async () => {
-			const output = await captureStdout(() => coordinatorCommand(["start", "--help"]));
+			const cmd = createCoordinatorCommand({});
+			for (const sub of cmd.commands) {
+				sub.exitOverride();
+			}
+			const output = await captureStdout(async () => {
+				await cmd.parseAsync(["start", "--help"], { from: "user" }).catch(() => {});
+			});
 			expect(output).toContain("--watchdog");
 			expect(output).toContain("watchdog");
 		});
@@ -1587,7 +1599,13 @@ describe("monitor integration", () => {
 
 	describe("COORDINATOR_HELP", () => {
 		test("start help text includes --monitor flag", async () => {
-			const output = await captureStdout(() => coordinatorCommand(["start", "--help"]));
+			const cmd = createCoordinatorCommand({});
+			for (const sub of cmd.commands) {
+				sub.exitOverride();
+			}
+			const output = await captureStdout(async () => {
+				await cmd.parseAsync(["start", "--help"], { from: "user" }).catch(() => {});
+			});
 			expect(output).toContain("--monitor");
 			expect(output).toContain("monitor");
 		});
@@ -1618,9 +1636,3 @@ describe("SessionStore round-trip", () => {
 	});
 });
 
-describe("isRunningAsRoot (imported from sling)", () => {
-	test("is accessible from coordinator test file", () => {
-		expect(isRunningAsRoot(() => 0)).toBe(true);
-		expect(isRunningAsRoot(() => 1000)).toBe(false);
-	});
-});

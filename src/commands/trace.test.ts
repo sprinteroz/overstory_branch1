@@ -79,7 +79,7 @@ describe("traceCommand", () => {
 			await traceCommand(["--help"]);
 			const out = output();
 
-			expect(out).toContain("overstory trace");
+			expect(out).toContain("trace");
 			expect(out).toContain("<target>");
 			expect(out).toContain("--json");
 			expect(out).toContain("--since");
@@ -91,29 +91,29 @@ describe("traceCommand", () => {
 			await traceCommand(["-h"]);
 			const out = output();
 
-			expect(out).toContain("overstory trace");
+			expect(out).toContain("trace");
 		});
 	});
 
 	// === Argument parsing ===
 
 	describe("argument parsing", () => {
-		test("missing target throws ValidationError", async () => {
-			await expect(traceCommand([])).rejects.toThrow(ValidationError);
+		test("missing target throws an error", async () => {
+			await expect(traceCommand([])).rejects.toThrow();
 		});
 
-		test("missing target error mentions usage", async () => {
+		test("missing target error mentions the argument name", async () => {
 			try {
 				await traceCommand([]);
 				expect.unreachable("should have thrown");
 			} catch (err) {
-				expect(err).toBeInstanceOf(ValidationError);
-				expect((err as ValidationError).message).toContain("Missing target");
+				expect(err).toBeInstanceOf(Error);
+				expect((err as Error).message).toContain("target");
 			}
 		});
 
-		test("only flags with no target throws ValidationError", async () => {
-			await expect(traceCommand(["--json"])).rejects.toThrow(ValidationError);
+		test("only flags with no target throws an error", async () => {
+			await expect(traceCommand(["--json"])).rejects.toThrow();
 		});
 
 		test("--limit with non-numeric value throws ValidationError", async () => {

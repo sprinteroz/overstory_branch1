@@ -78,7 +78,7 @@ describe("replayCommand", () => {
 			await replayCommand(["--help"]);
 			const out = output();
 
-			expect(out).toContain("overstory replay");
+			expect(out).toContain("replay");
 			expect(out).toContain("--run");
 			expect(out).toContain("--agent");
 			expect(out).toContain("--json");
@@ -91,7 +91,7 @@ describe("replayCommand", () => {
 			await replayCommand(["-h"]);
 			const out = output();
 
-			expect(out).toContain("overstory replay");
+			expect(out).toContain("replay");
 		});
 	});
 
