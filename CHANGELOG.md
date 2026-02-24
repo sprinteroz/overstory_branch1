@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-02-24
+
+### Added
+
+#### Sling Guard Improvements
+- **`--skip-task-check` flag for `overstory sling`** — skips task existence validation and issue claiming, designed for leads spawning builders with worktree-created issues that don't exist in the canonical tracker yet
+- **Bead lock parent bypass** — parent agent can now delegate its own task ID to a child without triggering the concurrent-work lock (sling allows spawn when the lock holder matches `--parent`)
+- Lead agent `--skip-task-check` added to default sling template in `agents/lead.md`
+
+#### Lead Agent Spec Writing
+- Leads now use `overstory spec write <id> --body "..." --agent $OVERSTORY_AGENT_NAME` instead of Write/Edit tools for creating spec files — enforces read-only tool posture while still enabling spec creation
+
+#### Testing
+- Test suite grew from 2087 to 2090 tests across 75 files (5137 expect() calls)
+
+### Fixed
+- **Dashboard health evaluation** — dashboard now applies the full `evaluateHealth()` function from the watchdog module instead of only checking tmux liveness; correctly transitions persistent capabilities (coordinator, monitor) from `booting` → `working` when tmux is alive, and detects stale/zombie states using configured thresholds
+- **Default tracker resolution to seeds** — `resolveBackend()` now falls back to `"seeds"` when no tracker directory exists (previously defaulted to `"beads"`)
+- **Coordinator beacon uses `resolveBackend()`** — properly resolves `"auto"` backend instead of a simple conditional that didn't handle auto-detection
+- **Doctor dependency checks use `resolveBackend()`** — properly resolves `"auto"` backend for tracker CLI availability checks instead of assuming beads
+- **Hardcoded 'orchestrator' replaced with 'coordinator'** — overlay template default parent address, agent definitions (builder, merger, monitor, scout), and test assertions all updated to use `coordinator` as the default parent/mail recipient
+
+### Changed
+- Lead agent definition: Write/Edit tools removed from capabilities, replaced with `overstory spec write` CLI command
+- Agent definitions (builder, merger, monitor, scout) updated to reference "coordinator" instead of "orchestrator" in mail examples and constraints
+
 ## [0.6.1] - 2026-02-23
 
 ### Added
@@ -558,7 +584,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Biome configuration for formatting and linting
 - TypeScript strict mode with `noUncheckedIndexedAccess`
 
-[Unreleased]: https://github.com/jayminwest/overstory/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/jayminwest/overstory/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/jayminwest/overstory/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/jayminwest/overstory/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/jayminwest/overstory/compare/v0.5.9...v0.6.0
 [0.5.9]: https://github.com/jayminwest/overstory/compare/v0.5.8...v0.5.9

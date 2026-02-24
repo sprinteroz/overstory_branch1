@@ -249,6 +249,7 @@ overstory sling <task-id>              Spawn a worker agent
   --parent <agent-name>                  Parent (for hierarchy tracking)
   --depth <n>                            Current hierarchy depth (default: 0)
   --skip-scout                           Skip scout phase (passed to lead overlay)
+  --skip-task-check                      Skip task existence validation
   --force-hierarchy                      Bypass hierarchy validation (debugging only)
   --json                                 JSON output
 
@@ -584,3 +585,26 @@ Run `mulch --help` for full usage.
    mulch validate && git add .mulch/ && git commit -m "mulch: record learnings"
    ```
 <!-- mulch:end -->
+
+<!-- canopy:start -->
+## Prompt Management (Canopy)
+<!-- canopy-onboard-v:1 -->
+
+This project uses [Canopy](https://github.com/jayminwest/canopy) for git-native prompt management.
+
+**At the start of every session**, run:
+```
+cn prime
+```
+
+This injects prompt workflow context: commands, conventions, and common workflows.
+
+**Quick reference:**
+- `cn list` — List all prompts
+- `cn render <name>` — View rendered prompt (resolves inheritance)
+- `cn emit --all` — Render prompts to files
+- `cn update <name>` — Update a prompt (creates new version)
+- `cn sync` — Stage and commit .canopy/ changes
+
+**Do not manually edit emitted files.** Use `cn update` to modify prompts, then `cn emit` to regenerate.
+<!-- canopy:end -->

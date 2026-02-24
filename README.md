@@ -127,6 +127,7 @@ overstory sling <task-id>              Spawn a worker agent
   --parent <agent-name>                  Parent (for hierarchy tracking)
   --depth <n>                            Current hierarchy depth
   --skip-scout                           Skip scout phase (passed to lead overlay)
+  --skip-task-check                      Skip task existence validation
   --json                                 JSON output
 
 overstory stop <agent-name>            Terminate a running agent
@@ -272,13 +273,13 @@ Global Flags:
 - **Dependencies**: Zero runtime dependencies — only Bun built-in APIs
 - **Database**: SQLite via `bun:sqlite` (WAL mode for concurrent access)
 - **Linting**: Biome (formatter + linter)
-- **Testing**: `bun test` (2087 tests across 75 files, colocated with source)
+- **Testing**: `bun test` (2090 tests across 75 files, colocated with source)
 - **External CLIs**: `bd` (beads) or `sd` (seeds), `mulch`, `git`, `tmux` — invoked as subprocesses
 
 ## Development
 
 ```bash
-# Run tests (2087 tests across 75 files)
+# Run tests (2090 tests across 75 files)
 bun test
 
 # Run a single test
