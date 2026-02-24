@@ -269,7 +269,7 @@ describe("E2E: init→sling lifecycle on external project", () => {
 		expect(overlayContent).toContain("orchestrator");
 		expect(overlayContent).toContain("`src/main.ts`");
 		expect(overlayContent).toContain("`src/utils.ts`");
-		expect(overlayContent).toContain("mulch prime typescript");
+		expect(overlayContent).toContain("ml prime typescript");
 
 		// No unresolved placeholders
 		expect(overlayContent).not.toMatch(/\{\{[A-Z_]+\}\}/);
