@@ -455,9 +455,27 @@ export async function waitForTuiReady(
 		if (content !== null) {
 			return true;
 		}
+		// Check if session died — no point waiting if it's gone
+		const alive = await isSessionAlive(name);
+		if (!alive) {
+			return false;
+		}
 		await Bun.sleep(pollIntervalMs);
 	}
 	return false;
+}
+
+/**
+ * Verify that tmux is installed and executable.
+ * Throws AgentError with a clear message if tmux is not available.
+ */
+export async function ensureTmuxAvailable(): Promise<void> {
+	const { exitCode } = await runCommand(["tmux", "-V"]);
+	if (exitCode !== 0) {
+		throw new AgentError(
+			"tmux is not installed or not on PATH. Install tmux to use overstory agent orchestration.",
+		);
+	}
 }
 
 /**

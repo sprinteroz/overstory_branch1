@@ -26,6 +26,7 @@ import type { AgentSession } from "../types.ts";
 import { isProcessRunning } from "../watchdog/health.ts";
 import {
 	createSession,
+	ensureTmuxAvailable,
 	isSessionAlive,
 	killSession,
 	sendKeys,
@@ -61,6 +62,7 @@ export interface CoordinatorDeps {
 			timeoutMs?: number,
 			pollIntervalMs?: number,
 		) => Promise<boolean>;
+		ensureTmuxAvailable: () => Promise<void>;
 	};
 	_watchdog?: {
 		start: () => Promise<{ pid: number } | null>;
@@ -280,6 +282,7 @@ async function startCoordinator(args: string[], deps: CoordinatorDeps = {}): Pro
 		killSession,
 		sendKeys,
 		waitForTuiReady,
+		ensureTmuxAvailable,
 	};
 
 	const json = args.includes("--json");
@@ -354,6 +357,10 @@ async function startCoordinator(args: string[], deps: CoordinatorDeps = {}): Pro
 		const manifest = await manifestLoader.load();
 		const { model, env } = resolveModel(config, manifest, "coordinator", "opus");
 
+		// Preflight: verify tmux is installed before attempting to spawn.
+		// Without this check, a missing tmux leads to cryptic errors later.
+		await tmux.ensureTmuxAvailable();
+
 		// Spawn tmux session at project root with Claude Code (interactive mode).
 		// Inject the coordinator base definition via --append-system-prompt so the
 		// coordinator knows its role, hierarchy rules, and delegation patterns
@@ -398,7 +405,20 @@ async function startCoordinator(args: string[], deps: CoordinatorDeps = {}): Pro
 		store.upsert(session);
 
 		// Wait for Claude Code TUI to render before sending input
-		await tmux.waitForTuiReady(tmuxSession);
+		const tuiReady = await tmux.waitForTuiReady(tmuxSession);
+		if (!tuiReady) {
+			// Session may have died — check liveness before proceeding
+			const alive = await tmux.isSessionAlive(tmuxSession);
+			if (!alive) {
+				// Clean up the stale session record
+				store.updateState(COORDINATOR_NAME, "completed");
+				throw new AgentError(
+					`Coordinator tmux session "${tmuxSession}" died during startup. The Claude Code process may have crashed or exited immediately. Check tmux logs or try running the claude command manually.`,
+					{ agentName: COORDINATOR_NAME },
+				);
+			}
+			// Session is alive but TUI didn't render in time — proceed with warning
+		}
 		await Bun.sleep(1_000);
 
 		const resolvedBackend = await resolveBackend(config.taskTracker.backend, config.project.root);
@@ -485,6 +505,7 @@ async function stopCoordinator(args: string[], deps: CoordinatorDeps = {}): Prom
 		killSession,
 		sendKeys,
 		waitForTuiReady,
+		ensureTmuxAvailable,
 	};
 
 	const json = args.includes("--json");
@@ -591,6 +612,7 @@ async function statusCoordinator(args: string[], deps: CoordinatorDeps = {}): Pr
 		killSession,
 		sendKeys,
 		waitForTuiReady,
+		ensureTmuxAvailable,
 	};
 
 	const json = args.includes("--json");

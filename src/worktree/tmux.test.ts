@@ -3,6 +3,7 @@ import { AgentError } from "../errors.ts";
 import {
 	capturePaneContent,
 	createSession,
+	ensureTmuxAvailable,
 	getDescendantPids,
 	getPanePid,
 	isProcessAlive,
@@ -961,21 +962,26 @@ describe("waitForTuiReady", () => {
 	});
 
 	test("returns true after content appears on later poll", async () => {
-		let callCount = 0;
-		spawnSpy.mockImplementation(() => {
-			callCount++;
-			if (callCount <= 3) {
-				// First 3 polls: empty pane (TUI still loading)
-				return mockSpawnResult("", "", 0);
+		let captureCallCount = 0;
+		spawnSpy.mockImplementation((...args: unknown[]) => {
+			const cmd = args[0] as string[];
+			if (cmd[1] === "capture-pane") {
+				captureCallCount++;
+				if (captureCallCount <= 3) {
+					// First 3 capture-pane polls: empty pane (TUI still loading)
+					return mockSpawnResult("", "", 0);
+				}
+				// 4th poll: content appears
+				return mockSpawnResult("Welcome to Claude Code!", "", 0);
 			}
-			// 4th poll: content appears
-			return mockSpawnResult("Welcome to Claude Code!", "", 0);
+			// has-session: session is alive throughout
+			return mockSpawnResult("", "", 0);
 		});
 
 		const ready = await waitForTuiReady("overstory-agent", 10_000, 500);
 
 		expect(ready).toBe(true);
-		// Should have slept 3 times (3 empty polls before content appeared)
+		// Should have slept 3 times (3 empty capture-pane polls before content appeared)
 		expect(sleepSpy).toHaveBeenCalledTimes(3);
 	});
 
@@ -1005,5 +1011,88 @@ describe("waitForTuiReady", () => {
 		const ready = await waitForTuiReady("overstory-agent");
 
 		expect(ready).toBe(true);
+	});
+
+	test("returns false immediately when session is dead", async () => {
+		// capture-pane fails (session dead), has-session also fails (session dead)
+		spawnSpy.mockImplementation((...args: unknown[]) => {
+			const cmd = args[0] as string[];
+			if (cmd[1] === "capture-pane") {
+				return mockSpawnResult("", "can't find session", 1);
+			}
+			// has-session: session is dead
+			return mockSpawnResult("", "can't find session", 1);
+		});
+
+		const ready = await waitForTuiReady("dead-session", 15_000, 500);
+
+		expect(ready).toBe(false);
+		// Should NOT have polled the full timeout (no sleeps — returned immediately)
+		expect(sleepSpy).not.toHaveBeenCalled();
+	});
+
+	test("continues polling when session is alive but pane is empty", async () => {
+		let captureCallCount = 0;
+		spawnSpy.mockImplementation((...args: unknown[]) => {
+			const cmd = args[0] as string[];
+			if (cmd[1] === "capture-pane") {
+				captureCallCount++;
+				// Pane stays empty for all polls (session alive but TUI not rendered yet)
+				return mockSpawnResult("", "", 0);
+			}
+			// has-session: session is alive
+			return mockSpawnResult("", "", 0);
+		});
+
+		// Use a short timeout so the test doesn't take long
+		const ready = await waitForTuiReady("loading-session", 1_000, 500);
+
+		expect(ready).toBe(false);
+		// Should have polled multiple times (not returned early)
+		expect(captureCallCount).toBeGreaterThan(1);
+		expect(sleepSpy).toHaveBeenCalled();
+	});
+});
+
+describe("ensureTmuxAvailable", () => {
+	let spawnSpy: ReturnType<typeof spyOn>;
+
+	beforeEach(() => {
+		spawnSpy = spyOn(Bun, "spawn");
+	});
+
+	afterEach(() => {
+		spawnSpy.mockRestore();
+	});
+
+	test("succeeds when tmux is available", async () => {
+		spawnSpy.mockImplementation(() => mockSpawnResult("tmux 3.3a\n", "", 0));
+
+		// Should not throw
+		await ensureTmuxAvailable();
+
+		expect(spawnSpy).toHaveBeenCalledTimes(1);
+		const callArgs = spawnSpy.mock.calls[0] as unknown[];
+		const cmd = callArgs[0] as string[];
+		expect(cmd).toEqual(["tmux", "-V"]);
+	});
+
+	test("throws AgentError when tmux is not installed", async () => {
+		spawnSpy.mockImplementation(() => mockSpawnResult("", "tmux: command not found", 1));
+
+		await expect(ensureTmuxAvailable()).rejects.toThrow(AgentError);
+	});
+
+	test("AgentError message mentions tmux not installed", async () => {
+		spawnSpy.mockImplementation(() => mockSpawnResult("", "", 127));
+
+		try {
+			await ensureTmuxAvailable();
+			expect(true).toBe(false); // Should have thrown
+		} catch (err: unknown) {
+			expect(err).toBeInstanceOf(AgentError);
+			const agentErr = err as AgentError;
+			expect(agentErr.message).toContain("tmux is not installed");
+		}
 	});
 });

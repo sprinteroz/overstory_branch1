@@ -41,6 +41,7 @@ interface TmuxCallTracker {
 	killSession: Array<{ name: string }>;
 	sendKeys: Array<{ name: string; keys: string }>;
 	waitForTuiReady: Array<{ name: string }>;
+	ensureTmuxAvailable: number;
 }
 
 // --- Fake Watchdog ---
@@ -62,7 +63,13 @@ interface MonitorCallTracker {
 }
 
 /** Build a fake tmux DI object with configurable session liveness. */
-function makeFakeTmux(sessionAliveMap: Record<string, boolean> = {}): {
+function makeFakeTmux(
+	sessionAliveMap: Record<string, boolean> = {},
+	options: {
+		waitForTuiReadyResult?: boolean;
+		ensureTmuxAvailableError?: Error;
+	} = {},
+): {
 	tmux: NonNullable<CoordinatorDeps["_tmux"]>;
 	calls: TmuxCallTracker;
 } {
@@ -72,6 +79,7 @@ function makeFakeTmux(sessionAliveMap: Record<string, boolean> = {}): {
 		killSession: [],
 		sendKeys: [],
 		waitForTuiReady: [],
+		ensureTmuxAvailable: 0,
 	};
 
 	const tmux: NonNullable<CoordinatorDeps["_tmux"]> = {
@@ -97,7 +105,13 @@ function makeFakeTmux(sessionAliveMap: Record<string, boolean> = {}): {
 		},
 		waitForTuiReady: async (name: string): Promise<boolean> => {
 			calls.waitForTuiReady.push({ name });
-			return true;
+			return options.waitForTuiReadyResult ?? true;
+		},
+		ensureTmuxAvailable: async (): Promise<void> => {
+			calls.ensureTmuxAvailable++;
+			if (options.ensureTmuxAvailableError) {
+				throw options.ensureTmuxAvailableError;
+			}
 		},
 	};
 
@@ -310,13 +324,14 @@ function makeDeps(
 	sessionAliveMap: Record<string, boolean> = {},
 	watchdogConfig?: { running?: boolean; startSuccess?: boolean; stopSuccess?: boolean },
 	monitorConfig?: { running?: boolean; startSuccess?: boolean; stopSuccess?: boolean },
+	tmuxOptions?: { waitForTuiReadyResult?: boolean; ensureTmuxAvailableError?: Error },
 ): {
 	deps: CoordinatorDeps;
 	calls: TmuxCallTracker;
 	watchdogCalls: WatchdogCallTracker;
 	monitorCalls: MonitorCallTracker;
 } {
-	const { tmux, calls } = makeFakeTmux(sessionAliveMap);
+	const { tmux, calls } = makeFakeTmux(sessionAliveMap, tmuxOptions);
 	const { watchdog, calls: watchdogCalls } = makeFakeWatchdog(
 		watchdogConfig?.running,
 		watchdogConfig?.startSuccess,
@@ -629,6 +644,88 @@ describe("startCoordinator", () => {
 		expect(newSession?.agentName).toBe("coordinator");
 		// The new session should have a different ID than the dead one
 		expect(newSession?.id).not.toBe("session-dead-coordinator");
+	});
+
+	test("throws AgentError when tmux is not available", async () => {
+		const { deps } = makeDeps({}, undefined, undefined, {
+			ensureTmuxAvailableError: new AgentError(
+				"tmux is not installed or not on PATH. Install tmux to use overstory agent orchestration.",
+			),
+		});
+
+		await expect(coordinatorCommand(["start"], deps)).rejects.toThrow(AgentError);
+	});
+
+	test("AgentError message mentions tmux not installed when tmux unavailable", async () => {
+		const { deps } = makeDeps({}, undefined, undefined, {
+			ensureTmuxAvailableError: new AgentError(
+				"tmux is not installed or not on PATH. Install tmux to use overstory agent orchestration.",
+			),
+		});
+
+		try {
+			await coordinatorCommand(["start"], deps);
+			expect(true).toBe(false); // Should have thrown
+		} catch (err: unknown) {
+			expect(err).toBeInstanceOf(AgentError);
+			const agentErr = err as AgentError;
+			expect(agentErr.message).toContain("tmux is not installed");
+		}
+	});
+
+	test("throws AgentError when session dies during startup", async () => {
+		// waitForTuiReady returns false AND isSessionAlive returns false — session died
+		const { deps } = makeDeps(
+			{ "overstory-test-project-coordinator": false },
+			undefined,
+			undefined,
+			{ waitForTuiReadyResult: false },
+		);
+
+		await expect(coordinatorCommand(["start"], deps)).rejects.toThrow(AgentError);
+	});
+
+	test("AgentError message mentions session dying when session dies during startup", async () => {
+		const { deps } = makeDeps(
+			{ "overstory-test-project-coordinator": false },
+			undefined,
+			undefined,
+			{ waitForTuiReadyResult: false },
+		);
+
+		try {
+			await coordinatorCommand(["start"], deps);
+			expect(true).toBe(false); // Should have thrown
+		} catch (err: unknown) {
+			expect(err).toBeInstanceOf(AgentError);
+			const agentErr = err as AgentError;
+			expect(agentErr.message).toContain("died during startup");
+		}
+	});
+
+	test("continues when waitForTuiReady times out but session is still alive", async () => {
+		// waitForTuiReady returns false (timeout) but session IS alive
+		const { deps } = makeDeps(
+			{ "overstory-test-project-coordinator": true },
+			undefined,
+			undefined,
+			{ waitForTuiReadyResult: false },
+		);
+
+		const originalSleep = Bun.sleep;
+		Bun.sleep = (() => Promise.resolve()) as typeof Bun.sleep;
+
+		let thrownError: unknown;
+		try {
+			await captureStdout(() => coordinatorCommand(["start"], deps));
+		} catch (err: unknown) {
+			thrownError = err;
+		} finally {
+			Bun.sleep = originalSleep;
+		}
+
+		// Should NOT throw — session is alive, just slow TUI
+		expect(thrownError).toBeUndefined();
 	});
 });
 
