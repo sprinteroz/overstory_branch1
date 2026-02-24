@@ -101,6 +101,7 @@ const DANGEROUS_BASH_PATTERNS = [
 const SAFE_BASH_PREFIXES = [
 	"overstory ",
 	"bd ",
+	"sd ",
 	"git status",
 	"git log",
 	"git diff",

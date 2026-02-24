@@ -236,15 +236,17 @@ function createDefaultMonitor(projectRoot: string): NonNullable<CoordinatorDeps[
 /**
  * Build the coordinator startup beacon — the first message sent to the coordinator
  * via tmux send-keys after Claude Code initializes.
+ *
+ * @param cliName - The tracker CLI name to use in startup instructions (default: "bd")
  */
-export function buildCoordinatorBeacon(): string {
+export function buildCoordinatorBeacon(cliName = "bd"): string {
 	const timestamp = new Date().toISOString();
 	const parts = [
 		`[OVERSTORY] ${COORDINATOR_NAME} (coordinator) ${timestamp}`,
 		"Depth: 0 | Parent: none | Role: persistent orchestrator",
 		"HIERARCHY: You ONLY spawn leads (overstory sling --capability lead). Leads spawn scouts, builders, reviewers. NEVER spawn non-lead agents directly.",
 		"DELEGATION: For any exploration/scouting, spawn a lead who will spawn scouts. Do NOT explore the codebase yourself beyond initial planning.",
-		`Startup: run mulch prime, check mail (overstory mail check --agent ${COORDINATOR_NAME}), check bd ready, check overstory group status, then begin work`,
+		`Startup: run mulch prime, check mail (overstory mail check --agent ${COORDINATOR_NAME}), check ${cliName} ready, check overstory group status, then begin work`,
 	];
 	return parts.join(" — ");
 }
@@ -398,7 +400,8 @@ async function startCoordinator(args: string[], deps: CoordinatorDeps = {}): Pro
 		await tmux.waitForTuiReady(tmuxSession);
 		await Bun.sleep(1_000);
 
-		const beacon = buildCoordinatorBeacon();
+		const trackerCli = config.taskTracker.backend === "seeds" ? "sd" : "bd";
+		const beacon = buildCoordinatorBeacon(trackerCli);
 		await tmux.sendKeys(tmuxSession, beacon);
 
 		// Follow-up Enters with increasing delays to ensure submission

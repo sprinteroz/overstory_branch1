@@ -894,12 +894,18 @@ describe("buildBashFileGuardScript", () => {
 		const script = buildBashFileGuardScript("scout");
 		expect(script).toContain("overstory ");
 		expect(script).toContain("bd ");
+		expect(script).toContain("sd ");
 		expect(script).toContain("git status");
 		expect(script).toContain("git log");
 		expect(script).toContain("git diff");
 		expect(script).toContain("mulch ");
 		expect(script).toContain("bun test");
 		expect(script).toContain("bun run lint");
+	});
+
+	test("sd commands pass bash file guard for non-implementation agents", () => {
+		const script = buildBashFileGuardScript("scout");
+		expect(script).toContain("sd ");
 	});
 
 	test("includes dangerous command pattern checks", () => {
