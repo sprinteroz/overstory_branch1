@@ -57,7 +57,7 @@ describe("checkDependencies", () => {
 		const checks = await checkDependencies(mockConfig, "/tmp/.overstory");
 
 		expect(checks).toBeArray();
-		expect(checks.length).toBeGreaterThanOrEqual(5);
+		expect(checks.length).toBeGreaterThanOrEqual(7);
 
 		// Verify we have checks for each required tool
 		const toolNames = checks.map((c) => c.name);
@@ -66,6 +66,8 @@ describe("checkDependencies", () => {
 		expect(toolNames).toContain("tmux availability");
 		expect(toolNames).toContain("sd availability");
 		expect(toolNames).toContain("mulch availability");
+		expect(toolNames).toContain("overstory availability");
+		expect(toolNames).toContain("cn availability");
 	});
 
 	test("includes bd CGO support check when bd is available", async () => {
@@ -180,5 +182,57 @@ describe("checkDependencies", () => {
 		const checks = await checkDependencies(seedsConfig, "/tmp/.overstory");
 		const cgoCheck = checks.find((c) => c.name === "bd CGO support");
 		expect(cgoCheck).toBeUndefined();
+	});
+
+	test("cn check is warn (not fail) when missing", async () => {
+		const checks = await checkDependencies(mockConfig, "/tmp/.overstory");
+		const cnCheck = checks.find((c) => c.name === "cn availability");
+		expect(cnCheck).toBeDefined();
+		// cn is optional — should never be "fail", only "pass" or "warn"
+		expect(cnCheck?.status).not.toBe("fail");
+	});
+
+	test("checks short aliases for available tools", async () => {
+		const checks = await checkDependencies(mockConfig, "/tmp/.overstory");
+		const mulchCheck = checks.find((c) => c.name === "mulch availability");
+		if (mulchCheck?.status === "pass") {
+			const mlAlias = checks.find((c) => c.name === "ml alias");
+			expect(mlAlias).toBeDefined();
+			expect(mlAlias?.category).toBe("dependencies");
+			expect(["pass", "warn"]).toContain(mlAlias?.status ?? "");
+		}
+		const ovCheck = checks.find((c) => c.name === "overstory availability");
+		if (ovCheck?.status === "pass") {
+			const ovAlias = checks.find((c) => c.name === "ov alias");
+			expect(ovAlias).toBeDefined();
+			expect(["pass", "warn"]).toContain(ovAlias?.status ?? "");
+		}
+	});
+
+	test("alias checks are only run when primary tool passes", async () => {
+		const checks = await checkDependencies(mockConfig, "/tmp/.overstory");
+		// If mulch failed, ml alias should NOT be present
+		const mulchCheck = checks.find((c) => c.name === "mulch availability");
+		const mlAlias = checks.find((c) => c.name === "ml alias");
+		if (mulchCheck?.status !== "pass") {
+			expect(mlAlias).toBeUndefined();
+		}
+	});
+
+	test("install hints appear in details for missing tools", async () => {
+		const checks = await checkDependencies(mockConfig, "/tmp/.overstory");
+		// Check any failing/warning check with an installHint has npm install guidance
+		const cnCheck = checks.find((c) => c.name === "cn availability");
+		if (cnCheck?.status === "warn" || cnCheck?.status === "fail") {
+			const hasInstallHint = cnCheck.details?.some((d) => d.includes("npm install -g"));
+			expect(hasInstallHint).toBe(true);
+		}
+	});
+
+	test("includes overstory availability check", async () => {
+		const checks = await checkDependencies(mockConfig, "/tmp/.overstory");
+		const ovCheck = checks.find((c) => c.name === "overstory availability");
+		expect(ovCheck).toBeDefined();
+		expect(ovCheck?.category).toBe("dependencies");
 	});
 });
