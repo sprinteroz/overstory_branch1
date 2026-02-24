@@ -14,6 +14,7 @@
 
 import { mkdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
+import { Command } from "commander";
 import { deployHooks } from "../agents/hooks-deployer.ts";
 import { createIdentity, loadIdentity } from "../agents/identity.ts";
 import { createManifestLoader, resolveModel } from "../agents/manifest.ts";
@@ -255,17 +256,6 @@ export function buildCoordinatorBeacon(cliName = "bd"): string {
 }
 
 /**
- * Start the coordinator agent.
- *
- * 1. Verify no coordinator is already running
- * 2. Load config
- * 3. Create agent identity (if first time)
- * 4. Deploy hooks to project root's .claude/settings.local.json
- * 5. Spawn tmux session at project root with Claude Code
- * 6. Send startup beacon
- * 7. Record session in SessionStore (sessions.db)
- */
-/**
  * Determine whether to auto-attach to the tmux session after starting.
  * Exported for testing.
  */
@@ -275,7 +265,10 @@ export function resolveAttach(args: string[], isTTY: boolean): boolean {
 	return isTTY;
 }
 
-async function startCoordinator(args: string[], deps: CoordinatorDeps = {}): Promise<void> {
+async function startCoordinator(
+	opts: { json: boolean; attach: boolean; watchdog: boolean; monitor: boolean },
+	deps: CoordinatorDeps = {},
+): Promise<void> {
 	const tmux = deps._tmux ?? {
 		createSession,
 		isSessionAlive,
@@ -285,10 +278,7 @@ async function startCoordinator(args: string[], deps: CoordinatorDeps = {}): Pro
 		ensureTmuxAvailable,
 	};
 
-	const json = args.includes("--json");
-	const shouldAttach = resolveAttach(args, !!process.stdout.isTTY);
-	const watchdogFlag = args.includes("--watchdog");
-	const monitorFlag = args.includes("--monitor");
+	const { json, attach: shouldAttach, watchdog: watchdogFlag, monitor: monitorFlag } = opts;
 
 	if (isRunningAsRoot()) {
 		throw new AgentError(
@@ -498,7 +488,10 @@ async function startCoordinator(args: string[], deps: CoordinatorDeps = {}): Pro
  * 3. Mark session as completed in SessionStore
  * 4. Auto-complete the active run (if current-run.txt exists)
  */
-async function stopCoordinator(args: string[], deps: CoordinatorDeps = {}): Promise<void> {
+async function stopCoordinator(
+	opts: { json: boolean },
+	deps: CoordinatorDeps = {},
+): Promise<void> {
 	const tmux = deps._tmux ?? {
 		createSession,
 		isSessionAlive,
@@ -508,7 +501,7 @@ async function stopCoordinator(args: string[], deps: CoordinatorDeps = {}): Prom
 		ensureTmuxAvailable,
 	};
 
-	const json = args.includes("--json");
+	const { json } = opts;
 	const cwd = process.cwd();
 	const config = await loadConfig(cwd);
 	const projectRoot = config.project.root;
@@ -605,7 +598,10 @@ async function stopCoordinator(args: string[], deps: CoordinatorDeps = {}): Prom
  *
  * Checks session registry and tmux liveness to report actual state.
  */
-async function statusCoordinator(args: string[], deps: CoordinatorDeps = {}): Promise<void> {
+async function statusCoordinator(
+	opts: { json: boolean },
+	deps: CoordinatorDeps = {},
+): Promise<void> {
 	const tmux = deps._tmux ?? {
 		createSession,
 		isSessionAlive,
@@ -615,7 +611,7 @@ async function statusCoordinator(args: string[], deps: CoordinatorDeps = {}): Pr
 		ensureTmuxAvailable,
 	};
 
-	const json = args.includes("--json");
+	const { json } = opts;
 	const cwd = process.cwd();
 	const config = await loadConfig(cwd);
 	const projectRoot = config.project.root;
@@ -692,31 +688,59 @@ async function statusCoordinator(args: string[], deps: CoordinatorDeps = {}): Pr
 	}
 }
 
-const COORDINATOR_HELP = `overstory coordinator — Manage the persistent coordinator agent
+/**
+ * Create the Commander command for `overstory coordinator`.
+ */
+export function createCoordinatorCommand(deps: CoordinatorDeps = {}): Command {
+	const cmd = new Command("coordinator").description("Manage the persistent coordinator agent");
 
-Usage: overstory coordinator <subcommand> [flags]
+	cmd
+		.command("start")
+		.description("Start the coordinator (spawns Claude Code at project root)")
+		.option("--attach", "Always attach to tmux session after start")
+		.option("--no-attach", "Never attach to tmux session after start")
+		.option("--watchdog", "Auto-start watchdog daemon with coordinator")
+		.option("--monitor", "Auto-start Tier 2 monitor agent with coordinator")
+		.option("--json", "Output as JSON")
+		.action(
+			async (opts: {
+				attach?: boolean;
+				watchdog?: boolean;
+				monitor?: boolean;
+				json?: boolean;
+			}) => {
+				// opts.attach = true if --attach, false if --no-attach, undefined if neither
+				const shouldAttach = opts.attach !== undefined ? opts.attach : !!process.stdout.isTTY;
+				await startCoordinator(
+					{
+						json: opts.json ?? false,
+						attach: shouldAttach,
+						watchdog: opts.watchdog ?? false,
+						monitor: opts.monitor ?? false,
+					},
+					deps,
+				);
+			},
+		);
 
-Subcommands:
-  start                    Start the coordinator (spawns Claude Code at project root)
-  stop                     Stop the coordinator (kills tmux session)
-  status                   Show coordinator state
+	cmd
+		.command("stop")
+		.description("Stop the coordinator (kills tmux session)")
+		.option("--json", "Output as JSON")
+		.action(async (opts: { json?: boolean }) => {
+			await stopCoordinator({ json: opts.json ?? false }, deps);
+		});
 
-Start options:
-  --attach                 Always attach to tmux session after start
-  --no-attach              Never attach to tmux session after start
-                           Default: attach when running in an interactive TTY
-  --watchdog               Auto-start watchdog daemon with coordinator
-  --monitor                Auto-start monitor agent (Tier 2) with coordinator
+	cmd
+		.command("status")
+		.description("Show coordinator state")
+		.option("--json", "Output as JSON")
+		.action(async (opts: { json?: boolean }) => {
+			await statusCoordinator({ json: opts.json ?? false }, deps);
+		});
 
-General options:
-  --json                   Output as JSON
-  --help, -h               Show this help
-
-The coordinator runs at the project root and orchestrates work by:
-  - Decomposing objectives into beads issues
-  - Dispatching agents via overstory sling
-  - Tracking batches via task groups
-  - Handling escalations from agents and watchdog`;
+	return cmd;
+}
 
 /**
  * Entry point for `overstory coordinator <subcommand>`.
@@ -728,28 +752,27 @@ export async function coordinatorCommand(
 	args: string[],
 	deps: CoordinatorDeps = {},
 ): Promise<void> {
-	if (args.includes("--help") || args.includes("-h") || args.length === 0) {
-		process.stdout.write(`${COORDINATOR_HELP}\n`);
+	const cmd = createCoordinatorCommand(deps);
+	cmd.exitOverride();
+
+	if (args.length === 0) {
+		process.stdout.write(cmd.helpInformation());
 		return;
 	}
 
-	const subcommand = args[0];
-	const subArgs = args.slice(1);
-
-	switch (subcommand) {
-		case "start":
-			await startCoordinator(subArgs, deps);
-			break;
-		case "stop":
-			await stopCoordinator(subArgs, deps);
-			break;
-		case "status":
-			await statusCoordinator(subArgs, deps);
-			break;
-		default:
-			throw new ValidationError(
-				`Unknown coordinator subcommand: ${subcommand}. Run 'overstory coordinator --help' for usage.`,
-				{ field: "subcommand", value: subcommand },
-			);
+	try {
+		await cmd.parseAsync(args, { from: "user" });
+	} catch (err: unknown) {
+		if (err && typeof err === "object" && "code" in err) {
+			const code = (err as { code: string }).code;
+			if (code === "commander.helpDisplayed" || code === "commander.version") {
+				return;
+			}
+			if (code === "commander.unknownCommand") {
+				const message = err instanceof Error ? err.message : String(err);
+				throw new ValidationError(message, { field: "subcommand" });
+			}
+		}
+		throw err;
 	}
 }

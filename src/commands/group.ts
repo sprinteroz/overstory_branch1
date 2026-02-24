@@ -8,37 +8,11 @@
  */
 
 import { join } from "node:path";
+import { Command } from "commander";
 import { loadConfig } from "../config.ts";
 import { GroupError, ValidationError } from "../errors.ts";
 import { createTrackerClient, resolveBackend, type TrackerClient } from "../tracker/factory.ts";
 import type { TaskGroup, TaskGroupProgress } from "../types.ts";
-
-/** Boolean flags that do NOT consume the next arg. */
-const BOOLEAN_FLAGS = new Set(["--json", "--help", "-h"]);
-
-/**
- * Extract positional arguments, skipping flag-value pairs.
- */
-function getPositionalArgs(args: string[]): string[] {
-	const positional: string[] = [];
-	let i = 0;
-	while (i < args.length) {
-		const arg = args[i];
-		if (arg?.startsWith("-")) {
-			if (BOOLEAN_FLAGS.has(arg)) {
-				i += 1;
-			} else {
-				i += 2;
-			}
-		} else {
-			if (arg !== undefined) {
-				positional.push(arg);
-			}
-			i += 1;
-		}
-	}
-	return positional;
-}
 
 /**
  * Resolve the groups.json path from the project root.
@@ -322,71 +296,47 @@ function printGroupProgress(progress: TaskGroupProgress): void {
 	}
 }
 
-const GROUP_HELP = `overstory group -- Manage task groups for batch coordination
-
-Usage: overstory group <subcommand> [args...]
-
-Subcommands:
-  create '<name>' <id1> [id2...]   Create a new task group
-  status [group-id]                Show progress for one or all groups
-  add <group-id> <id1> [id2...]    Add issues to a group
-  remove <group-id> <id1> [id2...]  Remove issues from a group
-  list                             List all groups (summary)
-
-Options:
-  --json             Output as JSON
-  --skip-validation  Skip beads issue validation (for offline use)
-  --help, -h         Show this help`;
-
 /**
- * Entry point for `overstory group <subcommand>`.
+ * Create the Commander command for `overstory group`.
  */
-export async function groupCommand(args: string[]): Promise<void> {
-	if (args.includes("--help") || args.includes("-h") || args.length === 0) {
-		process.stdout.write(`${GROUP_HELP}\n`);
-		return;
-	}
+export function createGroupCommand(): Command {
+	const cmd = new Command("group").description("Manage task groups for batch coordination");
 
-	const subcommand = args[0];
-	const subArgs = args.slice(1);
-	const json = subArgs.includes("--json");
-	const skipValidation = subArgs.includes("--skip-validation");
+	cmd
+		.command("create")
+		.description("Create a new task group")
+		.argument("<name>", "Group name")
+		.argument("<ids...>", "Issue IDs to include")
+		.option("--json", "Output as JSON")
+		.option("--skip-validation", "Skip beads issue validation (for offline use)")
+		.action(async (name: string, ids: string[], opts: { json?: boolean; skipValidation?: boolean }) => {
+			const config = await loadConfig(process.cwd());
+			const projectRoot = config.project.root;
+			const resolvedBackend = await resolveBackend(config.taskTracker.backend, projectRoot);
+			const tracker = createTrackerClient(resolvedBackend, projectRoot);
 
-	const config = await loadConfig(process.cwd());
-	const projectRoot = config.project.root;
-	const resolvedBackend = await resolveBackend(config.taskTracker.backend, projectRoot);
-	const tracker = createTrackerClient(resolvedBackend, projectRoot);
-
-	switch (subcommand) {
-		case "create": {
-			const positional = getPositionalArgs(subArgs);
-			const name = positional[0];
-			if (!name || name.trim().length === 0) {
-				throw new ValidationError(
-					"Group name is required: overstory group create '<name>' <id1> [id2...]",
-					{ field: "name" },
-				);
-			}
-			const issueIds = positional.slice(1);
-			if (issueIds.length === 0) {
-				throw new ValidationError(
-					"At least one issue ID is required: overstory group create '<name>' <id1> [id2...]",
-					{ field: "issueIds" },
-				);
-			}
-			const group = await createGroup(projectRoot, name, issueIds, skipValidation, tracker);
-			if (json) {
+			const group = await createGroup(projectRoot, name, ids, opts.skipValidation ?? false, tracker);
+			if (opts.json) {
 				process.stdout.write(`${JSON.stringify(group, null, "\t")}\n`);
 			} else {
 				process.stdout.write(`Created group "${group.name}" (${group.id})\n`);
 				process.stdout.write(`  Members: ${group.memberIssueIds.join(", ")}\n`);
 			}
-			break;
-		}
+		});
 
-		case "status": {
-			const positional = getPositionalArgs(subArgs);
-			const groupId = positional[0];
+	cmd
+		.command("status")
+		.description("Show progress for one or all groups")
+		.argument("[group-id]", "Group ID (optional, shows all if omitted)")
+		.option("--json", "Output as JSON")
+		.option("--skip-validation", "Skip beads issue validation (for offline use)")
+		.action(async (groupId: string | undefined, opts: { json?: boolean; skipValidation?: boolean }) => {
+			const config = await loadConfig(process.cwd());
+			const projectRoot = config.project.root;
+			const resolvedBackend = await resolveBackend(config.taskTracker.backend, projectRoot);
+			const tracker = createTrackerClient(resolvedBackend, projectRoot);
+			const json = opts.json ?? false;
+
 			const groups = await loadGroups(projectRoot);
 
 			if (groupId) {
@@ -408,7 +358,7 @@ export async function groupCommand(args: string[]): Promise<void> {
 					} else {
 						process.stdout.write("No active groups\n");
 					}
-					break;
+					return;
 				}
 				const progressList: TaskGroupProgress[] = [];
 				for (const group of activeGroups) {
@@ -424,72 +374,73 @@ export async function groupCommand(args: string[]): Promise<void> {
 					}
 				}
 			}
-			break;
-		}
+		});
 
-		case "add": {
-			const positional = getPositionalArgs(subArgs);
-			const groupId = positional[0];
-			if (!groupId || groupId.trim().length === 0) {
-				throw new ValidationError(
-					"Group ID is required: overstory group add <group-id> <id1> [id2...]",
-					{ field: "groupId" },
-				);
-			}
-			const issueIds = positional.slice(1);
-			if (issueIds.length === 0) {
-				throw new ValidationError(
-					"At least one issue ID is required: overstory group add <group-id> <id1> [id2...]",
-					{ field: "issueIds" },
-				);
-			}
-			const group = await addToGroup(projectRoot, groupId, issueIds, skipValidation, tracker);
-			if (json) {
+	cmd
+		.command("add")
+		.description("Add issues to a group")
+		.argument("<group-id>", "Group ID")
+		.argument("<ids...>", "Issue IDs to add")
+		.option("--json", "Output as JSON")
+		.option("--skip-validation", "Skip beads issue validation (for offline use)")
+		.action(async (groupId: string, ids: string[], opts: { json?: boolean; skipValidation?: boolean }) => {
+			const config = await loadConfig(process.cwd());
+			const projectRoot = config.project.root;
+			const resolvedBackend = await resolveBackend(config.taskTracker.backend, projectRoot);
+			const tracker = createTrackerClient(resolvedBackend, projectRoot);
+
+			const group = await addToGroup(
+				projectRoot,
+				groupId,
+				ids,
+				opts.skipValidation ?? false,
+				tracker,
+			);
+			if (opts.json) {
 				process.stdout.write(`${JSON.stringify(group, null, "\t")}\n`);
 			} else {
-				process.stdout.write(`Added ${issueIds.length} issue(s) to "${group.name}"\n`);
+				process.stdout.write(`Added ${ids.length} issue(s) to "${group.name}"\n`);
 				process.stdout.write(`  Members: ${group.memberIssueIds.join(", ")}\n`);
 			}
-			break;
-		}
+		});
 
-		case "remove": {
-			const positional = getPositionalArgs(subArgs);
-			const groupId = positional[0];
-			if (!groupId || groupId.trim().length === 0) {
-				throw new ValidationError(
-					"Group ID is required: overstory group remove <group-id> <id1> [id2...]",
-					{ field: "groupId" },
-				);
-			}
-			const issueIds = positional.slice(1);
-			if (issueIds.length === 0) {
-				throw new ValidationError(
-					"At least one issue ID is required: overstory group remove <group-id> <id1> [id2...]",
-					{ field: "issueIds" },
-				);
-			}
-			const group = await removeFromGroup(projectRoot, groupId, issueIds);
-			if (json) {
+	cmd
+		.command("remove")
+		.description("Remove issues from a group")
+		.argument("<group-id>", "Group ID")
+		.argument("<ids...>", "Issue IDs to remove")
+		.option("--json", "Output as JSON")
+		.action(async (groupId: string, ids: string[], opts: { json?: boolean }) => {
+			const config = await loadConfig(process.cwd());
+			const projectRoot = config.project.root;
+
+			const group = await removeFromGroup(projectRoot, groupId, ids);
+			if (opts.json) {
 				process.stdout.write(`${JSON.stringify(group, null, "\t")}\n`);
 			} else {
-				process.stdout.write(`Removed ${issueIds.length} issue(s) from "${group.name}"\n`);
+				process.stdout.write(`Removed ${ids.length} issue(s) from "${group.name}"\n`);
 				process.stdout.write(`  Members: ${group.memberIssueIds.join(", ")}\n`);
 			}
-			break;
-		}
+		});
 
-		case "list": {
+	cmd
+		.command("list")
+		.description("List all groups (summary)")
+		.option("--json", "Output as JSON")
+		.action(async (opts: { json?: boolean }) => {
+			const config = await loadConfig(process.cwd());
+			const projectRoot = config.project.root;
+
 			const groups = await loadGroups(projectRoot);
 			if (groups.length === 0) {
-				if (json) {
+				if (opts.json) {
 					process.stdout.write("[]\n");
 				} else {
 					process.stdout.write("No groups\n");
 				}
-				break;
+				return;
 			}
-			if (json) {
+			if (opts.json) {
 				process.stdout.write(`${JSON.stringify(groups, null, "\t")}\n`);
 			} else {
 				for (const group of groups) {
@@ -499,13 +450,36 @@ export async function groupCommand(args: string[]): Promise<void> {
 					);
 				}
 			}
-			break;
-		}
+		});
 
-		default:
-			throw new ValidationError(
-				`Unknown group subcommand: ${subcommand}. Run 'overstory group --help' for usage.`,
-				{ field: "subcommand", value: subcommand },
-			);
+	return cmd;
+}
+
+/**
+ * Entry point for `overstory group <subcommand>`.
+ */
+export async function groupCommand(args: string[]): Promise<void> {
+	const cmd = createGroupCommand();
+	cmd.exitOverride();
+
+	if (args.length === 0) {
+		process.stdout.write(cmd.helpInformation());
+		return;
+	}
+
+	try {
+		await cmd.parseAsync(args, { from: "user" });
+	} catch (err: unknown) {
+		if (err && typeof err === "object" && "code" in err) {
+			const code = (err as { code: string }).code;
+			if (code === "commander.helpDisplayed" || code === "commander.version") {
+				return;
+			}
+			if (code === "commander.unknownCommand") {
+				const message = err instanceof Error ? err.message : String(err);
+				throw new ValidationError(message, { field: "subcommand" });
+			}
+		}
+		throw err;
 	}
 }

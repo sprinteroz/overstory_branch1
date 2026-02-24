@@ -75,7 +75,7 @@ afterEach(async () => {
 describe("hooksCommand help", () => {
 	test("--help outputs help text", async () => {
 		const output = await captureStdout(() => hooksCommand(["--help"]));
-		expect(output).toContain("overstory hooks");
+		expect(output).toContain("hooks");
 		expect(output).toContain("install");
 		expect(output).toContain("uninstall");
 		expect(output).toContain("status");
@@ -83,7 +83,7 @@ describe("hooksCommand help", () => {
 
 	test("empty args outputs help text", async () => {
 		const output = await captureStdout(() => hooksCommand([]));
-		expect(output).toContain("overstory hooks");
+		expect(output).toContain("hooks");
 	});
 
 	test("unknown subcommand throws ValidationError", async () => {

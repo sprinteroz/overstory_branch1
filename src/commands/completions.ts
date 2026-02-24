@@ -4,6 +4,8 @@
  * Generates completion scripts for bash, zsh, and fish shells.
  */
 
+import { Command } from "commander";
+
 interface FlagDef {
 	name: string;
 	desc: string;
@@ -854,6 +856,18 @@ export function generateFish(): string {
 	}
 
 	return lines.join("\n");
+}
+
+/**
+ * Create the Commander command for `overstory completions`.
+ */
+export function createCompletionsCommand(): Command {
+	return new Command("completions")
+		.description("Generate shell completions")
+		.argument("<shell>", "Shell to generate completions for (bash, zsh, fish)")
+		.action((shell: string) => {
+			completionsCommand([shell]);
+		});
 }
 
 export function completionsCommand(args: string[]): void {

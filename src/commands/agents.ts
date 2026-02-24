@@ -5,25 +5,11 @@
  */
 
 import { join } from "node:path";
+import { Command } from "commander";
 import { loadConfig } from "../config.ts";
 import { ValidationError } from "../errors.ts";
 import { openSessionStore } from "../sessions/compat.ts";
 import { type AgentSession, SUPPORTED_CAPABILITIES } from "../types.ts";
-
-/**
- * Parse a named flag value from args.
- */
-function getFlag(args: string[], flag: string): string | undefined {
-	const idx = args.indexOf(flag);
-	if (idx === -1 || idx + 1 >= args.length) {
-		return undefined;
-	}
-	return args[idx + 1];
-}
-
-function hasFlag(args: string[], flag: string): boolean {
-	return args.includes(flag);
-}
 
 /**
  * Discovered agent information including file scope.
@@ -194,94 +180,81 @@ function printAgents(agents: DiscoveredAgent[]): void {
 	}
 }
 
-const DISCOVER_HELP = `overstory agents discover — Find active agents by capability
-
-Usage: overstory agents discover [--capability <type>] [--all] [--json]
-
-Options:
-  --capability <type>   Filter by capability (builder, scout, reviewer, lead, merger, coordinator, supervisor)
-  --all                 Include completed and zombie agents (default: active only)
-  --json                Output as JSON
-  --help, -h            Show this help`;
-
-const AGENTS_HELP = `overstory agents — Discover and query agents
-
-Usage: overstory agents <subcommand> [options]
-
-Subcommands:
-  discover              Find active agents by capability
-
-Options:
-  --json                Output as JSON
-  --help, -h            Show this help
-
-Run 'overstory agents <subcommand> --help' for subcommand-specific help.`;
-
 /**
- * Handle the 'discover' subcommand.
+ * Create the Commander command for `overstory agents`.
  */
-async function discoverCommand(args: string[]): Promise<void> {
-	if (hasFlag(args, "--help") || hasFlag(args, "-h")) {
-		process.stdout.write(`${DISCOVER_HELP}\n`);
-		return;
-	}
+export function createAgentsCommand(): Command {
+	const cmd = new Command("agents").description("Discover and query agents");
 
-	const json = hasFlag(args, "--json");
-	const includeAll = hasFlag(args, "--all");
-	const capability = getFlag(args, "--capability");
+	cmd
+		.command("discover")
+		.description("Find active agents by capability")
+		.option(
+			"--capability <type>",
+			"Filter by capability (builder, scout, reviewer, lead, merger, coordinator, supervisor)",
+		)
+		.option("--all", "Include completed and zombie agents (default: active only)")
+		.option("--json", "Output as JSON")
+		.action(
+			async (opts: { capability?: string; all?: boolean; json?: boolean }) => {
+				const capability = opts.capability;
 
-	// Validate capability if provided
-	if (capability && !SUPPORTED_CAPABILITIES.includes(capability as never)) {
-		throw new ValidationError(
-			`Invalid capability: ${capability}. Must be one of: ${SUPPORTED_CAPABILITIES.join(", ")}`,
-			{
-				field: "capability",
-				value: capability,
+				// Validate capability if provided
+				if (capability && !SUPPORTED_CAPABILITIES.includes(capability as never)) {
+					throw new ValidationError(
+						`Invalid capability: ${capability}. Must be one of: ${SUPPORTED_CAPABILITIES.join(", ")}`,
+						{
+							field: "capability",
+							value: capability,
+						},
+					);
+				}
+
+				const cwd = process.cwd();
+				const config = await loadConfig(cwd);
+				const root = config.project.root;
+
+				const agents = await discoverAgents(root, {
+					capability,
+					includeAll: opts.all ?? false,
+				});
+
+				if (opts.json) {
+					process.stdout.write(`${JSON.stringify(agents, null, "\t")}\n`);
+				} else {
+					printAgents(agents);
+				}
 			},
 		);
-	}
 
-	const cwd = process.cwd();
-	const config = await loadConfig(cwd);
-	const root = config.project.root;
-
-	const agents = await discoverAgents(root, { capability, includeAll });
-
-	if (json) {
-		process.stdout.write(`${JSON.stringify(agents, null, "\t")}\n`);
-	} else {
-		printAgents(agents);
-	}
+	return cmd;
 }
 
 /**
  * Entry point for `overstory agents <subcommand>`.
  */
 export async function agentsCommand(args: string[]): Promise<void> {
-	if (hasFlag(args, "--help") || hasFlag(args, "-h")) {
-		process.stdout.write(`${AGENTS_HELP}\n`);
+	const cmd = createAgentsCommand();
+	cmd.exitOverride();
+
+	if (args.length === 0) {
+		process.stdout.write(cmd.helpInformation());
 		return;
 	}
 
-	// Extract subcommand: first arg that is not a flag
-	const subcommand = args.find((arg) => !arg.startsWith("-"));
-
-	if (!subcommand) {
-		process.stdout.write(`${AGENTS_HELP}\n`);
-		return;
-	}
-
-	// Remove the subcommand from args before passing to handler
-	const subArgs = args.filter((arg) => arg !== subcommand);
-
-	switch (subcommand) {
-		case "discover":
-			await discoverCommand(subArgs);
-			break;
-		default:
-			throw new ValidationError(`Unknown subcommand: ${subcommand}`, {
-				field: "subcommand",
-				value: subcommand,
-			});
+	try {
+		await cmd.parseAsync(args, { from: "user" });
+	} catch (err: unknown) {
+		if (err && typeof err === "object" && "code" in err) {
+			const code = (err as { code: string }).code;
+			if (code === "commander.helpDisplayed" || code === "commander.version") {
+				return;
+			}
+			if (code === "commander.unknownCommand") {
+				const message = err instanceof Error ? err.message : String(err);
+				throw new ValidationError(message, { field: "subcommand" });
+			}
+		}
+		throw err;
 	}
 }

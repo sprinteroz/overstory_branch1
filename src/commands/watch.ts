@@ -7,26 +7,12 @@
  */
 
 import { join } from "node:path";
+import { Command } from "commander";
 import { loadConfig } from "../config.ts";
 import { OverstoryError } from "../errors.ts";
 import type { HealthCheck } from "../types.ts";
 import { startDaemon } from "../watchdog/daemon.ts";
 import { isProcessRunning } from "../watchdog/health.ts";
-
-/**
- * Parse a named flag value from args.
- */
-function getFlag(args: string[], flag: string): string | undefined {
-	const idx = args.indexOf(flag);
-	if (idx === -1 || idx + 1 >= args.length) {
-		return undefined;
-	}
-	return args[idx + 1];
-}
-
-function hasFlag(args: string[], flag: string): boolean {
-	return args.includes(flag);
-}
 
 /**
  * Format a health check for display.
@@ -126,44 +112,21 @@ async function resolveOverstoryBin(): Promise<string> {
 }
 
 /**
- * Entry point for `overstory watch [--interval <ms>] [--background]`.
+ * Core implementation for the watch command.
  */
-const WATCH_HELP = `overstory watch — Start Tier 0 mechanical watchdog daemon
-
-Usage: overstory watch [--interval <ms>] [--background]
-
-Tier numbering:
-  Tier 0  Mechanical daemon (heartbeat, tmux/pid liveness) — this command
-  Tier 1  Triage agent (ephemeral AI analysis of stalled agents)
-  Tier 2  Monitor agent (continuous patrol — not yet implemented)
-  Tier 3  Supervisor monitors (per-project)
-
-Options:
-  --interval <ms>    Health check interval in milliseconds (default: from config)
-  --background       Daemonize (run in background)
-  --help, -h         Show this help`;
-
-export async function watchCommand(args: string[]): Promise<void> {
-	if (args.includes("--help") || args.includes("-h")) {
-		process.stdout.write(`${WATCH_HELP}\n`);
-		return;
-	}
-
-	const intervalStr = getFlag(args, "--interval");
-	const background = hasFlag(args, "--background");
-
+async function runWatch(opts: { interval?: string; background?: boolean }): Promise<void> {
 	const cwd = process.cwd();
 	const config = await loadConfig(cwd);
 
-	const intervalMs = intervalStr
-		? Number.parseInt(intervalStr, 10)
+	const intervalMs = opts.interval
+		? Number.parseInt(opts.interval, 10)
 		: config.watchdog.tier0IntervalMs;
 
 	const staleThresholdMs = config.watchdog.staleThresholdMs;
 	const zombieThresholdMs = config.watchdog.zombieThresholdMs;
 	const pidFilePath = join(config.project.root, ".overstory", "watchdog.pid");
 
-	if (background) {
+	if (opts.background) {
 		// Check if a watchdog is already running
 		const existingPid = await readPidFile(pidFilePath);
 		if (existingPid !== null && isProcessRunning(existingPid)) {
@@ -182,8 +145,8 @@ export async function watchCommand(args: string[]): Promise<void> {
 
 		// Build the args for the child process, forwarding --interval but not --background
 		const childArgs: string[] = ["watch"];
-		if (intervalStr) {
-			childArgs.push("--interval", intervalStr);
+		if (opts.interval) {
+			childArgs.push("--interval", opts.interval);
 		}
 
 		// Resolve the overstory binary path
@@ -244,4 +207,34 @@ export async function watchCommand(args: string[]): Promise<void> {
 
 	// Block forever
 	await new Promise(() => {});
+}
+
+export function createWatchCommand(): Command {
+	return new Command("watch")
+		.description("Start Tier 0 mechanical watchdog daemon")
+		.option("--interval <ms>", "Health check interval in milliseconds")
+		.option("--background", "Daemonize (run in background)")
+		.action(async (opts: { interval?: string; background?: boolean }) => {
+			await runWatch(opts);
+		});
+}
+
+/**
+ * Entry point for `overstory watch [--interval <ms>] [--background]`.
+ */
+export async function watchCommand(args: string[]): Promise<void> {
+	const cmd = createWatchCommand();
+	cmd.exitOverride();
+
+	try {
+		await cmd.parseAsync(args, { from: "user" });
+	} catch (err: unknown) {
+		if (err && typeof err === "object" && "code" in err) {
+			const code = (err as { code: string }).code;
+			if (code === "commander.helpDisplayed" || code === "commander.version") {
+				return;
+			}
+		}
+		throw err;
+	}
 }

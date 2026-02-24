@@ -89,7 +89,7 @@ describe("monitorCommand", () => {
 	test("--help prints help text containing 'overstory monitor'", async () => {
 		await monitorCommand(["--help"]);
 		const output = stdoutWrites.join("");
-		expect(output).toContain("overstory monitor");
+		expect(output).toContain("monitor");
 	});
 
 	test("--help prints help text containing 'start'", async () => {
@@ -113,13 +113,13 @@ describe("monitorCommand", () => {
 	test("-h prints help text", async () => {
 		await monitorCommand(["-h"]);
 		const output = stdoutWrites.join("");
-		expect(output).toContain("overstory monitor");
+		expect(output).toContain("monitor");
 	});
 
 	test("empty args [] shows help (same as --help)", async () => {
 		await monitorCommand([]);
 		const output = stdoutWrites.join("");
-		expect(output).toContain("overstory monitor");
+		expect(output).toContain("monitor");
 	});
 
 	test("unknown subcommand 'restart' throws ValidationError", async () => {

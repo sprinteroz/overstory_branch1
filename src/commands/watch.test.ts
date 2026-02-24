@@ -81,7 +81,7 @@ describe("watchCommand", () => {
 		await watchCommand(["--help"]);
 		const out = output();
 
-		expect(out).toContain("overstory watch");
+		expect(out).toContain("watch");
 		expect(out).toContain("--interval");
 		expect(out).toContain("--background");
 		expect(out).toContain("Tier 0");
@@ -91,7 +91,7 @@ describe("watchCommand", () => {
 		await watchCommand(["-h"]);
 		const out = output();
 
-		expect(out).toContain("overstory watch");
+		expect(out).toContain("watch");
 		expect(out).toContain("Tier 0");
 	});
 

@@ -7,6 +7,7 @@
  */
 
 import { join } from "node:path";
+import { Command } from "commander";
 import { loadConfig } from "../config.ts";
 import { ValidationError } from "../errors.ts";
 import { createMailStore } from "../mail/store.ts";
@@ -14,10 +15,6 @@ import { openSessionStore } from "../sessions/compat.ts";
 import type { AgentSession } from "../types.ts";
 import { isBranchMerged, listWorktrees, removeWorktree } from "../worktree/manager.ts";
 import { isSessionAlive, killSession } from "../worktree/tmux.ts";
-
-function hasFlag(args: string[], flag: string): boolean {
-	return args.includes(flag);
-}
 
 /**
  * Handle `overstory worktree list`.
@@ -72,14 +69,12 @@ async function handleList(root: string, json: boolean): Promise<void> {
  * Handle `overstory worktree clean [--completed] [--all] [--force]`.
  */
 async function handleClean(
-	args: string[],
+	opts: { all: boolean; force: boolean; completedOnly: boolean },
 	root: string,
 	json: boolean,
 	canonicalBranch: string,
 ): Promise<void> {
-	const all = hasFlag(args, "--all");
-	const force = hasFlag(args, "--force");
-	const completedOnly = hasFlag(args, "--completed") || !all;
+	const { all, force, completedOnly } = opts;
 
 	const worktrees = await listWorktrees(root);
 	const overstoryDir = join(root, ".overstory");
@@ -260,52 +255,74 @@ async function handleClean(
 	}
 }
 
+export function createWorktreeCommand(): Command {
+	const cmd = new Command("worktree").description("Manage agent worktrees");
+
+	cmd
+		.command("list")
+		.description("List worktrees with agent status")
+		.option("--json", "Output as JSON")
+		.action(async (opts: { json?: boolean }) => {
+			const cwd = process.cwd();
+			const config = await loadConfig(cwd);
+			await handleList(config.project.root, opts.json ?? false);
+		});
+
+	cmd
+		.command("clean")
+		.description("Remove completed worktrees")
+		.option("--completed", "Only finished agents (default)")
+		.option("--all", "Force remove all worktrees")
+		.option("--force", "Delete even if branches are unmerged")
+		.option("--json", "Output as JSON")
+		.action(
+			async (opts: { completed?: boolean; all?: boolean; force?: boolean; json?: boolean }) => {
+				const cwd = process.cwd();
+				const config = await loadConfig(cwd);
+				const all = opts.all ?? false;
+				await handleClean(
+					{
+						all,
+						force: opts.force ?? false,
+						completedOnly: opts.completed ?? !all,
+					},
+					config.project.root,
+					opts.json ?? false,
+					config.project.canonicalBranch,
+				);
+			},
+		);
+
+	return cmd;
+}
+
 /**
  * Entry point for `overstory worktree <subcommand> [flags]`.
  *
  * Subcommands: list, clean.
  */
-const WORKTREE_HELP = `overstory worktree — Manage agent worktrees
-
-Usage: overstory worktree <subcommand> [flags]
-
-Subcommands:
-  list               List worktrees with agent status
-  clean              Remove completed worktrees
-                       [--completed]  Only finished agents (default)
-                       [--all]        Force remove all
-                       [--force]      Delete even if branches are unmerged
-
-Options:
-  --json             Output as JSON
-  --help, -h         Show this help`;
-
 export async function worktreeCommand(args: string[]): Promise<void> {
-	if (args.includes("--help") || args.includes("-h")) {
-		process.stdout.write(`${WORKTREE_HELP}\n`);
+	const cmd = createWorktreeCommand();
+	cmd.exitOverride();
+
+	if (args.length === 0) {
+		process.stdout.write(cmd.helpInformation());
 		return;
 	}
 
-	const subcommand = args[0];
-	const subArgs = args.slice(1);
-	const jsonFlag = hasFlag(args, "--json");
-
-	const cwd = process.cwd();
-	const config = await loadConfig(cwd);
-	const root = config.project.root;
-	const canonicalBranch = config.project.canonicalBranch;
-
-	switch (subcommand) {
-		case "list":
-			await handleList(root, jsonFlag);
-			break;
-		case "clean":
-			await handleClean(subArgs, root, jsonFlag, canonicalBranch);
-			break;
-		default:
-			throw new ValidationError(
-				`Unknown worktree subcommand: ${subcommand ?? "(none)"}. Use: list, clean`,
-				{ field: "subcommand" },
-			);
+	try {
+		await cmd.parseAsync(args, { from: "user" });
+	} catch (err: unknown) {
+		if (err && typeof err === "object" && "code" in err) {
+			const code = (err as { code: string }).code;
+			if (code === "commander.helpDisplayed" || code === "commander.version") {
+				return;
+			}
+			if (code === "commander.unknownCommand") {
+				const message = err instanceof Error ? err.message : String(err);
+				throw new ValidationError(message, { field: "subcommand" });
+			}
+		}
+		throw err;
 	}
 }

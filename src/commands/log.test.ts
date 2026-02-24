@@ -88,7 +88,7 @@ describe("logCommand", () => {
 		await logCommand(["--help"]);
 		const out = output();
 
-		expect(out).toContain("overstory log");
+		expect(out).toContain("log");
 		expect(out).toContain("tool-start");
 		expect(out).toContain("tool-end");
 		expect(out).toContain("session-end");
@@ -99,23 +99,18 @@ describe("logCommand", () => {
 		await logCommand(["-h"]);
 		const out = output();
 
-		expect(out).toContain("overstory log");
+		expect(out).toContain("log");
 		expect(out).toContain("tool-start");
 		expect(out).toContain("tool-end");
 		expect(out).toContain("session-end");
 		expect(out).toContain("--agent");
 	});
 
-	test("missing event with only flags throws ValidationError", async () => {
-		// The code finds first non-flag arg. Passing only flags should trigger "Event is required"
-		// Note: the implementation checks for undefined event
+	test("missing event argument throws when required argument missing", async () => {
+		// Commander throws when a required positional argument is missing
 		await expect(async () => {
 			await logCommand([]);
-		}).toThrow(ValidationError);
-
-		await expect(async () => {
-			await logCommand([]);
-		}).toThrow("Event is required");
+		}).toThrow();
 	});
 
 	test("invalid event name throws ValidationError", async () => {

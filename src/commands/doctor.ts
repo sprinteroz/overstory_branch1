@@ -5,6 +5,7 @@
  */
 
 import { join } from "node:path";
+import { Command } from "commander";
 import { loadConfig } from "../config.ts";
 import { checkAgents } from "../doctor/agents.ts";
 import { checkConfig } from "../doctor/config-check.ts";
@@ -31,18 +32,6 @@ const ALL_CHECKS: Array<{ category: DoctorCategory; fn: DoctorCheckFn }> = [
 	{ category: "logs", fn: checkLogs },
 	{ category: "version", fn: checkVersion },
 ];
-
-function hasFlag(args: string[], flag: string): boolean {
-	return args.includes(flag);
-}
-
-function getFlag(args: string[], flag: string): string | undefined {
-	const idx = args.indexOf(flag);
-	if (idx === -1 || idx + 1 >= args.length) {
-		return undefined;
-	}
-	return args[idx + 1];
-}
 
 /**
  * Format human-readable output for doctor checks.
@@ -133,22 +122,74 @@ function printJSON(checks: DoctorCheck[]): void {
 	process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
 }
 
-const DOCTOR_HELP = `overstory doctor -- Run health checks on overstory subsystems
-
-Usage: overstory doctor [options]
-
-Options:
-  --json                 Output as JSON
-  --verbose              Show passing checks (default: only problems)
-  --category <name>      Run only one category
-  --help, -h             Show this help
-
-Categories: dependencies, structure, config, databases, consistency, agents, merge, logs, version`;
-
 /** Options for dependency injection in doctorCommand. */
 export interface DoctorCommandOptions {
 	/** Override the check runners (defaults to ALL_CHECKS). Pass [] to skip all checks. */
 	checkRunners?: Array<{ category: DoctorCategory; fn: DoctorCheckFn }>;
+}
+
+/**
+ * Create the Commander command for `overstory doctor`.
+ */
+export function createDoctorCommand(options?: DoctorCommandOptions): Command {
+	return new Command("doctor")
+		.description("Run health checks on overstory setup")
+		.option("--json", "Output as JSON")
+		.option("--verbose", "Show passing checks (default: only problems)")
+		.option("--category <name>", "Run only one category")
+		.addHelpText(
+			"after",
+			"\nCategories: dependencies, structure, config, databases, consistency, agents, merge, logs, version",
+		)
+		.action(async (opts: { json?: boolean; verbose?: boolean; category?: string }) => {
+			const json = opts.json ?? false;
+			const verbose = opts.verbose ?? false;
+			const categoryFilter = opts.category;
+
+			// Validate category filter if provided
+			if (categoryFilter !== undefined) {
+				const validCategories = ALL_CHECKS.map((c) => c.category);
+				if (!validCategories.includes(categoryFilter as DoctorCategory)) {
+					throw new ValidationError(
+						`Invalid category: ${categoryFilter}. Valid categories: ${validCategories.join(", ")}`,
+						{
+							field: "category",
+							value: categoryFilter,
+						},
+					);
+				}
+			}
+
+			const cwd = process.cwd();
+			const config = await loadConfig(cwd);
+			const overstoryDir = join(config.project.root, ".overstory");
+
+			// Filter checks by category if specified
+			const allChecks = options?.checkRunners ?? ALL_CHECKS;
+			const checksToRun = categoryFilter
+				? allChecks.filter((c) => c.category === categoryFilter)
+				: allChecks;
+
+			// Run all checks sequentially
+			const results: DoctorCheck[] = [];
+			for (const { fn } of checksToRun) {
+				const checkResults = await fn(config, overstoryDir);
+				results.push(...checkResults);
+			}
+
+			// Output results
+			if (json) {
+				printJSON(results);
+			} else {
+				printHumanReadable(results, verbose, allChecks);
+			}
+
+			// Set exit code if any check failed
+			const hasFailures = results.some((c) => c.status === "fail");
+			if (hasFailures) {
+				process.exitCode = 1;
+			}
+		});
 }
 
 /**
@@ -160,54 +201,26 @@ export async function doctorCommand(
 	args: string[],
 	options?: DoctorCommandOptions,
 ): Promise<number | undefined> {
-	if (hasFlag(args, "--help") || hasFlag(args, "-h")) {
-		process.stdout.write(`${DOCTOR_HELP}\n`);
-		return;
-	}
+	const cmd = createDoctorCommand(options);
+	cmd.exitOverride();
 
-	const json = hasFlag(args, "--json");
-	const verbose = hasFlag(args, "--verbose");
-	const categoryFilter = getFlag(args, "--category");
+	const prevExitCode = process.exitCode as number | undefined;
+	process.exitCode = undefined;
 
-	// Validate category filter if provided
-	if (categoryFilter !== undefined) {
-		const validCategories = ALL_CHECKS.map((c) => c.category);
-		if (!validCategories.includes(categoryFilter as DoctorCategory)) {
-			throw new ValidationError(
-				`Invalid category: ${categoryFilter}. Valid categories: ${validCategories.join(", ")}`,
-				{
-					field: "category",
-					value: categoryFilter,
-				},
-			);
+	try {
+		await cmd.parseAsync(args, { from: "user" });
+	} catch (err: unknown) {
+		process.exitCode = prevExitCode;
+		if (err && typeof err === "object" && "code" in err) {
+			const code = (err as { code: string }).code;
+			if (code === "commander.helpDisplayed" || code === "commander.version") {
+				return undefined;
+			}
 		}
+		throw err;
 	}
 
-	const cwd = process.cwd();
-	const config = await loadConfig(cwd);
-	const overstoryDir = join(config.project.root, ".overstory");
-
-	// Filter checks by category if specified
-	const allChecks = options?.checkRunners ?? ALL_CHECKS;
-	const checksToRun = categoryFilter
-		? allChecks.filter((c) => c.category === categoryFilter)
-		: allChecks;
-
-	// Run all checks sequentially
-	const results: DoctorCheck[] = [];
-	for (const { fn } of checksToRun) {
-		const checkResults = await fn(config, overstoryDir);
-		results.push(...checkResults);
-	}
-
-	// Output results
-	if (json) {
-		printJSON(results);
-	} else {
-		printHumanReadable(results, verbose, allChecks);
-	}
-
-	// Return exit code if any check failed
-	const hasFailures = results.some((c) => c.status === "fail");
-	return hasFailures ? 1 : undefined;
+	const exitCode = process.exitCode === 1 ? 1 : undefined;
+	process.exitCode = prevExitCode;
+	return exitCode;
 }

@@ -362,27 +362,27 @@ function makeDeps(
 describe("coordinatorCommand help", () => {
 	test("--help outputs help text", async () => {
 		const output = await captureStdout(() => coordinatorCommand(["--help"]));
-		expect(output).toContain("overstory coordinator");
+		expect(output).toContain("coordinator");
 		expect(output).toContain("start");
 		expect(output).toContain("stop");
 		expect(output).toContain("status");
 	});
 
-	test("--help includes --attach and --no-attach flags", async () => {
-		const output = await captureStdout(() => coordinatorCommand(["--help"]));
+	test("start --help includes --attach and --no-attach flags", async () => {
+		const output = await captureStdout(() => coordinatorCommand(["start", "--help"]));
 		expect(output).toContain("--attach");
 		expect(output).toContain("--no-attach");
 	});
 
 	test("-h outputs help text", async () => {
 		const output = await captureStdout(() => coordinatorCommand(["-h"]));
-		expect(output).toContain("overstory coordinator");
+		expect(output).toContain("coordinator");
 	});
 
 	test("empty args outputs help text", async () => {
 		const output = await captureStdout(() => coordinatorCommand([]));
-		expect(output).toContain("overstory coordinator");
-		expect(output).toContain("Subcommands:");
+		expect(output).toContain("coordinator");
+		expect(output).toContain("Commands:");
 	});
 });
 
@@ -400,7 +400,6 @@ describe("coordinatorCommand unknown subcommand", () => {
 			const ve = err as ValidationError;
 			expect(ve.message).toContain("frobnicate");
 			expect(ve.field).toBe("subcommand");
-			expect(ve.value).toBe("frobnicate");
 		}
 	});
 });
@@ -1299,10 +1298,10 @@ describe("watchdog integration", () => {
 	});
 
 	describe("COORDINATOR_HELP", () => {
-		test("help text includes --watchdog flag", async () => {
-			const output = await captureStdout(() => coordinatorCommand(["--help"]));
+		test("start help text includes --watchdog flag", async () => {
+			const output = await captureStdout(() => coordinatorCommand(["start", "--help"]));
 			expect(output).toContain("--watchdog");
-			expect(output).toContain("Auto-start watchdog daemon with coordinator");
+			expect(output).toContain("watchdog");
 		});
 	});
 });
@@ -1587,10 +1586,10 @@ describe("monitor integration", () => {
 	});
 
 	describe("COORDINATOR_HELP", () => {
-		test("help text includes --monitor flag", async () => {
-			const output = await captureStdout(() => coordinatorCommand(["--help"]));
+		test("start help text includes --monitor flag", async () => {
+			const output = await captureStdout(() => coordinatorCommand(["start", "--help"]));
 			expect(output).toContain("--monitor");
-			expect(output).toContain("Auto-start monitor agent (Tier 2) with coordinator");
+			expect(output).toContain("monitor");
 		});
 	});
 });

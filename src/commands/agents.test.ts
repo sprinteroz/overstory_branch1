@@ -300,18 +300,18 @@ logging:
 
 	it("should show help with --help flag", async () => {
 		await agentsCommand(["--help"]);
-		expect(stdoutBuffer).toContain("overstory agents");
+		expect(stdoutBuffer).toContain("agents");
 		expect(stdoutBuffer).toContain("discover");
 	});
 
 	it("should show help with no subcommand", async () => {
 		await agentsCommand([]);
-		expect(stdoutBuffer).toContain("overstory agents");
+		expect(stdoutBuffer).toContain("agents");
 		expect(stdoutBuffer).toContain("discover");
 	});
 
 	it("should error on unknown subcommand", async () => {
-		await expect(agentsCommand(["unknown"])).rejects.toThrow("Unknown subcommand");
+		await expect(agentsCommand(["unknown"])).rejects.toThrow("unknown command");
 	});
 
 	afterEach(async () => {

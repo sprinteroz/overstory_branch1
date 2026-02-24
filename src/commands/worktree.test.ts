@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, realpathSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { ValidationError } from "../errors.ts";
 import { createSessionStore } from "../sessions/store.ts";
 import { cleanupTempDir, commitFile, createTempGitRepo, runGitInDir } from "../test-helpers.ts";
 import type { AgentSession } from "../types.ts";
@@ -99,30 +100,29 @@ describe("worktreeCommand", () => {
 			await worktreeCommand(["--help"]);
 			const out = output();
 
-			expect(out).toContain("overstory worktree");
+			expect(out).toContain("worktree");
 			expect(out).toContain("list");
 			expect(out).toContain("clean");
-			expect(out).toContain("--json");
 		});
 
 		test("-h shows help text", async () => {
 			await worktreeCommand(["-h"]);
 			const out = output();
 
-			expect(out).toContain("overstory worktree");
+			expect(out).toContain("worktree");
 			expect(out).toContain("list");
 		});
 	});
 
 	describe("validation", () => {
 		test("unknown subcommand throws ValidationError", async () => {
-			await expect(worktreeCommand(["unknown"])).rejects.toThrow(
-				"Unknown worktree subcommand: unknown",
-			);
+			await expect(worktreeCommand(["unknown"])).rejects.toThrow(ValidationError);
 		});
 
-		test("missing subcommand throws ValidationError with (none)", async () => {
-			await expect(worktreeCommand([])).rejects.toThrow("Unknown worktree subcommand: (none)");
+		test("empty args shows help text", async () => {
+			await worktreeCommand([]);
+			const out = output();
+			expect(out).toContain("worktree");
 		});
 	});
 

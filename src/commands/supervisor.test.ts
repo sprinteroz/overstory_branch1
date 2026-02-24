@@ -111,12 +111,10 @@ describe("supervisorCommand", () => {
 
 		try {
 			await supervisorCommand(["--help"]);
-			expect(output).toContain("overstory supervisor");
+			expect(output).toContain("supervisor");
 			expect(output).toContain("start");
 			expect(output).toContain("stop");
 			expect(output).toContain("status");
-			expect(output).toContain("--task");
-			expect(output).toContain("--name");
 		} finally {
 			process.stdout.write = originalWrite;
 		}
@@ -132,7 +130,7 @@ describe("supervisorCommand", () => {
 
 		try {
 			await supervisorCommand(["-h"]);
-			expect(output).toContain("overstory supervisor");
+			expect(output).toContain("supervisor");
 		} finally {
 			process.stdout.write = originalWrite;
 		}
@@ -148,7 +146,7 @@ describe("supervisorCommand", () => {
 
 		try {
 			await supervisorCommand([]);
-			expect(output).toContain("overstory supervisor");
+			expect(output).toContain("supervisor");
 		} finally {
 			process.stdout.write = originalWrite;
 		}

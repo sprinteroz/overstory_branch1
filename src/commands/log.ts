@@ -11,6 +11,7 @@
  */
 
 import { join } from "node:path";
+import { Command } from "commander";
 import { updateIdentity } from "../agents/identity.ts";
 import { loadConfig } from "../config.ts";
 import { ValidationError } from "../errors.ts";
@@ -26,17 +27,6 @@ import { createMulchClient, type MulchClient } from "../mulch/client.ts";
 import { openSessionStore } from "../sessions/compat.ts";
 import { createRunStore } from "../sessions/store.ts";
 import type { AgentSession } from "../types.ts";
-
-/**
- * Parse a named flag value from args.
- */
-function getFlag(args: string[], flag: string): string | undefined {
-	const idx = args.indexOf(flag);
-	if (idx === -1 || idx + 1 >= args.length) {
-		return undefined;
-	}
-	return args[idx + 1];
-}
 
 /**
  * Get or create a session timestamp directory for the agent.
@@ -342,63 +332,32 @@ export async function autoRecordExpertise(params: {
 }
 
 /**
- * Entry point for `overstory log <event> --agent <name>`.
+ * Core implementation for the log command.
  */
-const LOG_HELP = `overstory log — Log a hook event
-
-Usage: overstory log <event> --agent <name> [--stdin]
-
-Arguments:
-  <event>            Event type: tool-start, tool-end, session-end
-
-Options:
-  --agent <name>            Agent name (required)
-  --tool-name <name>        Tool name (for tool-start/tool-end events, legacy)
-  --transcript <path>       Path to Claude Code transcript JSONL (for session-end, legacy)
-  --stdin                   Read hook payload JSON from stdin (preferred)
-  --help, -h                Show this help`;
-
-export async function logCommand(args: string[]): Promise<void> {
-	if (args.includes("--help") || args.includes("-h")) {
-		process.stdout.write(`${LOG_HELP}\n`);
-		return;
-	}
-
-	const event = args.find((a) => !a.startsWith("--"));
-	const agentName = getFlag(args, "--agent");
-	const useStdin = args.includes("--stdin");
-	const toolNameFlag = getFlag(args, "--tool-name") ?? "unknown";
-	const transcriptPathFlag = getFlag(args, "--transcript");
-
-	if (!event) {
-		throw new ValidationError("Event is required: overstory log <event> --agent <name>", {
-			field: "event",
-		});
-	}
-
+async function runLog(opts: {
+	event: string;
+	agent: string;
+	toolName: string;
+	transcript: string | undefined;
+	stdin: boolean;
+}): Promise<void> {
 	const validEvents = ["tool-start", "tool-end", "session-end"];
-	if (!validEvents.includes(event)) {
-		throw new ValidationError(`Invalid event "${event}". Valid: ${validEvents.join(", ")}`, {
-			field: "event",
-			value: event,
-		});
-	}
-
-	if (!agentName) {
-		throw new ValidationError("--agent is required for log command", {
-			field: "agent",
-		});
+	if (!validEvents.includes(opts.event)) {
+		throw new ValidationError(
+			`Invalid event "${opts.event}". Valid: ${validEvents.join(", ")}`,
+			{ field: "event", value: opts.event },
+		);
 	}
 
 	// Read stdin payload if --stdin flag is set
 	let stdinPayload: Record<string, unknown> | null = null;
-	if (useStdin) {
+	if (opts.stdin) {
 		stdinPayload = await readStdinJson();
 	}
 
 	// Extract fields from stdin payload (preferred) or fall back to flags
 	const toolName =
-		typeof stdinPayload?.tool_name === "string" ? stdinPayload.tool_name : toolNameFlag;
+		typeof stdinPayload?.tool_name === "string" ? stdinPayload.tool_name : opts.toolName;
 	const toolInput =
 		stdinPayload?.tool_input !== undefined &&
 		stdinPayload?.tool_input !== null &&
@@ -409,28 +368,28 @@ export async function logCommand(args: string[]): Promise<void> {
 	const transcriptPath =
 		typeof stdinPayload?.transcript_path === "string"
 			? stdinPayload.transcript_path
-			: transcriptPathFlag;
+			: opts.transcript;
 
 	const cwd = process.cwd();
 	const config = await loadConfig(cwd);
 	const logsBase = join(config.project.root, ".overstory", "logs");
-	const sessionDir = await getSessionDir(logsBase, agentName);
+	const sessionDir = await getSessionDir(logsBase, opts.agent);
 
 	const logger = createLogger({
 		logDir: sessionDir,
-		agentName,
+		agentName: opts.agent,
 		verbose: config.logging.verbose,
 		redactSecrets: config.logging.redactSecrets,
 	});
 
-	switch (event) {
+	switch (opts.event) {
 		case "tool-start": {
 			// Backward compatibility: always write to per-agent log files
 			logger.toolStart(toolName, toolInput ?? {});
-			updateLastActivity(config.project.root, agentName);
+			updateLastActivity(config.project.root, opts.agent);
 
 			// When --stdin is used, also write to EventStore for structured observability
-			if (useStdin) {
+			if (opts.stdin) {
 				try {
 					const eventsDbPath = join(config.project.root, ".overstory", "events.db");
 					const eventStore = createEventStore(eventsDbPath);
@@ -439,7 +398,7 @@ export async function logCommand(args: string[]): Promise<void> {
 						: { args: {}, summary: toolName };
 					eventStore.insert({
 						runId: null,
-						agentName,
+						agentName: opts.agent,
 						sessionId,
 						eventType: "tool_start",
 						toolName,
@@ -458,10 +417,10 @@ export async function logCommand(args: string[]): Promise<void> {
 		case "tool-end": {
 			// Backward compatibility: always write to per-agent log files
 			logger.toolEnd(toolName, 0);
-			updateLastActivity(config.project.root, agentName);
+			updateLastActivity(config.project.root, opts.agent);
 
 			// When --stdin is used, write to EventStore and correlate with tool-start
-			if (useStdin) {
+			if (opts.stdin) {
 				try {
 					const eventsDbPath = join(config.project.root, ".overstory", "events.db");
 					const eventStore = createEventStore(eventsDbPath);
@@ -470,7 +429,7 @@ export async function logCommand(args: string[]): Promise<void> {
 						: { args: {}, summary: toolName };
 					eventStore.insert({
 						runId: null,
-						agentName,
+						agentName: opts.agent,
 						sessionId,
 						eventType: "tool_end",
 						toolName,
@@ -479,7 +438,7 @@ export async function logCommand(args: string[]): Promise<void> {
 						level: "info",
 						data: JSON.stringify({ summary: filtered.summary }),
 					});
-					const correlation = eventStore.correlateToolEnd(agentName, toolName);
+					const correlation = eventStore.correlateToolEnd(opts.agent, toolName);
 					if (correlation) {
 						logger.toolEnd(toolName, correlation.durationMs);
 					}
@@ -492,7 +451,7 @@ export async function logCommand(args: string[]): Promise<void> {
 				if (sessionId) {
 					try {
 						// Throttle check
-						const snapshotMarkerPath = join(logsBase, agentName, ".last-snapshot");
+						const snapshotMarkerPath = join(logsBase, opts.agent, ".last-snapshot");
 						const SNAPSHOT_INTERVAL_MS = 30_000;
 						const snapshotMarkerFile = Bun.file(snapshotMarkerPath);
 						let shouldSnapshot = true;
@@ -505,19 +464,19 @@ export async function logCommand(args: string[]): Promise<void> {
 						}
 
 						if (shouldSnapshot) {
-							const transcriptPath = await resolveTranscriptPath(
+							const resolvedTranscriptPath = await resolveTranscriptPath(
 								config.project.root,
 								sessionId,
 								logsBase,
-								agentName,
+								opts.agent,
 							);
-							if (transcriptPath) {
-								const usage = await parseTranscriptUsage(transcriptPath);
+							if (resolvedTranscriptPath) {
+								const usage = await parseTranscriptUsage(resolvedTranscriptPath);
 								const cost = estimateCost(usage);
 								const metricsDbPath = join(config.project.root, ".overstory", "metrics.db");
 								const metricsStore = createMetricsStore(metricsDbPath);
 								metricsStore.recordSnapshot({
-									agentName,
+									agentName: opts.agent,
 									inputTokens: usage.inputTokens,
 									outputTokens: usage.outputTokens,
 									cacheReadTokens: usage.cacheReadTokens,
@@ -538,18 +497,18 @@ export async function logCommand(args: string[]): Promise<void> {
 			break;
 		}
 		case "session-end":
-			logger.info("session.end", { agentName });
+			logger.info("session.end", { agentName: opts.agent });
 			// Transition agent state to completed
-			transitionToCompleted(config.project.root, agentName);
+			transitionToCompleted(config.project.root, opts.agent);
 			// Look up agent session for identity update and metrics recording
 			{
-				const agentSession = getAgentSession(config.project.root, agentName);
+				const agentSession = getAgentSession(config.project.root, opts.agent);
 				const beadId = agentSession?.beadId ?? null;
 
 				// Update agent identity with completed session
 				const identityBaseDir = join(config.project.root, ".overstory", "agents");
 				try {
-					await updateIdentity(identityBaseDir, agentName, {
+					await updateIdentity(identityBaseDir, opts.agent, {
 						sessionsCompleted: 1,
 						completedTask: beadId ? { beadId, summary: `Completed task ${beadId}` } : undefined,
 					});
@@ -567,10 +526,10 @@ export async function logCommand(args: string[]): Promise<void> {
 						await mkdir(nudgesDir, { recursive: true });
 						const markerPath = join(nudgesDir, "coordinator.json");
 						const marker = {
-							from: agentName,
+							from: opts.agent,
 							reason: "lead_completed",
-							subject: `Lead ${agentName} completed — check mail for merge_ready/worker_done`,
-							messageId: `auto-nudge-${agentName}-${Date.now()}`,
+							subject: `Lead ${opts.agent} completed — check mail for merge_ready/worker_done`,
+							messageId: `auto-nudge-${opts.agent}-${Date.now()}`,
 							createdAt: new Date().toISOString(),
 						};
 						await Bun.write(markerPath, `${JSON.stringify(marker, null, "\t")}\n`);
@@ -586,7 +545,11 @@ export async function logCommand(args: string[]): Promise<void> {
 					// without running `overstory coordinator stop`.
 					if (agentSession.capability === "coordinator") {
 						try {
-							const currentRunPath = join(config.project.root, ".overstory", "current-run.txt");
+							const currentRunPath = join(
+								config.project.root,
+								".overstory",
+								"current-run.txt",
+							);
 							const currentRunFile = Bun.file(currentRunPath);
 							if (await currentRunFile.exists()) {
 								const runId = (await currentRunFile.text()).trim();
@@ -616,7 +579,8 @@ export async function logCommand(args: string[]): Promise<void> {
 						const metricsDbPath = join(config.project.root, ".overstory", "metrics.db");
 						const metricsStore = createMetricsStore(metricsDbPath);
 						const now = new Date().toISOString();
-						const durationMs = new Date(now).getTime() - new Date(agentSession.startedAt).getTime();
+						const durationMs =
+							new Date(now).getTime() - new Date(agentSession.startedAt).getTime();
 
 						// Parse token usage from transcript if path provided
 						let inputTokens = 0;
@@ -641,7 +605,7 @@ export async function logCommand(args: string[]): Promise<void> {
 						}
 
 						metricsStore.recordSession({
-							agentName,
+							agentName: opts.agent,
 							beadId: agentSession.beadId,
 							capability: agentSession.capability,
 							startedAt: agentSession.startedAt,
@@ -671,7 +635,7 @@ export async function logCommand(args: string[]): Promise<void> {
 							const mailDbPath = join(config.project.root, ".overstory", "mail.db");
 							await autoRecordExpertise({
 								mulchClient,
-								agentName,
+								agentName: opts.agent,
 								capability: agentSession.capability,
 								beadId,
 								mailDbPath,
@@ -686,13 +650,13 @@ export async function logCommand(args: string[]): Promise<void> {
 				}
 
 				// Write session-end event to EventStore when --stdin is used
-				if (useStdin) {
+				if (opts.stdin) {
 					try {
 						const eventsDbPath = join(config.project.root, ".overstory", "events.db");
 						const eventStore = createEventStore(eventsDbPath);
 						eventStore.insert({
 							runId: null,
-							agentName,
+							agentName: opts.agent,
 							sessionId,
 							eventType: "session_end",
 							toolName: null,
@@ -709,7 +673,7 @@ export async function logCommand(args: string[]): Promise<void> {
 			}
 			// Clear the current session marker
 			{
-				const markerPath = join(logsBase, agentName, ".current-session");
+				const markerPath = join(logsBase, opts.agent, ".current-session");
 				try {
 					const { unlink } = await import("node:fs/promises");
 					await unlink(markerPath);
@@ -721,4 +685,51 @@ export async function logCommand(args: string[]): Promise<void> {
 	}
 
 	logger.close();
+}
+
+export function createLogCommand(): Command {
+	return new Command("log")
+		.description("Log a hook event")
+		.argument("<event>", "Event type: tool-start, tool-end, session-end")
+		.option("--agent <name>", "Agent name (required)")
+		.option("--tool-name <name>", "Tool name (for tool-start/tool-end events, legacy)")
+		.option("--transcript <path>", "Path to Claude Code transcript JSONL (for session-end, legacy)")
+		.option("--stdin", "Read hook payload JSON from stdin (preferred)")
+		.action(
+			async (
+				event: string,
+				opts: { agent?: string; toolName?: string; transcript?: string; stdin?: boolean },
+			) => {
+				if (!opts.agent) {
+					throw new ValidationError("--agent is required for log command", { field: "agent" });
+				}
+				await runLog({
+					event,
+					agent: opts.agent,
+					toolName: opts.toolName ?? "unknown",
+					transcript: opts.transcript,
+					stdin: opts.stdin ?? false,
+				});
+			},
+		);
+}
+
+/**
+ * Entry point for `overstory log <event> --agent <name>`.
+ */
+export async function logCommand(args: string[]): Promise<void> {
+	const cmd = createLogCommand();
+	cmd.exitOverride();
+
+	try {
+		await cmd.parseAsync(args, { from: "user" });
+	} catch (err: unknown) {
+		if (err && typeof err === "object" && "code" in err) {
+			const code = (err as { code: string }).code;
+			if (code === "commander.helpDisplayed" || code === "commander.version") {
+				return;
+			}
+		}
+		throw err;
+	}
 }

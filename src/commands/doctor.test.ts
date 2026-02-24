@@ -61,7 +61,7 @@ describe("doctorCommand", () => {
 			await doctorCommand(["--help"], { checkRunners: [] });
 			const out = output();
 
-			expect(out).toContain("overstory doctor");
+			expect(out).toContain("doctor");
 			expect(out).toContain("Run health checks");
 			expect(out).toContain("--json");
 			expect(out).toContain("--verbose");
@@ -72,7 +72,7 @@ describe("doctorCommand", () => {
 			await doctorCommand(["-h"], { checkRunners: [] });
 			const out = output();
 
-			expect(out).toContain("overstory doctor");
+			expect(out).toContain("doctor");
 			expect(out).toContain("--help");
 		});
 	});

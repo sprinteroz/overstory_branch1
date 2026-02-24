@@ -14,6 +14,7 @@
 
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { Command } from "commander";
 import { deployHooks } from "../agents/hooks-deployer.ts";
 import { createIdentity, loadIdentity } from "../agents/identity.ts";
 import { createManifestLoader, resolveModel } from "../agents/manifest.ts";
@@ -57,58 +58,6 @@ export function buildSupervisorBeacon(opts: {
 }
 
 /**
- * Parse flags from command args.
- */
-function parseFlags(args: string[]): {
-	task: string | null;
-	name: string | null;
-	parent: string;
-	depth: number;
-	json: boolean;
-} {
-	const flags = {
-		task: null as string | null,
-		name: null as string | null,
-		parent: "coordinator",
-		depth: 1,
-		json: false,
-	};
-
-	for (let i = 0; i < args.length; i++) {
-		const arg = args[i];
-		if (arg === "--task" && i + 1 < args.length) {
-			const val = args[i + 1];
-			if (val !== undefined) {
-				flags.task = val;
-			}
-			i++;
-		} else if (arg === "--name" && i + 1 < args.length) {
-			const val = args[i + 1];
-			if (val !== undefined) {
-				flags.name = val;
-			}
-			i++;
-		} else if (arg === "--parent" && i + 1 < args.length) {
-			const val = args[i + 1];
-			if (val !== undefined) {
-				flags.parent = val;
-			}
-			i++;
-		} else if (arg === "--depth" && i + 1 < args.length) {
-			const val = args[i + 1];
-			if (val !== undefined) {
-				flags.depth = Number.parseInt(val, 10);
-			}
-			i++;
-		} else if (arg === "--json") {
-			flags.json = true;
-		}
-	}
-
-	return flags;
-}
-
-/**
  * Start a supervisor agent.
  *
  * 1. Parse flags (--task required, --name required)
@@ -121,19 +70,23 @@ function parseFlags(args: string[]): {
  * 8. Send startup beacon
  * 9. Record session in SessionStore (sessions.db)
  */
-async function startSupervisor(args: string[]): Promise<void> {
-	const flags = parseFlags(args);
-
-	if (!flags.task) {
+async function startSupervisor(opts: {
+	task: string;
+	name: string;
+	parent: string;
+	depth: number;
+	json: boolean;
+}): Promise<void> {
+	if (!opts.task) {
 		throw new ValidationError("--task <bead-id> is required", {
 			field: "task",
-			value: flags.task ?? "",
+			value: opts.task,
 		});
 	}
-	if (!flags.name) {
+	if (!opts.name) {
 		throw new ValidationError("--name <name> is required", {
 			field: "name",
-			value: flags.name ?? "",
+			value: opts.name,
 		});
 	}
 
@@ -150,11 +103,11 @@ async function startSupervisor(args: string[]): Promise<void> {
 	// Validate task exists and is workable (open or in_progress)
 	const resolvedBackend = await resolveBackend(config.taskTracker.backend, projectRoot);
 	const tracker = createTrackerClient(resolvedBackend, projectRoot);
-	const issue = await tracker.show(flags.task);
+	const issue = await tracker.show(opts.task);
 	if (issue.status !== "open" && issue.status !== "in_progress") {
-		throw new ValidationError(`Task ${flags.task} is not workable (status: ${issue.status})`, {
+		throw new ValidationError(`Task ${opts.task} is not workable (status: ${issue.status})`, {
 			field: "task",
-			value: flags.task,
+			value: opts.task,
 		});
 	}
 
@@ -162,7 +115,7 @@ async function startSupervisor(args: string[]): Promise<void> {
 	const overstoryDir = join(projectRoot, ".overstory");
 	const { store } = openSessionStore(overstoryDir);
 	try {
-		const existing = store.getByName(flags.name);
+		const existing = store.getByName(opts.name);
 
 		if (
 			existing &&
@@ -173,24 +126,24 @@ async function startSupervisor(args: string[]): Promise<void> {
 			const alive = await isSessionAlive(existing.tmuxSession);
 			if (alive) {
 				throw new AgentError(
-					`Supervisor '${flags.name}' is already running (tmux: ${existing.tmuxSession}, since: ${existing.startedAt})`,
-					{ agentName: flags.name },
+					`Supervisor '${opts.name}' is already running (tmux: ${existing.tmuxSession}, since: ${existing.startedAt})`,
+					{ agentName: opts.name },
 				);
 			}
 			// Session recorded but tmux is dead — mark as completed and continue
-			store.updateState(flags.name, "completed");
+			store.updateState(opts.name, "completed");
 		}
 
 		// Deploy supervisor-specific hooks to the project root's .claude/ directory.
-		await deployHooks(projectRoot, flags.name, "supervisor");
+		await deployHooks(projectRoot, opts.name, "supervisor");
 
 		// Create supervisor identity if first run
 		const identityBaseDir = join(projectRoot, ".overstory", "agents");
 		await mkdir(identityBaseDir, { recursive: true });
-		const existingIdentity = await loadIdentity(identityBaseDir, flags.name);
+		const existingIdentity = await loadIdentity(identityBaseDir, opts.name);
 		if (!existingIdentity) {
 			await createIdentity(identityBaseDir, {
-				name: flags.name,
+				name: opts.name,
 				capability: "supervisor",
 				created: new Date().toISOString(),
 				sessionsCompleted: 0,
@@ -209,7 +162,7 @@ async function startSupervisor(args: string[]): Promise<void> {
 
 		// Spawn tmux session at project root with Claude Code (interactive mode).
 		// Inject the supervisor base definition via --append-system-prompt.
-		const tmuxSession = `overstory-${config.project.name}-supervisor-${flags.name}`;
+		const tmuxSession = `overstory-${config.project.name}-supervisor-${opts.name}`;
 		const agentDefPath = join(projectRoot, ".overstory", "agent-defs", "supervisor.md");
 		const agentDefFile = Bun.file(agentDefPath);
 		let claudeCmd = `claude --model ${model} --dangerously-skip-permissions`;
@@ -220,7 +173,7 @@ async function startSupervisor(args: string[]): Promise<void> {
 		}
 		const pid = await createSession(tmuxSession, projectRoot, claudeCmd, {
 			...env,
-			OVERSTORY_AGENT_NAME: flags.name,
+			OVERSTORY_AGENT_NAME: opts.name,
 		});
 
 		// Wait for Claude Code TUI to render before sending input
@@ -228,10 +181,10 @@ async function startSupervisor(args: string[]): Promise<void> {
 		await Bun.sleep(1_000);
 
 		const beacon = buildSupervisorBeacon({
-			name: flags.name,
-			beadId: flags.task,
-			depth: flags.depth,
-			parent: flags.parent,
+			name: opts.name,
+			beadId: opts.task,
+			depth: opts.depth,
+			parent: opts.parent,
 			trackerCli: trackerCliName(resolvedBackend),
 		});
 		await sendKeys(tmuxSession, beacon);
@@ -244,17 +197,17 @@ async function startSupervisor(args: string[]): Promise<void> {
 
 		// Record session
 		const session: AgentSession = {
-			id: `session-${Date.now()}-${flags.name}`,
-			agentName: flags.name,
+			id: `session-${Date.now()}-${opts.name}`,
+			agentName: opts.name,
 			capability: "supervisor",
 			worktreePath: projectRoot, // Supervisor uses project root, not a worktree
 			branchName: config.project.canonicalBranch, // Operates on canonical branch
-			beadId: flags.task,
+			beadId: opts.task,
 			tmuxSession,
 			state: "booting",
 			pid,
-			parentAgent: flags.parent,
-			depth: flags.depth,
+			parentAgent: opts.parent,
+			depth: opts.depth,
 			runId: null,
 			startedAt: new Date().toISOString(),
 			lastActivity: new Date().toISOString(),
@@ -265,25 +218,25 @@ async function startSupervisor(args: string[]): Promise<void> {
 		store.upsert(session);
 
 		const output = {
-			agentName: flags.name,
+			agentName: opts.name,
 			capability: "supervisor",
 			tmuxSession,
 			projectRoot,
-			beadId: flags.task,
-			parent: flags.parent,
-			depth: flags.depth,
+			beadId: opts.task,
+			parent: opts.parent,
+			depth: opts.depth,
 			pid,
 		};
 
-		if (flags.json) {
+		if (opts.json) {
 			process.stdout.write(`${JSON.stringify(output)}\n`);
 		} else {
-			process.stdout.write(`Supervisor '${flags.name}' started\n`);
+			process.stdout.write(`Supervisor '${opts.name}' started\n`);
 			process.stdout.write(`  Tmux:    ${tmuxSession}\n`);
 			process.stdout.write(`  Root:    ${projectRoot}\n`);
-			process.stdout.write(`  Task:    ${flags.task}\n`);
-			process.stdout.write(`  Parent:  ${flags.parent}\n`);
-			process.stdout.write(`  Depth:   ${flags.depth}\n`);
+			process.stdout.write(`  Task:    ${opts.task}\n`);
+			process.stdout.write(`  Parent:  ${opts.parent}\n`);
+			process.stdout.write(`  Depth:   ${opts.depth}\n`);
 			process.stdout.write(`  PID:     ${pid}\n`);
 		}
 	} finally {
@@ -298,13 +251,11 @@ async function startSupervisor(args: string[]): Promise<void> {
  * 2. Kill the tmux session (with process tree cleanup)
  * 3. Mark session as completed in SessionStore
  */
-async function stopSupervisor(args: string[]): Promise<void> {
-	const flags = parseFlags(args);
-
-	if (!flags.name) {
+async function stopSupervisor(opts: { name: string; json: boolean }): Promise<void> {
+	if (!opts.name) {
 		throw new ValidationError("--name <name> is required", {
 			field: "name",
-			value: flags.name ?? "",
+			value: opts.name,
 		});
 	}
 
@@ -315,7 +266,7 @@ async function stopSupervisor(args: string[]): Promise<void> {
 	const overstoryDir = join(projectRoot, ".overstory");
 	const { store } = openSessionStore(overstoryDir);
 	try {
-		const session = store.getByName(flags.name);
+		const session = store.getByName(opts.name);
 
 		if (
 			!session ||
@@ -323,8 +274,8 @@ async function stopSupervisor(args: string[]): Promise<void> {
 			session.state === "completed" ||
 			session.state === "zombie"
 		) {
-			throw new AgentError(`No active supervisor session found for '${flags.name}'`, {
-				agentName: flags.name,
+			throw new AgentError(`No active supervisor session found for '${opts.name}'`, {
+				agentName: opts.name,
 			});
 		}
 
@@ -335,13 +286,13 @@ async function stopSupervisor(args: string[]): Promise<void> {
 		}
 
 		// Update session state
-		store.updateState(flags.name, "completed");
-		store.updateLastActivity(flags.name);
+		store.updateState(opts.name, "completed");
+		store.updateLastActivity(opts.name);
 
-		if (flags.json) {
+		if (opts.json) {
 			process.stdout.write(`${JSON.stringify({ stopped: true, sessionId: session.id })}\n`);
 		} else {
-			process.stdout.write(`Supervisor '${flags.name}' stopped (session: ${session.id})\n`);
+			process.stdout.write(`Supervisor '${opts.name}' stopped (session: ${session.id})\n`);
 		}
 	} finally {
 		store.close();
@@ -354,8 +305,7 @@ async function stopSupervisor(args: string[]): Promise<void> {
  * If --name is provided, show status for that specific supervisor.
  * Otherwise, list all supervisors.
  */
-async function statusSupervisor(args: string[]): Promise<void> {
-	const flags = parseFlags(args);
+async function statusSupervisor(opts: { name?: string; json: boolean }): Promise<void> {
 	const cwd = process.cwd();
 	const config = await loadConfig(cwd);
 	const projectRoot = config.project.root;
@@ -363,9 +313,9 @@ async function statusSupervisor(args: string[]): Promise<void> {
 	const overstoryDir = join(projectRoot, ".overstory");
 	const { store } = openSessionStore(overstoryDir);
 	try {
-		if (flags.name) {
+		if (opts.name) {
 			// Show specific supervisor
-			const session = store.getByName(flags.name);
+			const session = store.getByName(opts.name);
 
 			if (
 				!session ||
@@ -373,10 +323,10 @@ async function statusSupervisor(args: string[]): Promise<void> {
 				session.state === "completed" ||
 				session.state === "zombie"
 			) {
-				if (flags.json) {
+				if (opts.json) {
 					process.stdout.write(`${JSON.stringify({ running: false })}\n`);
 				} else {
-					process.stdout.write(`Supervisor '${flags.name}' is not running\n`);
+					process.stdout.write(`Supervisor '${opts.name}' is not running\n`);
 				}
 				return;
 			}
@@ -386,8 +336,8 @@ async function statusSupervisor(args: string[]): Promise<void> {
 			// Reconcile state: we already filtered out completed/zombie above,
 			// so if tmux is dead this session needs to be marked as zombie.
 			if (!alive) {
-				store.updateState(flags.name, "zombie");
-				store.updateLastActivity(flags.name);
+				store.updateState(opts.name, "zombie");
+				store.updateLastActivity(opts.name);
 				session.state = "zombie";
 			}
 
@@ -405,11 +355,11 @@ async function statusSupervisor(args: string[]): Promise<void> {
 				lastActivity: session.lastActivity,
 			};
 
-			if (flags.json) {
+			if (opts.json) {
 				process.stdout.write(`${JSON.stringify(status)}\n`);
 			} else {
 				const stateLabel = alive ? "running" : session.state;
-				process.stdout.write(`Supervisor '${flags.name}': ${stateLabel}\n`);
+				process.stdout.write(`Supervisor '${opts.name}': ${stateLabel}\n`);
 				process.stdout.write(`  Session:   ${session.id}\n`);
 				process.stdout.write(`  Tmux:      ${session.tmuxSession}\n`);
 				process.stdout.write(`  Task:      ${session.beadId}\n`);
@@ -425,7 +375,7 @@ async function statusSupervisor(args: string[]): Promise<void> {
 			const supervisors = allSessions.filter((s) => s.capability === "supervisor");
 
 			if (supervisors.length === 0) {
-				if (flags.json) {
+				if (opts.json) {
 					process.stdout.write(`${JSON.stringify([])}\n`);
 				} else {
 					process.stdout.write("No supervisor sessions found\n");
@@ -459,7 +409,7 @@ async function statusSupervisor(args: string[]): Promise<void> {
 				}),
 			);
 
-			if (flags.json) {
+			if (opts.json) {
 				process.stdout.write(`${JSON.stringify(statuses)}\n`);
 			} else {
 				process.stdout.write("Supervisor sessions:\n");
@@ -476,60 +426,84 @@ async function statusSupervisor(args: string[]): Promise<void> {
 	}
 }
 
-const SUPERVISOR_HELP = `overstory supervisor — Manage per-project supervisor agents
+/**
+ * Create the Commander command for `overstory supervisor`.
+ */
+export function createSupervisorCommand(): Command {
+	const cmd = new Command("supervisor").description("Manage per-project supervisor agents");
 
-Usage: overstory supervisor <subcommand> [flags]
+	cmd
+		.command("start")
+		.description("Start a supervisor (spawns Claude Code at project root)")
+		.requiredOption("--task <bead-id>", "Bead task ID (required)")
+		.requiredOption("--name <name>", "Unique supervisor name (required)")
+		.option("--parent <agent>", "Parent agent name", "coordinator")
+		.option("--depth <n>", "Hierarchy depth", "1")
+		.option("--json", "Output as JSON")
+		.action(
+			async (opts: {
+				task: string;
+				name: string;
+				parent: string;
+				depth: string;
+				json?: boolean;
+			}) => {
+				await startSupervisor({
+					task: opts.task,
+					name: opts.name,
+					parent: opts.parent,
+					depth: Number.parseInt(opts.depth, 10),
+					json: opts.json ?? false,
+				});
+			},
+		);
 
-Subcommands:
-  start                    Start a supervisor (spawns Claude Code at project root)
-  stop                     Stop a supervisor (kills tmux session)
-  status                   Show supervisor state
+	cmd
+		.command("stop")
+		.description("Stop a supervisor (kills tmux session)")
+		.requiredOption("--name <name>", "Supervisor name to stop (required)")
+		.option("--json", "Output as JSON")
+		.action(async (opts: { name: string; json?: boolean }) => {
+			await stopSupervisor({ name: opts.name, json: opts.json ?? false });
+		});
 
-Options (start):
-  --task <bead-id>         Bead task ID (required)
-  --name <name>            Unique supervisor name (required)
-  --parent <agent>         Parent agent name (default: "coordinator")
-  --depth <n>              Hierarchy depth (default: 1)
-  --json                   Output as JSON
+	cmd
+		.command("status")
+		.description("Show supervisor state")
+		.option("--name <name>", "Show specific supervisor (optional, lists all if omitted)")
+		.option("--json", "Output as JSON")
+		.action(async (opts: { name?: string; json?: boolean }) => {
+			await statusSupervisor({ name: opts.name, json: opts.json ?? false });
+		});
 
-Options (stop):
-  --name <name>            Supervisor name to stop (required)
-  --json                   Output as JSON
-
-Options (status):
-  --name <name>            Show specific supervisor (optional, lists all if omitted)
-  --json                   Output as JSON
-
-The supervisor runs at the project root (like the coordinator) but is assigned
-to a specific bead task and operates at depth 1. Supervisors can spawn workers
-via overstory sling and coordinate their work.`;
+	return cmd;
+}
 
 /**
  * Entry point for `overstory supervisor <subcommand>`.
  */
 export async function supervisorCommand(args: string[]): Promise<void> {
-	if (args.includes("--help") || args.includes("-h") || args.length === 0) {
-		process.stdout.write(`${SUPERVISOR_HELP}\n`);
+	const cmd = createSupervisorCommand();
+	cmd.exitOverride();
+
+	if (args.length === 0) {
+		process.stdout.write(cmd.helpInformation());
 		return;
 	}
 
-	const subcommand = args[0];
-	const subArgs = args.slice(1);
-
-	switch (subcommand) {
-		case "start":
-			await startSupervisor(subArgs);
-			break;
-		case "stop":
-			await stopSupervisor(subArgs);
-			break;
-		case "status":
-			await statusSupervisor(subArgs);
-			break;
-		default:
-			throw new ValidationError(
-				`Unknown supervisor subcommand: ${subcommand}. Run 'overstory supervisor --help' for usage.`,
-				{ field: "subcommand", value: subcommand },
-			);
+	try {
+		await cmd.parseAsync(args, { from: "user" });
+	} catch (err: unknown) {
+		if (err && typeof err === "object" && "code" in err) {
+			const code = (err as { code: string }).code;
+			if (code === "commander.helpDisplayed" || code === "commander.version") {
+				return;
+			}
+			if (code === "commander.unknownCommand") {
+				const message = err instanceof Error ? err.message : String(err);
+				throw new ValidationError(message, { field: "subcommand" });
+			}
+		}
+		throw err;
 	}
 }

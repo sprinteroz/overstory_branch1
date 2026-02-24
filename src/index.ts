@@ -8,25 +8,25 @@
  */
 
 import { Command } from "commander";
-import { agentsCommand } from "./commands/agents.ts";
+import { createAgentsCommand } from "./commands/agents.ts";
 import { cleanCommand } from "./commands/clean.ts";
-import { completionsCommand } from "./commands/completions.ts";
-import { coordinatorCommand } from "./commands/coordinator.ts";
-import { createCostsCommand } from "./commands/costs.ts";
-import { createDashboardCommand } from "./commands/dashboard.ts";
-import { doctorCommand } from "./commands/doctor.ts";
-import { createErrorsCommand } from "./commands/errors.ts";
-import { createFeedCommand } from "./commands/feed.ts";
-import { groupCommand } from "./commands/group.ts";
-import { hooksCommand } from "./commands/hooks.ts";
+import { createCompletionsCommand } from "./commands/completions.ts";
+import { createCoordinatorCommand } from "./commands/coordinator.ts";
+import { costsCommand } from "./commands/costs.ts";
+import { dashboardCommand } from "./commands/dashboard.ts";
+import { createDoctorCommand } from "./commands/doctor.ts";
+import { errorsCommand } from "./commands/errors.ts";
+import { feedCommand } from "./commands/feed.ts";
+import { createGroupCommand } from "./commands/group.ts";
+import { createHooksCommand } from "./commands/hooks.ts";
 import { initCommand } from "./commands/init.ts";
-import { createInspectCommand } from "./commands/inspect.ts";
-import { logCommand } from "./commands/log.ts";
-import { createLogsCommand } from "./commands/logs.ts";
+import { inspectCommand } from "./commands/inspect.ts";
+import { createLogCommand } from "./commands/log.ts";
+import { logsCommand } from "./commands/logs.ts";
 import { mailCommand } from "./commands/mail.ts";
 import { mergeCommand } from "./commands/merge.ts";
-import { createMetricsCommand } from "./commands/metrics.ts";
-import { monitorCommand } from "./commands/monitor.ts";
+import { metricsCommand } from "./commands/metrics.ts";
+import { createMonitorCommand } from "./commands/monitor.ts";
 import { nudgeCommand } from "./commands/nudge.ts";
 import { primeCommand } from "./commands/prime.ts";
 import { createReplayCommand } from "./commands/replay.ts";
@@ -35,10 +35,10 @@ import { slingCommand } from "./commands/sling.ts";
 import { specCommand } from "./commands/spec.ts";
 import { createStatusCommand } from "./commands/status.ts";
 import { stopCommand } from "./commands/stop.ts";
-import { supervisorCommand } from "./commands/supervisor.ts";
-import { createTraceCommand } from "./commands/trace.ts";
-import { watchCommand } from "./commands/watch.ts";
-import { worktreeCommand } from "./commands/worktree.ts";
+import { createSupervisorCommand } from "./commands/supervisor.ts";
+import { traceCommand } from "./commands/trace.ts";
+import { createWatchCommand } from "./commands/watch.ts";
+import { createWorktreeCommand } from "./commands/worktree.ts";
 import { OverstoryError, WorktreeError } from "./errors.ts";
 import { setQuiet } from "./logging/color.ts";
 
@@ -128,15 +128,20 @@ program.hook("preAction", (thisCmd) => {
 	}
 });
 
-program
-	.command("agents")
-	.description("Discover and query agents (discover)")
-	.allowUnknownOption()
-	.allowExcessArguments()
-	.action(async (_opts, cmd) => {
-		await agentsCommand(cmd.args);
-	});
+// Migrated commands — use addCommand() with createXCommand() factories
+program.addCommand(createAgentsCommand());
+program.addCommand(createDoctorCommand());
+program.addCommand(createCoordinatorCommand());
+program.addCommand(createSupervisorCommand());
+program.addCommand(createHooksCommand());
+program.addCommand(createMonitorCommand());
+program.addCommand(createWorktreeCommand());
+program.addCommand(createLogCommand());
+program.addCommand(createWatchCommand());
+program.addCommand(createGroupCommand());
+program.addCommand(createCompletionsCommand());
 
+// Unmigrated commands — passthrough pattern
 program
 	.command("init")
 	.description("Initialize .overstory/ in current project")
@@ -223,54 +228,6 @@ program
 	});
 
 program
-	.command("doctor")
-	.description("Run health checks on overstory setup")
-	.allowUnknownOption()
-	.allowExcessArguments()
-	.action(async (_opts, cmd) => {
-		const exitCode = await doctorCommand(cmd.args);
-		if (exitCode !== undefined) {
-			process.exitCode = exitCode;
-		}
-	});
-
-program
-	.command("coordinator")
-	.description("Persistent coordinator agent (start/stop/status)")
-	.allowUnknownOption()
-	.allowExcessArguments()
-	.action(async (_opts, cmd) => {
-		await coordinatorCommand(cmd.args);
-	});
-
-program
-	.command("supervisor")
-	.description("Per-project supervisor agent (start/stop/status)")
-	.allowUnknownOption()
-	.allowExcessArguments()
-	.action(async (_opts, cmd) => {
-		await supervisorCommand(cmd.args);
-	});
-
-program
-	.command("hooks")
-	.description("Manage orchestrator hooks (install/uninstall/status)")
-	.allowUnknownOption()
-	.allowExcessArguments()
-	.action(async (_opts, cmd) => {
-		await hooksCommand(cmd.args);
-	});
-
-program
-	.command("monitor")
-	.description("Tier 2 monitor agent (start/stop/status)")
-	.allowUnknownOption()
-	.allowExcessArguments()
-	.action(async (_opts, cmd) => {
-		await monitorCommand(cmd.args);
-	});
-
-program
 	.command("mail")
 	.description("Mail system (send/check/list/read/reply)")
 	.allowUnknownOption()
@@ -301,44 +258,22 @@ program
 	});
 
 program
-	.command("group")
-	.description("Task groups (create/status/add/remove/list)")
+	.command("logs")
+	.description("Query NDJSON logs across agents")
 	.allowUnknownOption()
 	.allowExcessArguments()
 	.action(async (_opts, cmd) => {
-		await groupCommand(cmd.args);
+		await logsCommand(cmd.args);
 	});
 
 program
-	.command("worktree")
-	.description("Manage worktrees (list/clean)")
+	.command("trace")
+	.description("Chronological event timeline for agent/bead")
 	.allowUnknownOption()
 	.allowExcessArguments()
 	.action(async (_opts, cmd) => {
-		await worktreeCommand(cmd.args);
+		await traceCommand(cmd.args);
 	});
-
-program
-	.command("log")
-	.description("Log a hook event")
-	.allowUnknownOption()
-	.allowExcessArguments()
-	.action(async (_opts, cmd) => {
-		await logCommand(cmd.args);
-	});
-
-program.addCommand(createLogsCommand());
-
-program
-	.command("watch")
-	.description("Start watchdog daemon")
-	.allowUnknownOption()
-	.allowExcessArguments()
-	.action(async (_opts, cmd) => {
-		await watchCommand(cmd.args);
-	});
-
-program.addCommand(createTraceCommand());
 
 program.addCommand(createFeedCommand());
 
@@ -351,14 +286,6 @@ program.addCommand(createRunCommand());
 program.addCommand(createCostsCommand());
 
 program.addCommand(createMetricsCommand());
-
-program
-	.command("completions")
-	.description("Generate shell completions")
-	.argument("<shell>", "Shell to generate completions for (bash, zsh, fish)")
-	.action((shell) => {
-		completionsCommand([shell]);
-	});
 
 // Handle unknown commands with Levenshtein fuzzy-match suggestions
 program.on("command:*", (operands) => {

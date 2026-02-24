@@ -15,6 +15,7 @@
 
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { Command } from "commander";
 import { deployHooks } from "../agents/hooks-deployer.ts";
 import { createIdentity, loadIdentity } from "../agents/identity.ts";
 import { createManifestLoader, resolveModel } from "../agents/manifest.ts";
@@ -51,15 +52,6 @@ export function buildMonitorBeacon(): string {
 }
 
 /**
- * Determine whether to auto-attach to the tmux session after starting.
- */
-function resolveAttach(args: string[], isTTY: boolean): boolean {
-	if (args.includes("--attach")) return true;
-	if (args.includes("--no-attach")) return false;
-	return isTTY;
-}
-
-/**
  * Start the monitor agent.
  *
  * 1. Verify no monitor is already running
@@ -70,9 +62,8 @@ function resolveAttach(args: string[], isTTY: boolean): boolean {
  * 6. Send startup beacon
  * 7. Record session in SessionStore (sessions.db)
  */
-async function startMonitor(args: string[]): Promise<void> {
-	const json = args.includes("--json");
-	const shouldAttach = resolveAttach(args, !!process.stdout.isTTY);
+async function startMonitor(opts: { json: boolean; attach: boolean }): Promise<void> {
+	const { json, attach: shouldAttach } = opts;
 
 	if (isRunningAsRoot()) {
 		throw new AgentError(
@@ -118,8 +109,6 @@ async function startMonitor(args: string[]): Promise<void> {
 		}
 
 		// Deploy monitor-specific hooks to the project root's .claude/ directory.
-		// The monitor gets the same structural enforcement as other non-implementation
-		// agents (Write/Edit/NotebookEdit blocked, dangerous bash commands blocked).
 		await deployHooks(projectRoot, MONITOR_NAME, "monitor");
 
 		// Create monitor identity if first run
@@ -146,7 +135,6 @@ async function startMonitor(args: string[]): Promise<void> {
 		const { model, env } = resolveModel(config, manifest, "monitor", "sonnet");
 
 		// Spawn tmux session at project root with Claude Code (interactive mode).
-		// Inject the monitor base definition via --append-system-prompt.
 		const agentDefPath = join(projectRoot, ".overstory", "agent-defs", "monitor.md");
 		const agentDefFile = Bun.file(agentDefPath);
 		let claudeCmd = `claude --model ${model} --dangerously-skip-permissions`;
@@ -226,8 +214,8 @@ async function startMonitor(args: string[]): Promise<void> {
  * 2. Kill the tmux session (with process tree cleanup)
  * 3. Mark session as completed in SessionStore
  */
-async function stopMonitor(args: string[]): Promise<void> {
-	const json = args.includes("--json");
+async function stopMonitor(opts: { json: boolean }): Promise<void> {
+	const { json } = opts;
 	const cwd = process.cwd();
 	const config = await loadConfig(cwd);
 	const projectRoot = config.project.root;
@@ -273,8 +261,8 @@ async function stopMonitor(args: string[]): Promise<void> {
  *
  * Checks session registry and tmux liveness to report actual state.
  */
-async function statusMonitor(args: string[]): Promise<void> {
-	const json = args.includes("--json");
+async function statusMonitor(opts: { json: boolean }): Promise<void> {
+	const { json } = opts;
 	const cwd = process.cwd();
 	const config = await loadConfig(cwd);
 	const projectRoot = config.project.root;
@@ -301,8 +289,6 @@ async function statusMonitor(args: string[]): Promise<void> {
 		const alive = await isSessionAlive(session.tmuxSession);
 
 		// Reconcile state: if session says active but tmux is dead, update.
-		// We already filtered out completed/zombie states above, so if tmux is dead
-		// this session needs to be marked as zombie.
 		if (!alive) {
 			store.updateState(MONITOR_NAME, "zombie");
 			store.updateLastActivity(MONITOR_NAME);
@@ -335,56 +321,65 @@ async function statusMonitor(args: string[]): Promise<void> {
 	}
 }
 
-const MONITOR_HELP = `overstory monitor — Manage the persistent Tier 2 monitor agent
+export function createMonitorCommand(): Command {
+	const cmd = new Command("monitor").description("Manage the persistent Tier 2 monitor agent");
 
-Usage: overstory monitor <subcommand> [flags]
+	cmd
+		.command("start")
+		.description("Start the monitor (spawns Claude Code at project root)")
+		.option("--attach", "Always attach to tmux session after start")
+		.option("--no-attach", "Never attach to tmux session after start")
+		.option("--json", "Output as JSON")
+		.action(async (opts: { attach?: boolean; json?: boolean }) => {
+			// opts.attach = true if --attach, false if --no-attach, undefined if neither
+			const shouldAttach = opts.attach !== undefined ? opts.attach : !!process.stdout.isTTY;
+			await startMonitor({ json: opts.json ?? false, attach: shouldAttach });
+		});
 
-Subcommands:
-  start                    Start the monitor (spawns Claude Code at project root)
-  stop                     Stop the monitor (kills tmux session)
-  status                   Show monitor state
+	cmd
+		.command("stop")
+		.description("Stop the monitor (kills tmux session)")
+		.option("--json", "Output as JSON")
+		.action(async (opts: { json?: boolean }) => {
+			await stopMonitor({ json: opts.json ?? false });
+		});
 
-Start options:
-  --attach                 Always attach to tmux session after start
-  --no-attach              Never attach to tmux session after start
-                           Default: attach when running in an interactive TTY
+	cmd
+		.command("status")
+		.description("Show monitor state")
+		.option("--json", "Output as JSON")
+		.action(async (opts: { json?: boolean }) => {
+			await statusMonitor({ json: opts.json ?? false });
+		});
 
-General options:
-  --json                   Output as JSON
-  --help, -h               Show this help
-
-The monitor agent (Tier 2) continuously patrols the agent fleet by:
-  - Checking agent health via overstory status
-  - Sending progressive nudges to stalled agents
-  - Escalating unresponsive agents to the coordinator
-  - Producing periodic health summaries`;
+	return cmd;
+}
 
 /**
  * Entry point for `overstory monitor <subcommand>`.
  */
 export async function monitorCommand(args: string[]): Promise<void> {
-	if (args.includes("--help") || args.includes("-h") || args.length === 0) {
-		process.stdout.write(`${MONITOR_HELP}\n`);
+	const cmd = createMonitorCommand();
+	cmd.exitOverride();
+
+	if (args.length === 0) {
+		process.stdout.write(cmd.helpInformation());
 		return;
 	}
 
-	const subcommand = args[0];
-	const subArgs = args.slice(1);
-
-	switch (subcommand) {
-		case "start":
-			await startMonitor(subArgs);
-			break;
-		case "stop":
-			await stopMonitor(subArgs);
-			break;
-		case "status":
-			await statusMonitor(subArgs);
-			break;
-		default:
-			throw new ValidationError(
-				`Unknown monitor subcommand: ${subcommand}. Run 'overstory monitor --help' for usage.`,
-				{ field: "subcommand", value: subcommand },
-			);
+	try {
+		await cmd.parseAsync(args, { from: "user" });
+	} catch (err: unknown) {
+		if (err && typeof err === "object" && "code" in err) {
+			const code = (err as { code: string }).code;
+			if (code === "commander.helpDisplayed" || code === "commander.version") {
+				return;
+			}
+			if (code === "commander.unknownCommand") {
+				const message = err instanceof Error ? err.message : String(err);
+				throw new ValidationError(message, { field: "subcommand" });
+			}
+		}
+		throw err;
 	}
 }
