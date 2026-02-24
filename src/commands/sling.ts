@@ -444,7 +444,7 @@ export async function slingCommand(args: string[]): Promise<void> {
 
 		// 6. Validate task exists and is in a workable state (if seeds enabled)
 		const seeds = createSeedsClient(config.project.root);
-		if (config.seeds.enabled) {
+		if (config.taskTracker.enabled) {
 			let issue: SeedIssue;
 			try {
 				issue = await seeds.show(taskId);
@@ -532,7 +532,7 @@ export async function slingCommand(args: string[]): Promise<void> {
 		await deployHooks(worktreePath, name, capability);
 
 		// 10. Claim task issue
-		if (config.seeds.enabled) {
+		if (config.taskTracker.enabled) {
 			try {
 				await seeds.claim(taskId);
 			} catch {

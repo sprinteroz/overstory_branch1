@@ -34,7 +34,7 @@ describe("loadConfig", () => {
 		expect(config.project.canonicalBranch).toBe("main");
 		expect(config.agents.maxConcurrent).toBe(25);
 		expect(config.agents.maxDepth).toBe(2);
-		expect(config.seeds.enabled).toBe(true);
+		expect(config.taskTracker.enabled).toBe(true);
 		expect(config.mulch.enabled).toBe(true);
 		expect(config.mulch.primeFormat).toBe("markdown");
 		expect(config.logging.verbose).toBe(false);
@@ -62,7 +62,7 @@ agents:
 		expect(config.agents.maxConcurrent).toBe(10);
 		// Non-overridden values keep defaults
 		expect(config.agents.maxDepth).toBe(2);
-		expect(config.seeds.enabled).toBe(true);
+		expect(config.taskTracker.enabled).toBe(true);
 	});
 
 	test("always sets project.root to the actual projectRoot", async () => {
@@ -79,7 +79,7 @@ project:
 	test("parses boolean values correctly", async () => {
 		await ensureOverstoryDir();
 		await writeConfig(`
-seeds:
+taskTracker:
   enabled: false
 mulch:
   enabled: true
@@ -90,7 +90,7 @@ logging:
 
 		const config = await loadConfig(tempDir);
 
-		expect(config.seeds.enabled).toBe(false);
+		expect(config.taskTracker.enabled).toBe(false);
 		expect(config.mulch.enabled).toBe(true);
 		expect(config.logging.verbose).toBe(true);
 		expect(config.logging.redactSecrets).toBe(false);
@@ -672,7 +672,7 @@ describe("DEFAULT_CONFIG", () => {
 		expect(DEFAULT_CONFIG.project).toBeDefined();
 		expect(DEFAULT_CONFIG.agents).toBeDefined();
 		expect(DEFAULT_CONFIG.worktrees).toBeDefined();
-		expect(DEFAULT_CONFIG.seeds).toBeDefined();
+		expect(DEFAULT_CONFIG.taskTracker).toBeDefined();
 		expect(DEFAULT_CONFIG.mulch).toBeDefined();
 		expect(DEFAULT_CONFIG.merge).toBeDefined();
 		expect(DEFAULT_CONFIG.providers).toBeDefined();
