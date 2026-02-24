@@ -7,6 +7,7 @@
  * Usage: overstory <command> [args...]
  */
 
+import { Command } from "commander";
 import { agentsCommand } from "./commands/agents.ts";
 import { cleanCommand } from "./commands/clean.ts";
 import { completionsCommand } from "./commands/completions.ts";
@@ -42,50 +43,6 @@ import { OverstoryError, WorktreeError } from "./errors.ts";
 import { setQuiet } from "./logging/color.ts";
 
 const VERSION = "0.6.3";
-
-const HELP = `overstory v${VERSION} — Multi-agent orchestration for Claude Code
-
-Usage: overstory <command> [args...]
-
-Commands:
-  agents <sub>            Discover and query agents (discover)
-  init                    Initialize .overstory/ in current project
-  sling <task-id>         Spawn a worker agent
-  spec <sub>              Manage task specs (write)
-  prime                   Load context for orchestrator/agent
-  stop <agent>            Terminate a running agent
-  status                  Show all active agents and project state
-  dashboard               Live TUI dashboard for agent monitoring
-  inspect <agent>         Deep inspection of a single agent
-  coordinator <sub>       Persistent coordinator agent (start/stop/status)
-  supervisor <sub>        Per-project supervisor agent (start/stop/status)
-  hooks <sub>             Manage orchestrator hooks (install/uninstall/status)
-  mail <sub>              Mail system (send/check/list/read/reply)
-  monitor <sub>           Tier 2 monitor agent (start/stop/status)
-  merge                   Merge agent branches into canonical
-  nudge <agent> [msg]     Send a text nudge to an agent
-  group <sub>             Task groups (create/status/add/remove/list)
-  clean                   Wipe runtime state (nuclear cleanup)
-  doctor                  Run health checks on overstory setup
-  worktree <sub>          Manage worktrees (list/clean)
-  log <event>             Log a hook event
-  logs [options]          Query NDJSON logs across agents
-  watch                   Start watchdog daemon
-  feed [options]          Unified real-time event stream across all agents
-  trace <target>         Chronological event timeline for agent/bead
-  errors [options]        Aggregated error view across agents
-  run [sub]               Manage runs (list/show/complete)
-  replay [options]        Interleaved chronological replay across agents
-  costs [options]          Token/cost analysis and breakdown
-  metrics                 Show session metrics
-
-Options:
-  --help, -h              Show this help
-  --version, -v           Show version
-  --quiet, -q             Suppress non-error output
-  --completions <shell>   Generate shell completions (bash, zsh, fish)
-
-Run 'overstory <command> --help' for command-specific help.`;
 
 const COMMANDS = [
 	"agents",
@@ -153,145 +110,319 @@ function suggestCommand(input: string): string | undefined {
 	return bestMatch;
 }
 
-async function main(): Promise<void> {
-	const args = process.argv.slice(2);
+const program = new Command();
 
-	// Parse global flags before command routing
-	const quietIndex = args.indexOf("--quiet");
-	const qIndex = args.indexOf("-q");
-	if (quietIndex !== -1 || qIndex !== -1) {
+program
+	.name("overstory")
+	.description("Multi-agent orchestration for Claude Code")
+	.version(`overstory v${VERSION}`, "-v, --version")
+	.option("-q, --quiet", "Suppress non-error output")
+	.option("--json", "JSON output")
+	.option("--verbose", "Verbose output");
+
+// Apply global flags before any command action runs
+program.hook("preAction", (thisCmd) => {
+	const opts = thisCmd.optsWithGlobals();
+	if (opts["quiet"]) {
 		setQuiet(true);
-		// Remove the flag from args so commands do not see it
-		if (quietIndex !== -1) args.splice(quietIndex, 1);
-		if (qIndex !== -1) {
-			const idx = args.indexOf("-q");
-			if (idx !== -1) args.splice(idx, 1);
+	}
+});
+
+program
+	.command("agents")
+	.description("Discover and query agents (discover)")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await agentsCommand(cmd.args);
+	});
+
+program
+	.command("init")
+	.description("Initialize .overstory/ in current project")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await initCommand(cmd.args);
+	});
+
+program
+	.command("sling")
+	.description("Spawn a worker agent")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await slingCommand(cmd.args);
+	});
+
+program
+	.command("spec")
+	.description("Manage task specs (write)")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await specCommand(cmd.args);
+	});
+
+program
+	.command("prime")
+	.description("Load context for orchestrator/agent")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await primeCommand(cmd.args);
+	});
+
+program
+	.command("stop")
+	.description("Terminate a running agent")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await stopCommand(cmd.args);
+	});
+
+program
+	.command("status")
+	.description("Show all active agents and project state")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await statusCommand(cmd.args);
+	});
+
+program
+	.command("dashboard")
+	.description("Live TUI dashboard for agent monitoring")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await dashboardCommand(cmd.args);
+	});
+
+program
+	.command("inspect")
+	.description("Deep inspection of a single agent")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await inspectCommand(cmd.args);
+	});
+
+program
+	.command("clean")
+	.description("Wipe runtime state (nuclear cleanup)")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await cleanCommand(cmd.args);
+	});
+
+program
+	.command("doctor")
+	.description("Run health checks on overstory setup")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		const exitCode = await doctorCommand(cmd.args);
+		if (exitCode !== undefined) {
+			process.exitCode = exitCode;
 		}
-	}
+	});
 
-	const command = args[0];
-	const commandArgs = args.slice(1);
+program
+	.command("coordinator")
+	.description("Persistent coordinator agent (start/stop/status)")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await coordinatorCommand(cmd.args);
+	});
 
-	if (!command || command === "--help" || command === "-h") {
-		process.stdout.write(`${HELP}\n`);
-		return;
-	}
+program
+	.command("supervisor")
+	.description("Per-project supervisor agent (start/stop/status)")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await supervisorCommand(cmd.args);
+	});
 
-	if (command === "--version" || command === "-v") {
-		process.stdout.write(`overstory v${VERSION}\n`);
-		return;
-	}
+program
+	.command("hooks")
+	.description("Manage orchestrator hooks (install/uninstall/status)")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await hooksCommand(cmd.args);
+	});
 
-	if (command === "--completions") {
-		completionsCommand(commandArgs);
-		return;
-	}
+program
+	.command("monitor")
+	.description("Tier 2 monitor agent (start/stop/status)")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await monitorCommand(cmd.args);
+	});
 
-	switch (command) {
-		case "agents":
-			await agentsCommand(commandArgs);
-			break;
-		case "init":
-			await initCommand(commandArgs);
-			break;
-		case "sling":
-			await slingCommand(commandArgs);
-			break;
-		case "spec":
-			await specCommand(commandArgs);
-			break;
-		case "prime":
-			await primeCommand(commandArgs);
-			break;
-		case "stop":
-			await stopCommand(commandArgs);
-			break;
-		case "status":
-			await statusCommand(commandArgs);
-			break;
-		case "dashboard":
-			await dashboardCommand(commandArgs);
-			break;
-		case "inspect":
-			await inspectCommand(commandArgs);
-			break;
-		case "clean":
-			await cleanCommand(commandArgs);
-			break;
-		case "doctor": {
-			const exitCode = await doctorCommand(commandArgs);
-			if (exitCode !== undefined) {
-				process.exitCode = exitCode;
-			}
-			break;
-		}
-		case "coordinator":
-			await coordinatorCommand(commandArgs);
-			break;
-		case "supervisor":
-			await supervisorCommand(commandArgs);
-			break;
-		case "hooks":
-			await hooksCommand(commandArgs);
-			break;
-		case "monitor":
-			await monitorCommand(commandArgs);
-			break;
-		case "mail":
-			await mailCommand(commandArgs);
-			break;
-		case "merge":
-			await mergeCommand(commandArgs);
-			break;
-		case "nudge":
-			await nudgeCommand(commandArgs);
-			break;
-		case "group":
-			await groupCommand(commandArgs);
-			break;
-		case "worktree":
-			await worktreeCommand(commandArgs);
-			break;
-		case "log":
-			await logCommand(commandArgs);
-			break;
-		case "logs":
-			await logsCommand(commandArgs);
-			break;
-		case "watch":
-			await watchCommand(commandArgs);
-			break;
-		case "trace":
-			await traceCommand(commandArgs);
-			break;
-		case "feed":
-			await feedCommand(commandArgs);
-			break;
-		case "errors":
-			await errorsCommand(commandArgs);
-			break;
-		case "replay":
-			await replayCommand(commandArgs);
-			break;
-		case "run":
-			await runCommand(commandArgs);
-			break;
-		case "costs":
-			await costsCommand(commandArgs);
-			break;
-		case "metrics":
-			await metricsCommand(commandArgs);
-			break;
-		default: {
-			process.stderr.write(`Unknown command: ${command}\n`);
-			const suggestion = suggestCommand(command);
-			if (suggestion) {
-				process.stderr.write(`Did you mean '${suggestion}'?\n`);
-			}
-			process.stderr.write(`Run 'overstory --help' for usage.\n`);
-			process.exit(1);
-		}
+program
+	.command("mail")
+	.description("Mail system (send/check/list/read/reply)")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await mailCommand(cmd.args);
+	});
+
+program
+	.command("merge")
+	.description("Merge agent branches into canonical")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await mergeCommand(cmd.args);
+	});
+
+program
+	.command("nudge")
+	.description("Send a text nudge to an agent")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await nudgeCommand(cmd.args);
+	});
+
+program
+	.command("group")
+	.description("Task groups (create/status/add/remove/list)")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await groupCommand(cmd.args);
+	});
+
+program
+	.command("worktree")
+	.description("Manage worktrees (list/clean)")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await worktreeCommand(cmd.args);
+	});
+
+program
+	.command("log")
+	.description("Log a hook event")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await logCommand(cmd.args);
+	});
+
+program
+	.command("logs")
+	.description("Query NDJSON logs across agents")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await logsCommand(cmd.args);
+	});
+
+program
+	.command("watch")
+	.description("Start watchdog daemon")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await watchCommand(cmd.args);
+	});
+
+program
+	.command("trace")
+	.description("Chronological event timeline for agent/bead")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await traceCommand(cmd.args);
+	});
+
+program
+	.command("feed")
+	.description("Unified real-time event stream across all agents")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await feedCommand(cmd.args);
+	});
+
+program
+	.command("errors")
+	.description("Aggregated error view across agents")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await errorsCommand(cmd.args);
+	});
+
+program
+	.command("replay")
+	.description("Interleaved chronological replay across agents")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await replayCommand(cmd.args);
+	});
+
+program
+	.command("run")
+	.description("Manage runs (list/show/complete)")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await runCommand(cmd.args);
+	});
+
+program
+	.command("costs")
+	.description("Token/cost analysis and breakdown")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await costsCommand(cmd.args);
+	});
+
+program
+	.command("metrics")
+	.description("Show session metrics")
+	.allowUnknownOption()
+	.allowExcessArguments()
+	.action(async (_opts, cmd) => {
+		await metricsCommand(cmd.args);
+	});
+
+program
+	.command("completions")
+	.description("Generate shell completions")
+	.argument("<shell>", "Shell to generate completions for (bash, zsh, fish)")
+	.action((shell) => {
+		completionsCommand([shell]);
+	});
+
+// Handle unknown commands with Levenshtein fuzzy-match suggestions
+program.on("command:*", (operands) => {
+	const unknown = operands[0] ?? "";
+	process.stderr.write(`Unknown command: ${unknown}\n`);
+	const suggestion = suggestCommand(unknown);
+	if (suggestion) {
+		process.stderr.write(`Did you mean '${suggestion}'?\n`);
 	}
+	process.stderr.write("Run 'overstory --help' for usage.\n");
+	process.exit(1);
+});
+
+async function main(): Promise<void> {
+	await program.parseAsync(process.argv);
 }
 
 main().catch((err: unknown) => {
