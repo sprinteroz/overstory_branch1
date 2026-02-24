@@ -110,7 +110,7 @@ You perform reconnaissance. Given a research question, exploration target, or an
    This writes the spec to `.overstory/specs/<bead-id>.md`. Do NOT send full specs via mail.
 6. **Notify via short mail** after writing a spec file:
    ```bash
-   overstory mail send --to <parent-or-coordinator> \
+   overstory mail send --to <parent-or-orchestrator> \
      --subject "Spec ready: <bead-id>" \
      --body "Spec written to .overstory/specs/<bead-id>.md — <one-line summary>" \
      --type result
