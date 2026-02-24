@@ -90,6 +90,47 @@ function resolveConflictsKeepIncoming(content: string): string | null {
 }
 
 /**
+ * Parse conflict markers in file content and keep ALL lines from both sides.
+ * Used when the file has `merge=union` gitattribute — dedup-on-read handles duplicates.
+ *
+ * A conflict block looks like:
+ * ```
+ * <<<<<<< HEAD
+ * canonical content
+ * =======
+ * incoming content
+ * >>>>>>> branch
+ * ```
+ *
+ * This function replaces each conflict block with canonical + incoming content concatenated.
+ * Returns the resolved content, or null if no conflict markers were found.
+ */
+export function resolveConflictsUnion(content: string): string | null {
+	const conflictPattern = /^<{7} .+\n([\s\S]*?)^={7}\n([\s\S]*?)^>{7} .+\n?/gm;
+
+	if (!conflictPattern.test(content)) {
+		return null;
+	}
+
+	// Reset regex lastIndex after test()
+	conflictPattern.lastIndex = 0;
+
+	return content.replace(conflictPattern, (_match, canonical: string, incoming: string) => {
+		return canonical + incoming;
+	});
+}
+
+/**
+ * Check if a file has the `merge=union` gitattribute set.
+ * Returns true if `git check-attr merge -- <file>` ends with ": merge: union".
+ */
+async function checkMergeUnion(repoRoot: string, filePath: string): Promise<boolean> {
+	const { stdout, exitCode } = await runGit(repoRoot, ["check-attr", "merge", "--", filePath]);
+	if (exitCode !== 0) return false;
+	return stdout.trim().endsWith(": merge: union");
+}
+
+/**
  * Read a file's content using Bun.file().
  */
 async function readFile(filePath: string): Promise<string> {
@@ -138,7 +179,10 @@ async function tryAutoResolve(
 
 		try {
 			const content = await readFile(filePath);
-			const resolved = resolveConflictsKeepIncoming(content);
+			const isUnion = await checkMergeUnion(repoRoot, file);
+			const resolved = isUnion
+				? resolveConflictsUnion(content)
+				: resolveConflictsKeepIncoming(content);
 
 			if (resolved === null) {
 				// No conflict markers found (shouldn't happen but be defensive)

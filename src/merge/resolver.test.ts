@@ -24,6 +24,7 @@ import {
 	createMergeResolver,
 	looksLikeProse,
 	parseConflictPatterns,
+	resolveConflictsUnion,
 } from "./resolver.ts";
 
 /**
@@ -1282,6 +1283,157 @@ describe("createMergeResolver", () => {
 
 				// Should fail, and the last tier should NOT be auto-resolve (it was skipped)
 				expect(result.success).toBe(false);
+			} finally {
+				await cleanupTempDir(repoDir);
+			}
+		});
+	});
+
+	describe("resolveConflictsUnion", () => {
+		test("returns null when no conflict markers are present", () => {
+			expect(resolveConflictsUnion("no conflicts here\n")).toBeNull();
+			expect(resolveConflictsUnion("")).toBeNull();
+		});
+
+		test("keeps both canonical and incoming content for a single conflict", () => {
+			const content = [
+				"<<<<<<< HEAD\n",
+				'{"id":"a"}\n',
+				'{"id":"c"}\n',
+				"=======\n",
+				'{"id":"a"}\n',
+				'{"id":"b"}\n',
+				">>>>>>> feature-branch\n",
+			].join("");
+			const result = resolveConflictsUnion(content);
+			expect(result).not.toBeNull();
+			expect(result).toContain('{"id":"a"}\n{"id":"c"}\n');
+			expect(result).toContain('{"id":"a"}\n{"id":"b"}\n');
+			// No conflict markers remain
+			expect(result).not.toContain("<<<<<<<");
+			expect(result).not.toContain("=======");
+			expect(result).not.toContain(">>>>>>>");
+		});
+
+		test("resolves multiple conflict blocks with union strategy", () => {
+			const block = (canonical: string, incoming: string): string =>
+				`<<<<<<< HEAD\n${canonical}\n=======\n${incoming}\n>>>>>>> branch\n`;
+			const content = `${block("line-a\n", "line-b\n")}middle\n${block("line-c\n", "line-d\n")}`;
+			const result = resolveConflictsUnion(content);
+			expect(result).not.toBeNull();
+			expect(result).toContain("line-a\n");
+			expect(result).toContain("line-b\n");
+			expect(result).toContain("middle\n");
+			expect(result).toContain("line-c\n");
+			expect(result).toContain("line-d\n");
+			expect(result).not.toContain("<<<<<<<");
+		});
+	});
+
+	describe("merge=union gitattribute support", () => {
+		test("union strategy preserves lines from both sides (git handles cleanly or via auto-resolve)", async () => {
+			const repoDir = await createTempGitRepo();
+			try {
+				const defaultBranch = await getDefaultBranch(repoDir);
+
+				// Set up .gitattributes with merge=union for *.jsonl files so that
+				// both git's built-in union driver AND overstory's Tier 2 union path
+				// are configured to keep all lines from both sides.
+				await commitFile(repoDir, ".gitattributes", "*.jsonl merge=union\n");
+				// Common ancestor: one line
+				await commitFile(repoDir, "data.jsonl", '{"id":"a"}\n');
+
+				// Feature branch: adds line b
+				await runGitInDir(repoDir, ["checkout", "-b", "feature-branch"]);
+				await commitFile(repoDir, "data.jsonl", '{"id":"a"}\n{"id":"b"}\n');
+
+				// Back to main: adds line c (diverges from ancestor)
+				await runGitInDir(repoDir, ["checkout", defaultBranch]);
+				await commitFile(repoDir, "data.jsonl", '{"id":"a"}\n{"id":"c"}\n');
+
+				const entry = makeTestEntry({
+					branchName: "feature-branch",
+					filesModified: ["data.jsonl"],
+				});
+
+				const resolver = createMergeResolver({
+					aiResolveEnabled: false,
+					reimagineEnabled: false,
+				});
+
+				const result = await resolver.resolve(entry, defaultBranch, repoDir);
+
+				// With merge=union, git either resolves cleanly (Tier 1) or
+				// overstory's union path handles it (Tier 2). Either way, success
+				// and both sides' content must be preserved.
+				expect(result.success).toBe(true);
+				expect(result.entry.status).toBe("merged");
+
+				// Both sides' lines must be present — no lines dropped
+				const file = Bun.file(join(repoDir, "data.jsonl"));
+				const content = await file.text();
+				expect(content).toContain('{"id":"a"}');
+				expect(content).toContain('{"id":"b"}');
+				expect(content).toContain('{"id":"c"}');
+			} finally {
+				await cleanupTempDir(repoDir);
+			}
+		});
+
+		test("Tier 2 union auto-resolve keeps both sides when git produces conflict markers", async () => {
+			// This test verifies the Tier 2 code path: when git produces conflict
+			// markers for a file that has merge=union set in .gitattributes,
+			// overstory resolves it by keeping both canonical and incoming content.
+			// We produce conflict markers by doing a content conflict on a file whose
+			// attribute is set to merge=union AFTER the conflict state exists, then
+			// run only the auto-resolve path via a standalone resolver call.
+			//
+			// To force conflict markers despite merge=union: we DON'T commit
+			// .gitattributes before the merge, so git uses the default driver and
+			// produces conflict markers. Then we write .gitattributes to the working
+			// tree (not committed) so git check-attr sees it and our code detects union.
+			const repoDir = await createTempGitRepo();
+			try {
+				const defaultBranch = await getDefaultBranch(repoDir);
+
+				// Common ancestor
+				await commitFile(repoDir, "data.jsonl", '{"id":"a"}\n');
+
+				// Feature branch: adds line b (also appends to same position as main)
+				await runGitInDir(repoDir, ["checkout", "-b", "feature-branch"]);
+				await commitFile(repoDir, "data.jsonl", '{"id":"a"}\n{"id":"b"}\n');
+
+				// Back to main: adds line c — diverges from ancestor at same position
+				await runGitInDir(repoDir, ["checkout", defaultBranch]);
+				await commitFile(repoDir, "data.jsonl", '{"id":"a"}\n{"id":"c"}\n');
+
+				// Now WRITE .gitattributes to working tree (not committed).
+				// git check-attr reads from the working tree during Tier 2.
+				await Bun.write(`${repoDir}/.gitattributes`, "*.jsonl merge=union\n");
+
+				// Attempt merge — git uses default driver (no committed .gitattributes)
+				// so it WILL produce conflict markers if branches diverge at same position.
+				// (If git resolves cleanly, the test still passes because content is preserved.)
+				const entry = makeTestEntry({
+					branchName: "feature-branch",
+					filesModified: ["data.jsonl"],
+				});
+
+				const resolver = createMergeResolver({
+					aiResolveEnabled: false,
+					reimagineEnabled: false,
+				});
+
+				const result = await resolver.resolve(entry, defaultBranch, repoDir);
+
+				expect(result.success).toBe(true);
+				expect(result.entry.status).toBe("merged");
+
+				const file = Bun.file(join(repoDir, "data.jsonl"));
+				const content = await file.text();
+				expect(content).toContain('{"id":"a"}');
+				expect(content).toContain('{"id":"b"}');
+				expect(content).toContain('{"id":"c"}');
 			} finally {
 				await cleanupTempDir(repoDir);
 			}
