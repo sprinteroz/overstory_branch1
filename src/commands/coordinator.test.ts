@@ -928,6 +928,17 @@ describe("buildCoordinatorBeacon", () => {
 		expect(beacon).toContain("overstory group status");
 	});
 
+	test("defaults to bd ready when no cliName provided", () => {
+		const beacon = buildCoordinatorBeacon();
+		expect(beacon).toContain("bd ready");
+	});
+
+	test("uses sd ready when cliName is sd", () => {
+		const beacon = buildCoordinatorBeacon("sd");
+		expect(beacon).toContain("sd ready");
+		expect(beacon).not.toContain("bd ready");
+	});
+
 	test("includes hierarchy enforcement instruction", () => {
 		const beacon = buildCoordinatorBeacon();
 		expect(beacon).toContain("ONLY spawn leads");

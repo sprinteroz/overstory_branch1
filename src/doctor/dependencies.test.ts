@@ -153,4 +153,32 @@ describe("checkDependencies", () => {
 			expect(check.fixable).toBe(true);
 		}
 	});
+
+	test("checks for sd when backend is seeds", async () => {
+		const seedsConfig: typeof mockConfig = {
+			...mockConfig,
+			taskTracker: { backend: "seeds", enabled: true },
+		};
+		const checks = await checkDependencies(seedsConfig, "/tmp/.overstory");
+		const toolNames = checks.map((c) => c.name);
+		expect(toolNames).toContain("sd availability");
+		expect(toolNames).not.toContain("bd availability");
+	});
+
+	test("checks for bd when backend is auto (backward compat)", async () => {
+		const checks = await checkDependencies(mockConfig, "/tmp/.overstory");
+		const toolNames = checks.map((c) => c.name);
+		expect(toolNames).toContain("bd availability");
+		expect(toolNames).not.toContain("sd availability");
+	});
+
+	test("skips bd CGO check when backend is seeds", async () => {
+		const seedsConfig: typeof mockConfig = {
+			...mockConfig,
+			taskTracker: { backend: "seeds", enabled: true },
+		};
+		const checks = await checkDependencies(seedsConfig, "/tmp/.overstory");
+		const cgoCheck = checks.find((c) => c.name === "bd CGO support");
+		expect(cgoCheck).toBeUndefined();
+	});
 });

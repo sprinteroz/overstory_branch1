@@ -6,14 +6,20 @@ import type { DoctorCheck, DoctorCheckFn } from "./types.ts";
  * and that bd has functional CGO support for its Dolt database backend.
  */
 export const checkDependencies: DoctorCheckFn = async (
-	_config,
+	config,
 	_overstoryDir,
 ): Promise<DoctorCheck[]> => {
+	// Determine which tracker CLI to check based on config backend
+	const trackerTool =
+		config.taskTracker.backend === "seeds"
+			? { name: "sd", versionFlag: "--version", required: true }
+			: { name: "bd", versionFlag: "--version", required: true };
+
 	const requiredTools = [
 		{ name: "git", versionFlag: "--version", required: true },
 		{ name: "bun", versionFlag: "--version", required: true },
 		{ name: "tmux", versionFlag: "-V", required: true },
-		{ name: "bd", versionFlag: "--version", required: true },
+		trackerTool,
 		{ name: "mulch", versionFlag: "--version", required: true },
 	];
 
@@ -24,11 +30,14 @@ export const checkDependencies: DoctorCheckFn = async (
 		checks.push(check);
 	}
 
-	// If bd is available, probe for CGO/Dolt backend functionality
-	const bdCheck = checks.find((c) => c.name === "bd availability");
-	if (bdCheck?.status === "pass") {
-		const cgoCheck = await checkBdCgoSupport();
-		checks.push(cgoCheck);
+	// If bd is available, probe for CGO/Dolt backend functionality.
+	// Only run for beads backend (CGO check is beads-specific).
+	if (trackerTool.name === "bd") {
+		const bdCheck = checks.find((c) => c.name === "bd availability");
+		if (bdCheck?.status === "pass") {
+			const cgoCheck = await checkBdCgoSupport();
+			checks.push(cgoCheck);
+		}
 	}
 
 	return checks;
