@@ -20,6 +20,7 @@ import { createMetricsStore, type MetricsStore } from "../metrics/store.ts";
 import { openSessionStore } from "../sessions/compat.ts";
 import type { SessionStore } from "../sessions/store.ts";
 import type { MailMessage } from "../types.ts";
+import { evaluateHealth } from "../watchdog/health.ts";
 import { getCachedTmuxSessions, getCachedWorktrees, type StatusData } from "./status.ts";
 
 /**
@@ -244,6 +245,7 @@ async function loadDashboardData(
 	root: string,
 	stores: DashboardStores,
 	runId?: string | null,
+	thresholds?: { staleMs: number; zombieMs: number },
 ): Promise<DashboardData> {
 	// Get all sessions from the pre-opened session store
 	const allSessions = stores.sessionStore.getAll();
@@ -252,18 +254,22 @@ async function loadDashboardData(
 	const worktrees = await getCachedWorktrees(root);
 	const tmuxSessions = await getCachedTmuxSessions();
 
-	// Reconcile zombie states inline (same logic as gatherStatus)
+	// Evaluate health for active agents using the same logic as the watchdog.
+	// This handles two key cases:
+	//   1. tmux dead -> zombie (previously the only reconciliation)
+	//   2. persistent capabilities (coordinator, monitor) booting -> working when tmux alive
 	const tmuxSessionNames = new Set(tmuxSessions.map((s) => s.name));
+	const healthThresholds = thresholds ?? { staleMs: 300_000, zombieMs: 600_000 };
 	for (const session of allSessions) {
-		if (session.state === "booting" || session.state === "working" || session.state === "stalled") {
-			const tmuxAlive = tmuxSessionNames.has(session.tmuxSession);
-			if (!tmuxAlive) {
-				try {
-					stores.sessionStore.updateState(session.agentName, "zombie");
-					session.state = "zombie";
-				} catch {
-					// Best effort: don't fail dashboard if update fails
-				}
+		if (session.state === "completed") continue;
+		const tmuxAlive = tmuxSessionNames.has(session.tmuxSession);
+		const check = evaluateHealth(session, tmuxAlive, healthThresholds);
+		if (check.state !== session.state) {
+			try {
+				stores.sessionStore.updateState(session.agentName, check.state);
+				session.state = check.state;
+			} catch {
+				// Best effort: don't fail dashboard if update fails
 			}
 		}
 	}
@@ -804,6 +810,12 @@ export async function dashboardCommand(args: string[]): Promise<void> {
 	// Open stores once for the entire poll loop lifetime
 	const stores = openDashboardStores(root);
 
+	// Compute health thresholds once from config (reused across poll ticks)
+	const thresholds = {
+		staleMs: config.watchdog.staleThresholdMs,
+		zombieMs: config.watchdog.zombieThresholdMs,
+	};
+
 	// Hide cursor
 	process.stdout.write(CURSOR.hideCursor);
 
@@ -819,7 +831,7 @@ export async function dashboardCommand(args: string[]): Promise<void> {
 
 	// Poll loop
 	while (running) {
-		const data = await loadDashboardData(root, stores, runId);
+		const data = await loadDashboardData(root, stores, runId, thresholds);
 		renderDashboard(data, interval);
 		await Bun.sleep(interval);
 	}
