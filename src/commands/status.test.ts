@@ -364,7 +364,7 @@ describe("--watch deprecation", () => {
 
 		const out = chunks.join("");
 		expect(out).toContain("deprecated");
-		expect(out).toContain("overstory dashboard");
+		expect(out).toContain("ov dashboard");
 	});
 
 	test("--watch writes deprecation notice to stderr", async () => {
@@ -394,7 +394,7 @@ describe("--watch deprecation", () => {
 
 		const err = stderrChunks.join("");
 		expect(err).toContain("--watch is deprecated");
-		expect(err).toContain("overstory dashboard");
+		expect(err).toContain("ov dashboard");
 	});
 });
 

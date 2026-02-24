@@ -159,10 +159,10 @@ function formatCanSpawn(config: OverlayConfig): string {
 		return "You may NOT spawn sub-workers.";
 	}
 	return [
-		"You may spawn sub-workers using `overstory sling`. Example:",
+		"You may spawn sub-workers using `ov sling`. Example:",
 		"",
 		"```bash",
-		"overstory sling <task-id> --capability builder --name <worker-name> \\",
+		"ov sling <task-id> --capability builder --name <worker-name> \\",
 		`  --parent ${config.agentName} --depth ${config.depth + 1}`,
 		"```",
 	].join("\n");

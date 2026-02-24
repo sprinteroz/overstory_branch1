@@ -354,13 +354,13 @@ export function createRunCommand(): Command {
 }
 
 export async function runCommand(args: string[]): Promise<void> {
-	const program = new Command("overstory").exitOverride().configureOutput({
+	const program = new Command("ov").exitOverride().configureOutput({
 		writeOut: (str) => process.stdout.write(str),
 		writeErr: (str) => process.stderr.write(str),
 	});
 	program.addCommand(createRunCommand());
 	try {
-		await program.parseAsync(["node", "overstory", "run", ...args]);
+		await program.parseAsync(["node", "ov", "run", ...args]);
 	} catch (err: unknown) {
 		if (err instanceof CommanderError) {
 			if (err.code === "commander.helpDisplayed" || err.code === "commander.version") return;

@@ -106,6 +106,7 @@ const DANGEROUS_BASH_PATTERNS = [
  * This whitelist is checked BEFORE the blocklist.
  */
 const SAFE_BASH_PREFIXES = [
+	"ov ",
 	"overstory ",
 	"bd ",
 	"sd ",
@@ -256,7 +257,7 @@ function buildBashGuardScript(agentName: string): string {
 		'CMD=$(echo "$INPUT" | sed \'s/.*"command": *"\\([^"]*\\)".*/\\1/\');',
 		// Check 1: Block all git push — agents must never push to remote
 		"if echo \"$CMD\" | grep -qE '\\bgit\\s+push\\b'; then",
-		'  echo \'{"decision":"block","reason":"git push is blocked — use overstory merge to integrate changes, push manually when ready"}\';',
+		'  echo \'{"decision":"block","reason":"git push is blocked — use ov merge to integrate changes, push manually when ready"}\';',
 		"  exit 0;",
 		"fi;",
 		// Check 2: Block git reset --hard
@@ -461,7 +462,7 @@ export function getCapabilityGuards(capability: string): HookEntry[] {
 	const teamToolGuards = NATIVE_TEAM_TOOLS.map((tool) =>
 		blockGuard(
 			tool,
-			`Overstory agents must use 'overstory sling' for delegation — ${tool} is not allowed`,
+			`Overstory agents must use 'ov sling' for delegation — ${tool} is not allowed`,
 		),
 	);
 	guards.push(...teamToolGuards);
@@ -472,7 +473,7 @@ export function getCapabilityGuards(capability: string): HookEntry[] {
 	const interactiveGuards = INTERACTIVE_TOOLS.map((tool) =>
 		blockGuard(
 			tool,
-			`${tool} requires human interaction -- agents run non-interactively. Use overstory mail (--type question) to escalate`,
+			`${tool} requires human interaction -- agents run non-interactively. Use ov mail (--type question) to escalate`,
 		),
 	);
 	guards.push(...interactiveGuards);
@@ -509,13 +510,16 @@ export function getCapabilityGuards(capability: string): HookEntry[] {
 /**
  * Check whether a hook entry is overstory-managed.
  *
- * Overstory hook commands always reference either `overstory` (CLI commands)
+ * Overstory hook commands always reference either `ov ` / `overstory` (CLI commands)
  * or `OVERSTORY_` (env var guards like OVERSTORY_AGENT_NAME, OVERSTORY_WORKTREE_PATH).
  * User hooks will not contain these patterns.
  */
 export function isOverstoryHookEntry(entry: HookEntry): boolean {
 	return entry.hooks.some(
-		(h) => h.command.includes("overstory") || h.command.includes("OVERSTORY_"),
+		(h) =>
+			h.command.includes("ov ") ||
+			h.command.includes("overstory") ||
+			h.command.includes("OVERSTORY_"),
 	);
 }
 

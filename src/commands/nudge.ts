@@ -283,7 +283,7 @@ export async function nudgeAgent(
 export async function nudgeCommand(args: string[]): Promise<void> {
 	const program = new Command();
 	program
-		.name("overstory nudge")
+		.name("ov nudge")
 		.description("Send a text nudge to an agent")
 		.argument("<agent-name>", "Name of the agent to nudge")
 		.argument("[message...]", "Text to send (default: check mail prompt)")

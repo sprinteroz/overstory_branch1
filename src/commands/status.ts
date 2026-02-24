@@ -348,7 +348,7 @@ async function executeStatus(opts: StatusOpts): Promise<void> {
 
 	if (watch) {
 		process.stderr.write(
-			"⚠️  --watch is deprecated. Use 'overstory dashboard' for live monitoring.\n\n",
+			"⚠️  --watch is deprecated. Use 'ov dashboard' for live monitoring.\n\n",
 		);
 		// Polling loop (kept for one release cycle)
 		while (true) {
@@ -379,7 +379,7 @@ export function createStatusCommand(): Command {
 		.option("--verbose", "Show extra detail per agent (worktree, logs, mail timestamps)")
 		.option("--agent <name>", "Show unread mail for this agent (default: orchestrator)")
 		.option("--all", "Show sessions from all runs (default: current run only)")
-		.option("--watch", "(deprecated) Use 'overstory dashboard' for live monitoring")
+		.option("--watch", "(deprecated) Use 'ov dashboard' for live monitoring")
 		.option("--interval <ms>", "Poll interval for --watch in milliseconds (default: 3000)")
 		.action(async (opts: StatusOpts) => {
 			await executeStatus(opts);

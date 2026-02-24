@@ -70,7 +70,7 @@ describe("checkVersion", () => {
 		const versionCheck = checks.find((c) => c.name === "version-current");
 		expect(versionCheck).toBeDefined();
 		expect(versionCheck?.status).toBeOneOf(["pass", "warn", "fail"]);
-		expect(versionCheck?.message).toContain("overstory");
+		expect(versionCheck?.message).toContain("ov");
 	});
 
 	test("includes package-json-sync check", async () => {
@@ -88,8 +88,8 @@ describe("checkVersion", () => {
 		expect(versionCheck).toBeDefined();
 
 		if (versionCheck?.status === "pass") {
-			// Message should contain version in format "overstory vX.Y.Z"
-			expect(versionCheck.message).toMatch(/overstory v\d+\.\d+\.\d+/);
+			// Message should contain version in format "ov vX.Y.Z"
+			expect(versionCheck.message).toMatch(/ov v\d+\.\d+\.\d+/);
 		}
 	});
 

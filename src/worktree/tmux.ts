@@ -24,7 +24,7 @@ async function detectOverstoryBinDir(): Promise<string | null> {
 	// The overstory binary (bun link) resolves to a bin dir
 	// Try `which overstory` for the most reliable result
 	try {
-		const proc = Bun.spawn(["which", "overstory"], {
+		const proc = Bun.spawn(["which", "ov"], {
 			stdout: "pipe",
 			stderr: "pipe",
 		});

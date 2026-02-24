@@ -42,10 +42,10 @@ export const checkDependencies: DoctorCheckFn = async (
 			installHint: "@os-eco/mulch-cli",
 		},
 		{
-			name: "overstory",
+			name: "ov",
 			versionFlag: "--version",
 			required: true,
-			alias: "ov",
+			alias: "overstory",
 			installHint: "@os-eco/overstory-cli",
 		},
 		{

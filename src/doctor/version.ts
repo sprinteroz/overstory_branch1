@@ -47,7 +47,7 @@ async function checkCurrentVersion(toolRoot: string): Promise<DoctorCheck> {
 			name: "version-current",
 			category: "version",
 			status: "pass",
-			message: `overstory v${packageJson.version}`,
+			message: `ov v${packageJson.version}`,
 		};
 	} catch (error) {
 		return {

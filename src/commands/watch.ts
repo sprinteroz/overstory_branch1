@@ -84,7 +84,7 @@ async function removePidFile(pidFilePath: string): Promise<void> {
  */
 async function resolveOverstoryBin(): Promise<string> {
 	try {
-		const proc = Bun.spawn(["which", "overstory"], {
+		const proc = Bun.spawn(["which", "ov"], {
 			stdout: "pipe",
 			stderr: "pipe",
 		});

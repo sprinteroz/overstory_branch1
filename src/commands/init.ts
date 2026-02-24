@@ -296,7 +296,7 @@ function buildHooksJson(): string {
 					hooks: [
 						{
 							type: "command",
-							command: "overstory prime --agent orchestrator",
+							command: "ov prime --agent orchestrator",
 						},
 					],
 				},
@@ -307,7 +307,7 @@ function buildHooksJson(): string {
 					hooks: [
 						{
 							type: "command",
-							command: "overstory mail check --inject --agent orchestrator",
+							command: "ov mail check --inject --agent orchestrator",
 						},
 					],
 				},
@@ -360,7 +360,7 @@ function buildHooksJson(): string {
 					hooks: [
 						{
 							type: "command",
-							command: "overstory log session-end --agent orchestrator",
+							command: "ov log session-end --agent orchestrator",
 						},
 						{
 							type: "command",
@@ -375,7 +375,7 @@ function buildHooksJson(): string {
 					hooks: [
 						{
 							type: "command",
-							command: "overstory prime --agent orchestrator --compact",
+							command: "ov prime --agent orchestrator --compact",
 						},
 					],
 				},

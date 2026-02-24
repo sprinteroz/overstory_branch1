@@ -609,11 +609,11 @@ export const COMMANDS: readonly CommandDef[] = [
 
 export function generateBash(): string {
 	const lines: string[] = [
-		"# Bash completion for overstory",
+		"# Bash completion for ov",
 		"# Source this file to enable completions:",
-		"#   source <(overstory --completions bash)",
+		"#   source <(ov --completions bash)",
 		"",
-		"_overstory() {",
+		"_ov() {",
 		"  local cur prev words cword",
 		"  _init_completion || return",
 		"",
@@ -668,19 +668,19 @@ export function generateBash(): string {
 	lines.push("  return 0");
 	lines.push("}");
 	lines.push("");
-	lines.push("complete -F _overstory overstory");
+	lines.push("complete -F _ov ov");
 
 	return lines.join("\n");
 }
 
 export function generateZsh(): string {
 	const lines: string[] = [
-		"#compdef overstory",
-		"# Zsh completion for overstory",
+		"#compdef ov",
+		"# Zsh completion for ov",
 		"# Place this file in your fpath or source it:",
-		"#   source <(overstory --completions zsh)",
+		"#   source <(ov --completions zsh)",
 		"",
-		"_overstory() {",
+		"_ov() {",
 		"  local -a commands",
 		"  commands=(",
 	];
@@ -778,24 +778,24 @@ export function generateZsh(): string {
 	lines.push("  esac");
 	lines.push("}");
 	lines.push("");
-	lines.push('_overstory "$@"');
+	lines.push('_ov "$@"');
 
 	return lines.join("\n");
 }
 
 export function generateFish(): string {
 	const lines: string[] = [
-		"# Fish completion for overstory",
-		"# Place this file in ~/.config/fish/completions/overstory.fish or source it:",
-		"#   overstory --completions fish | source",
+		"# Fish completion for ov",
+		"# Place this file in ~/.config/fish/completions/ov.fish or source it:",
+		"#   ov --completions fish | source",
 		"",
-		"# Remove all existing completions for overstory",
-		"complete -c overstory -e",
+		"# Remove all existing completions for ov",
+		"complete -c ov -e",
 		"",
 		"# Global options",
-		"complete -c overstory -l help -d 'Show help'",
-		"complete -c overstory -l version -d 'Show version'",
-		"complete -c overstory -l completions -d 'Generate shell completions' -xa 'bash zsh fish'",
+		"complete -c ov -l help -d 'Show help'",
+		"complete -c ov -l version -d 'Show version'",
+		"complete -c ov -l completions -d 'Generate shell completions' -xa 'bash zsh fish'",
 		"",
 	];
 
@@ -804,14 +804,14 @@ export function generateFish(): string {
 		// Command name
 		lines.push(`# ${cmd.desc}`);
 		lines.push(
-			`complete -c overstory -f -n '__fish_use_subcommand' -a '${cmd.name}' -d '${cmd.desc}'`,
+			`complete -c ov -f -n '__fish_use_subcommand' -a '${cmd.name}' -d '${cmd.desc}'`,
 		);
 
 		if (cmd.subcommands && cmd.subcommands.length > 0) {
 			// Subcommand names
 			for (const subcmd of cmd.subcommands) {
 				lines.push(
-					`complete -c overstory -f -n '__fish_seen_subcommand_from ${cmd.name}; and not __fish_seen_subcommand_from ${cmd.subcommands.map((s) => s.name).join(" ")}' -a '${subcmd.name}' -d '${subcmd.desc}'`,
+					`complete -c ov -f -n '__fish_seen_subcommand_from ${cmd.name}; and not __fish_seen_subcommand_from ${cmd.subcommands.map((s) => s.name).join(" ")}' -a '${subcmd.name}' -d '${subcmd.desc}'`,
 				);
 
 				// Subcommand flags
@@ -822,12 +822,12 @@ export function generateFish(): string {
 
 						if (flag.values) {
 							lines.push(
-								`complete -c overstory -f -n ${cond} -l '${flagName}' -d '${flag.desc}' -xa '${flag.values.join(" ")}'`,
+								`complete -c ov -f -n ${cond} -l '${flagName}' -d '${flag.desc}' -xa '${flag.values.join(" ")}'`,
 							);
 						} else if (flag.takesValue) {
-							lines.push(`complete -c overstory -n ${cond} -l '${flagName}' -d '${flag.desc}'`);
+							lines.push(`complete -c ov -n ${cond} -l '${flagName}' -d '${flag.desc}'`);
 						} else {
-							lines.push(`complete -c overstory -f -n ${cond} -l '${flagName}' -d '${flag.desc}'`);
+							lines.push(`complete -c ov -f -n ${cond} -l '${flagName}' -d '${flag.desc}'`);
 						}
 					}
 				}
@@ -842,12 +842,12 @@ export function generateFish(): string {
 
 				if (flag.values) {
 					lines.push(
-						`complete -c overstory -f -n ${cond} -l '${flagName}' -d '${flag.desc}' -xa '${flag.values.join(" ")}'`,
+						`complete -c ov -f -n ${cond} -l '${flagName}' -d '${flag.desc}' -xa '${flag.values.join(" ")}'`,
 					);
 				} else if (flag.takesValue) {
-					lines.push(`complete -c overstory -n ${cond} -l '${flagName}' -d '${flag.desc}'`);
+					lines.push(`complete -c ov -n ${cond} -l '${flagName}' -d '${flag.desc}'`);
 				} else {
-					lines.push(`complete -c overstory -f -n ${cond} -l '${flagName}' -d '${flag.desc}'`);
+					lines.push(`complete -c ov -f -n ${cond} -l '${flagName}' -d '${flag.desc}'`);
 				}
 			}
 		}
@@ -875,7 +875,7 @@ export function completionsCommand(args: string[]): void {
 
 	if (!shell) {
 		process.stderr.write("Error: missing shell argument\n");
-		process.stderr.write("Usage: overstory --completions <bash|zsh|fish>\n");
+		process.stderr.write("Usage: ov --completions <bash|zsh|fish>\n");
 		process.exit(1);
 	}
 

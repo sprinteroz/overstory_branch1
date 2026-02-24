@@ -132,7 +132,7 @@ function createDefaultWatchdog(projectRoot: string): NonNullable<CoordinatorDeps
 			}
 
 			// Start watchdog in background
-			const proc = Bun.spawn(["overstory", "watch", "--background"], {
+			const proc = Bun.spawn(["ov", "watch", "--background"], {
 				cwd: projectRoot,
 				stdout: "pipe",
 				stderr: "pipe",
@@ -194,7 +194,7 @@ function createDefaultWatchdog(projectRoot: string): NonNullable<CoordinatorDeps
 function createDefaultMonitor(projectRoot: string): NonNullable<CoordinatorDeps["_monitor"]> {
 	return {
 		async start(): Promise<{ pid: number } | null> {
-			const proc = Bun.spawn(["overstory", "monitor", "start", "--no-attach", "--json"], {
+			const proc = Bun.spawn(["ov", "monitor", "start", "--no-attach", "--json"], {
 				cwd: projectRoot,
 				stdout: "pipe",
 				stderr: "pipe",
@@ -210,7 +210,7 @@ function createDefaultMonitor(projectRoot: string): NonNullable<CoordinatorDeps[
 			}
 		},
 		async stop(): Promise<boolean> {
-			const proc = Bun.spawn(["overstory", "monitor", "stop", "--json"], {
+			const proc = Bun.spawn(["ov", "monitor", "stop", "--json"], {
 				cwd: projectRoot,
 				stdout: "pipe",
 				stderr: "pipe",
@@ -219,7 +219,7 @@ function createDefaultMonitor(projectRoot: string): NonNullable<CoordinatorDeps[
 			return exitCode === 0;
 		},
 		async isRunning(): Promise<boolean> {
-			const proc = Bun.spawn(["overstory", "monitor", "status", "--json"], {
+			const proc = Bun.spawn(["ov", "monitor", "status", "--json"], {
 				cwd: projectRoot,
 				stdout: "pipe",
 				stderr: "pipe",

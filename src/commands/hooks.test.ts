@@ -424,7 +424,7 @@ describe("hooks status", () => {
 		const output = await captureStdout(() => hooksCommand(["status"]));
 		expect(output).toContain("present");
 		expect(output).toContain("no");
-		expect(output).toContain("overstory hooks install");
+		expect(output).toContain("ov hooks install");
 	});
 
 	test("reports installed:true when hooks present in .claude/", async () => {

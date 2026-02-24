@@ -225,7 +225,7 @@ describe("createMailClient", () => {
 			});
 
 			const result = client.checkInject("orchestrator");
-			expect(result).toContain(`overstory mail reply ${id}`);
+			expect(result).toContain(`ov mail reply ${id}`);
 		});
 
 		test("formats multiple messages with correct count", () => {

@@ -80,7 +80,7 @@ async function installHooks(force: boolean): Promise<void> {
 	const sourcePath = join(projectRoot, ".overstory", "hooks.json");
 	const sourceFile = Bun.file(sourcePath);
 	if (!(await sourceFile.exists())) {
-		throw new ValidationError("No hooks.json found in .overstory/. Run 'overstory init' first.", {
+		throw new ValidationError("No hooks.json found in .overstory/. Run 'ov init' first.", {
 			field: "source",
 		});
 	}
@@ -199,7 +199,7 @@ async function statusHooks(json: boolean): Promise<void> {
 			`Hooks installed (.claude/settings.local.json): ${installed ? "yes" : "no"}\n`,
 		);
 		if (!installed && sourceExists) {
-			process.stdout.write(`\nRun 'overstory hooks install' to install.\n`);
+			process.stdout.write(`\nRun 'ov hooks install' to install.\n`);
 		}
 	}
 }

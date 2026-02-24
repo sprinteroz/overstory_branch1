@@ -100,7 +100,7 @@ describe("initCommand: agent-defs deployment", () => {
 		const stopHooks = parsed.hooks.Stop[0].hooks;
 
 		expect(stopHooks.length).toBe(2);
-		expect(stopHooks[0].command).toContain("overstory log session-end");
+		expect(stopHooks[0].command).toContain("ov log session-end");
 		expect(stopHooks[1].command).toBe("mulch learn");
 	});
 

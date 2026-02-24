@@ -54,8 +54,8 @@ describe("COMMANDS array", () => {
 describe("generateBash", () => {
 	it("should return a bash completion script", () => {
 		const script = generateBash();
-		expect(script).toContain("_overstory()");
-		expect(script).toContain("complete -F _overstory overstory");
+		expect(script).toContain("_ov()");
+		expect(script).toContain("complete -F _ov ov");
 		expect(script).toContain("_init_completion");
 	});
 
@@ -87,8 +87,8 @@ describe("generateBash", () => {
 describe("generateZsh", () => {
 	it("should return a zsh completion script", () => {
 		const script = generateZsh();
-		expect(script).toContain("#compdef overstory");
-		expect(script).toContain("_overstory()");
+		expect(script).toContain("#compdef ov");
+		expect(script).toContain("_ov()");
 		expect(script).toContain("_describe");
 		expect(script).toContain("_arguments");
 	});
@@ -119,7 +119,7 @@ describe("generateZsh", () => {
 describe("generateFish", () => {
 	it("should return a fish completion script", () => {
 		const script = generateFish();
-		expect(script).toContain("complete -c overstory");
+		expect(script).toContain("complete -c ov");
 		expect(script).toContain("__fish_use_subcommand");
 	});
 
@@ -160,8 +160,8 @@ describe("completionsCommand", () => {
 
 		try {
 			completionsCommand(["bash"]);
-			expect(output).toContain("_overstory()");
-			expect(output).toContain("complete -F _overstory overstory");
+			expect(output).toContain("_ov()");
+			expect(output).toContain("complete -F _ov ov");
 		} finally {
 			process.stdout.write = originalWrite;
 		}
@@ -178,8 +178,8 @@ describe("completionsCommand", () => {
 
 		try {
 			completionsCommand(["zsh"]);
-			expect(output).toContain("#compdef overstory");
-			expect(output).toContain("_overstory()");
+			expect(output).toContain("#compdef ov");
+			expect(output).toContain("_ov()");
 		} finally {
 			process.stdout.write = originalWrite;
 		}
@@ -196,7 +196,7 @@ describe("completionsCommand", () => {
 
 		try {
 			completionsCommand(["fish"]);
-			expect(output).toContain("complete -c overstory");
+			expect(output).toContain("complete -c ov");
 		} finally {
 			process.stdout.write = originalWrite;
 		}
