@@ -152,7 +152,7 @@ function migrateTokenColumns(db: Database): void {
 function rowToMetrics(row: SessionRow): SessionMetrics {
 	return {
 		agentName: row.agent_name,
-		beadId: row.task_id,
+		taskId: row.task_id,
 		capability: row.capability,
 		startedAt: row.started_at,
 		completedAt: row.completed_at,
@@ -303,7 +303,7 @@ export function createMetricsStore(dbPath: string): MetricsStore {
 		recordSession(metrics: SessionMetrics): void {
 			insertStmt.run({
 				$agent_name: metrics.agentName,
-				$task_id: metrics.beadId,
+				$task_id: metrics.taskId,
 				$capability: metrics.capability,
 				$started_at: metrics.startedAt,
 				$completed_at: metrics.completedAt,

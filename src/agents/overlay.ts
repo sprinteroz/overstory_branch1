@@ -91,7 +91,7 @@ function formatQualityGates(config: OverlayConfig): string {
 			"Before reporting completion:",
 			"",
 			`1. **Record mulch learnings:** \`mulch record <domain> --type <convention|pattern|reference> --description "..."\` — capture reusable knowledge from your work`,
-			`2. **Close issue:** \`${config.trackerCli ?? "bd"} close ${config.beadId} --reason "summary of findings"\``,
+			`2. **Close issue:** \`${config.trackerCli ?? "bd"} close ${config.taskId} --reason "summary of findings"\``,
 			`3. **Send results:** \`overstory mail send --to ${config.parentAgent ?? "coordinator"} --subject "done" --body "Summary" --type result --agent ${config.agentName}\``,
 			"",
 			"You are a read-only agent. Do NOT commit, modify files, or run quality gates.",
@@ -113,8 +113,8 @@ function formatQualityGates(config: OverlayConfig): string {
 		...gateLines,
 		`${gateLines.length + 1}. **Commit:** all changes committed to your branch (${config.branchName})`,
 		`${gateLines.length + 2}. **Record mulch learnings:** \`mulch record <domain> --type <convention|pattern|failure|decision> --description "..." --outcome-status success --outcome-agent ${config.agentName}\` — capture insights from your work`,
-		`${gateLines.length + 3}. **Signal completion:** send \`worker_done\` mail to ${config.parentAgent ?? "coordinator"}: \`overstory mail send --to ${config.parentAgent ?? "coordinator"} --subject "Worker done: ${config.beadId}" --body "Quality gates passed." --type worker_done --agent ${config.agentName}\``,
-		`${gateLines.length + 4}. **Close issue:** \`${config.trackerCli ?? "bd"} close ${config.beadId} --reason "summary of changes"\``,
+		`${gateLines.length + 3}. **Signal completion:** send \`worker_done\` mail to ${config.parentAgent ?? "coordinator"}: \`overstory mail send --to ${config.parentAgent ?? "coordinator"} --subject "Worker done: ${config.taskId}" --body "Quality gates passed." --type worker_done --agent ${config.agentName}\``,
+		`${gateLines.length + 4}. **Close issue:** \`${config.trackerCli ?? "bd"} close ${config.taskId} --reason "summary of changes"\``,
 		"",
 		"Do NOT push to the canonical branch. Your work will be merged by the",
 		"coordinator via `overstory merge`.",
@@ -205,7 +205,7 @@ export async function generateOverlay(config: OverlayConfig): Promise<string> {
 
 	const replacements: Record<string, string> = {
 		"{{AGENT_NAME}}": config.agentName,
-		"{{BEAD_ID}}": config.beadId,
+		"{{BEAD_ID}}": config.taskId,
 		"{{SPEC_PATH}}": config.specPath ?? "No spec file provided",
 		"{{BRANCH_NAME}}": config.branchName,
 		"{{WORKTREE_PATH}}": config.worktreePath,

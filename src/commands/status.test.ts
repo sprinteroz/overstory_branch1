@@ -28,7 +28,7 @@ function makeAgent(overrides: Partial<AgentSession> = {}): AgentSession {
 		capability: "builder",
 		worktreePath: "/tmp/worktrees/test-builder",
 		branchName: "overstory/test-builder/task-1",
-		beadId: "task-1",
+		taskId: "task-1",
 		tmuxSession: "overstory-test-builder",
 		state: "working",
 		pid: 12345,

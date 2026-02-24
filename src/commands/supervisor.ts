@@ -36,13 +36,13 @@ import { isRunningAsRoot } from "./sling.ts";
  * Build the supervisor startup beacon.
  *
  * @param opts.name - Supervisor agent name
- * @param opts.beadId - Bead task ID
+ * @param opts.taskId - Bead task ID
  * @param opts.depth - Hierarchy depth (default 1)
  * @param opts.parent - Parent agent name (default "coordinator")
  */
 export function buildSupervisorBeacon(opts: {
 	name: string;
-	beadId: string;
+	taskId: string;
 	depth: number;
 	parent: string;
 	trackerCli?: string;
@@ -50,9 +50,9 @@ export function buildSupervisorBeacon(opts: {
 	const cli = opts.trackerCli ?? "bd";
 	const timestamp = new Date().toISOString();
 	const parts = [
-		`[OVERSTORY] ${opts.name} (supervisor) ${timestamp} task:${opts.beadId}`,
+		`[OVERSTORY] ${opts.name} (supervisor) ${timestamp} task:${opts.taskId}`,
 		`Depth: ${opts.depth} | Parent: ${opts.parent} | Role: per-project supervisor`,
-		`Startup: run mulch prime, check mail (overstory mail check --agent ${opts.name}), read task (${cli} show ${opts.beadId}), then begin supervising`,
+		`Startup: run mulch prime, check mail (overstory mail check --agent ${opts.name}), read task (${cli} show ${opts.taskId}), then begin supervising`,
 	];
 	return parts.join(" — ");
 }
@@ -182,7 +182,7 @@ async function startSupervisor(opts: {
 
 		const beacon = buildSupervisorBeacon({
 			name: opts.name,
-			beadId: opts.task,
+			taskId: opts.task,
 			depth: opts.depth,
 			parent: opts.parent,
 			trackerCli: trackerCliName(resolvedBackend),
@@ -202,7 +202,7 @@ async function startSupervisor(opts: {
 			capability: "supervisor",
 			worktreePath: projectRoot, // Supervisor uses project root, not a worktree
 			branchName: config.project.canonicalBranch, // Operates on canonical branch
-			beadId: opts.task,
+			taskId: opts.task,
 			tmuxSession,
 			state: "booting",
 			pid,
@@ -222,7 +222,7 @@ async function startSupervisor(opts: {
 			capability: "supervisor",
 			tmuxSession,
 			projectRoot,
-			beadId: opts.task,
+			taskId: opts.task,
 			parent: opts.parent,
 			depth: opts.depth,
 			pid,
@@ -347,7 +347,7 @@ async function statusSupervisor(opts: { name?: string; json: boolean }): Promise
 				agentName: session.agentName,
 				state: session.state,
 				tmuxSession: session.tmuxSession,
-				beadId: session.beadId,
+				taskId: session.taskId,
 				parentAgent: session.parentAgent,
 				depth: session.depth,
 				pid: session.pid,
@@ -362,7 +362,7 @@ async function statusSupervisor(opts: { name?: string; json: boolean }): Promise
 				process.stdout.write(`Supervisor '${opts.name}': ${stateLabel}\n`);
 				process.stdout.write(`  Session:   ${session.id}\n`);
 				process.stdout.write(`  Tmux:      ${session.tmuxSession}\n`);
-				process.stdout.write(`  Task:      ${session.beadId}\n`);
+				process.stdout.write(`  Task:      ${session.taskId}\n`);
 				process.stdout.write(`  Parent:    ${session.parentAgent}\n`);
 				process.stdout.write(`  Depth:     ${session.depth}\n`);
 				process.stdout.write(`  PID:       ${session.pid}\n`);
@@ -401,7 +401,7 @@ async function statusSupervisor(opts: { name?: string; json: boolean }): Promise
 								? ("zombie" as const)
 								: session.state,
 						tmuxSession: session.tmuxSession,
-						beadId: session.beadId,
+						taskId: session.taskId,
 						parentAgent: session.parentAgent,
 						depth: session.depth,
 						startedAt: session.startedAt,
@@ -416,7 +416,7 @@ async function statusSupervisor(opts: { name?: string; json: boolean }): Promise
 				for (const status of statuses) {
 					const stateLabel = status.running ? "running" : status.state;
 					process.stdout.write(
-						`  ${status.agentName}: ${stateLabel} (task: ${status.beadId}, parent: ${status.parentAgent})\n`,
+						`  ${status.agentName}: ${stateLabel} (task: ${status.taskId}, parent: ${status.parentAgent})\n`,
 					);
 				}
 			}

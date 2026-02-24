@@ -11,10 +11,10 @@ import { buildSupervisorBeacon, supervisorCommand } from "./supervisor.ts";
  */
 
 describe("buildSupervisorBeacon", () => {
-	test("contains agent name and beadId from opts", () => {
+	test("contains agent name and taskId from opts", () => {
 		const beacon = buildSupervisorBeacon({
 			name: "supervisor-1",
-			beadId: "task-abc123",
+			taskId: "task-abc123",
 			depth: 1,
 			parent: "coordinator",
 		});
@@ -26,7 +26,7 @@ describe("buildSupervisorBeacon", () => {
 	test("contains [OVERSTORY] prefix", () => {
 		const beacon = buildSupervisorBeacon({
 			name: "supervisor-1",
-			beadId: "task-1",
+			taskId: "task-1",
 			depth: 1,
 			parent: "coordinator",
 		});
@@ -37,7 +37,7 @@ describe("buildSupervisorBeacon", () => {
 	test("contains (supervisor) designation", () => {
 		const beacon = buildSupervisorBeacon({
 			name: "supervisor-1",
-			beadId: "task-1",
+			taskId: "task-1",
 			depth: 1,
 			parent: "coordinator",
 		});
@@ -48,7 +48,7 @@ describe("buildSupervisorBeacon", () => {
 	test("contains depth and parent info from opts", () => {
 		const beacon = buildSupervisorBeacon({
 			name: "supervisor-1",
-			beadId: "task-1",
+			taskId: "task-1",
 			depth: 2,
 			parent: "lead-cli",
 		});
@@ -60,7 +60,7 @@ describe("buildSupervisorBeacon", () => {
 	test("contains startup instructions", () => {
 		const beacon = buildSupervisorBeacon({
 			name: "supervisor-1",
-			beadId: "task-1",
+			taskId: "task-1",
 			depth: 1,
 			parent: "coordinator",
 		});
@@ -71,7 +71,7 @@ describe("buildSupervisorBeacon", () => {
 		// Should include mail check with agent name
 		expect(beacon).toContain("overstory mail check --agent supervisor-1");
 
-		// Should include bd show with beadId
+		// Should include bd show with taskId
 		expect(beacon).toContain("bd show task-1");
 	});
 
@@ -79,13 +79,13 @@ describe("buildSupervisorBeacon", () => {
 		const before = new Date();
 		const beacon = buildSupervisorBeacon({
 			name: "supervisor-1",
-			beadId: "task-1",
+			taskId: "task-1",
 			depth: 1,
 			parent: "coordinator",
 		});
 		const after = new Date();
 
-		// Extract timestamp from beacon (format: [OVERSTORY] {name} (supervisor) {timestamp} task:{beadId})
+		// Extract timestamp from beacon (format: [OVERSTORY] {name} (supervisor) {timestamp} task:{taskId})
 		const timestampMatch = beacon.match(/\(supervisor\)\s+(\S+)\s+task:/);
 		expect(timestampMatch).toBeTruthy();
 

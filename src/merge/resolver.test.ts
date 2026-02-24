@@ -53,7 +53,7 @@ function mockSpawnResult(
 function makeTestEntry(overrides?: Partial<MergeEntry>): MergeEntry {
 	return {
 		branchName: overrides?.branchName ?? "feature-branch",
-		beadId: overrides?.beadId ?? "bead-123",
+		taskId: overrides?.taskId ?? "bead-123",
 		agentName: overrides?.agentName ?? "test-agent",
 		filesModified: overrides?.filesModified ?? ["src/test.ts"],
 		enqueuedAt: overrides?.enqueuedAt ?? new Date().toISOString(),
@@ -551,7 +551,7 @@ describe("createMergeResolver", () => {
 
 			const entry = makeTestEntry({
 				branchName: "overstory/my-agent/bead-xyz",
-				beadId: "bead-xyz",
+				taskId: "bead-xyz",
 				agentName: "my-agent",
 				filesModified: ["src/test.ts"],
 			});
@@ -564,7 +564,7 @@ describe("createMergeResolver", () => {
 			const result = await resolver.resolve(entry, defaultBranch, repoDir);
 
 			expect(result.entry.branchName).toBe("overstory/my-agent/bead-xyz");
-			expect(result.entry.beadId).toBe("bead-xyz");
+			expect(result.entry.taskId).toBe("bead-xyz");
 			expect(result.entry.agentName).toBe("my-agent");
 		});
 	});
@@ -744,7 +744,7 @@ describe("createMergeResolver", () => {
 
 				const entry = makeTestEntry({
 					branchName: "feature-branch",
-					beadId: "bead-abc-123",
+					taskId: "bead-abc-123",
 					agentName: "test-builder",
 					filesModified: ["src/test.ts"],
 				});
@@ -811,7 +811,7 @@ describe("createMergeResolver", () => {
 
 				const entry = makeTestEntry({
 					branchName: "feature-branch",
-					beadId: "bead-fail-456",
+					taskId: "bead-fail-456",
 					agentName: "test-agent",
 					filesModified: ["src/test.ts"],
 				});
@@ -906,7 +906,7 @@ describe("createMergeResolver", () => {
 
 				const entry = makeTestEntry({
 					branchName: "feature-branch",
-					beadId: "bead-ai-789",
+					taskId: "bead-ai-789",
 					filesModified: ["src/test.ts"],
 				});
 
@@ -981,7 +981,7 @@ describe("createMergeResolver", () => {
 
 				const entry = makeTestEntry({
 					branchName: "feature-branch",
-					beadId: "bead-reimagine-xyz",
+					taskId: "bead-reimagine-xyz",
 					filesModified: ["src/reimagine-target.ts"],
 				});
 

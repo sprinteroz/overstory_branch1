@@ -66,7 +66,7 @@ function makeSession(overrides: Partial<AgentSession> = {}): AgentSession {
 		capability: "builder",
 		worktreePath: "/tmp/test",
 		branchName: "overstory/test-agent/test-task",
-		beadId: "test-task",
+		taskId: "test-task",
 		tmuxSession: "overstory-test-agent",
 		state: "working",
 		pid: process.pid, // Use our own PID so isProcessRunning returns true
@@ -798,7 +798,7 @@ describe("daemon tick", () => {
 			agentName: "old-agent",
 			worktreePath: "/tmp/test",
 			branchName: "overstory/old-agent/task",
-			beadId: "task",
+			taskId: "task",
 			tmuxSession: "overstory-old-agent",
 			state: "working",
 			pid: process.pid,
@@ -1133,7 +1133,7 @@ describe("daemon mulch failure recording", () => {
 		const session = makeSession({
 			agentName: "dying-agent",
 			capability: "builder",
-			beadId: "task-123",
+			taskId: "task-123",
 			tmuxSession: "overstory-dying-agent",
 			state: "working",
 			lastActivity: new Date().toISOString(),
@@ -1158,7 +1158,7 @@ describe("daemon mulch failure recording", () => {
 		expect(failureMock.calls[0]?.tier).toBe(0);
 		expect(failureMock.calls[0]?.session.agentName).toBe("dying-agent");
 		expect(failureMock.calls[0]?.session.capability).toBe("builder");
-		expect(failureMock.calls[0]?.session.beadId).toBe("task-123");
+		expect(failureMock.calls[0]?.session.taskId).toBe("task-123");
 		// Reason should be either the reconciliationNote or default "Process terminated"
 		expect(failureMock.calls[0]?.reason).toBeDefined();
 	});
@@ -1169,7 +1169,7 @@ describe("daemon mulch failure recording", () => {
 		const session = makeSession({
 			agentName: "triaged-agent",
 			capability: "scout",
-			beadId: "task-456",
+			taskId: "task-456",
 			tmuxSession: "overstory-triaged-agent",
 			state: "stalled",
 			lastActivity: staleActivity,
@@ -1198,7 +1198,7 @@ describe("daemon mulch failure recording", () => {
 		expect(failureMock.calls[0]?.tier).toBe(1);
 		expect(failureMock.calls[0]?.session.agentName).toBe("triaged-agent");
 		expect(failureMock.calls[0]?.session.capability).toBe("scout");
-		expect(failureMock.calls[0]?.session.beadId).toBe("task-456");
+		expect(failureMock.calls[0]?.session.taskId).toBe("task-456");
 		expect(failureMock.calls[0]?.triageSuggestion).toBe("terminate");
 		expect(failureMock.calls[0]?.reason).toContain("AI triage");
 	});
@@ -1267,11 +1267,11 @@ describe("daemon mulch failure recording", () => {
 		expect(failureMock.calls).toHaveLength(0);
 	});
 
-	test("recordFailure includes evidenceBead when beadId is present", async () => {
+	test("recordFailure includes evidenceBead when taskId is present", async () => {
 		const session = makeSession({
 			agentName: "beaded-agent",
 			capability: "builder",
-			beadId: "task-789",
+			taskId: "task-789",
 			tmuxSession: "overstory-beaded-agent",
 			state: "working",
 			lastActivity: new Date().toISOString(),
@@ -1292,7 +1292,7 @@ describe("daemon mulch failure recording", () => {
 		});
 
 		expect(failureMock.calls).toHaveLength(1);
-		expect(failureMock.calls[0]?.session.beadId).toBe("task-789");
+		expect(failureMock.calls[0]?.session.taskId).toBe("task-789");
 	});
 
 	test("Tier 0: recordFailure called at escalation level 3+ (progressive termination)", async () => {
@@ -1301,7 +1301,7 @@ describe("daemon mulch failure recording", () => {
 		const session = makeSession({
 			agentName: "doomed-agent",
 			capability: "builder",
-			beadId: "task-999",
+			taskId: "task-999",
 			tmuxSession: "overstory-doomed-agent",
 			state: "stalled",
 			lastActivity: staleActivity,

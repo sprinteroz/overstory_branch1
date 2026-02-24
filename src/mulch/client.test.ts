@@ -360,7 +360,7 @@ describe("createMulchClient", () => {
 			await addProc.exited;
 
 			const client = createMulchClient(tempDir);
-			// The flag is passed correctly, but may fail if the bead ID is invalid
+			// The flag is passed correctly, but may fail if the task ID is invalid
 			// or if other required fields are missing. This test documents that the
 			// flag is properly passed to the CLI.
 			try {

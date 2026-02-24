@@ -33,7 +33,7 @@ afterEach(async () => {
 function makeSession(overrides: Partial<SessionMetrics> = {}): SessionMetrics {
 	return {
 		agentName: "test-agent",
-		beadId: "test-task-123",
+		taskId: "test-task-123",
 		capability: "builder",
 		startedAt: new Date("2026-01-01T00:00:00Z").toISOString(),
 		completedAt: new Date("2026-01-01T00:05:00Z").toISOString(),
@@ -66,9 +66,9 @@ describe("generateSummary", () => {
 	});
 
 	test("counts total and completed sessions correctly", () => {
-		store.recordSession(makeSession({ beadId: "task-1", completedAt: "2026-01-01T00:05:00Z" }));
-		store.recordSession(makeSession({ beadId: "task-2", completedAt: null }));
-		store.recordSession(makeSession({ beadId: "task-3", completedAt: "2026-01-01T00:10:00Z" }));
+		store.recordSession(makeSession({ taskId: "task-1", completedAt: "2026-01-01T00:05:00Z" }));
+		store.recordSession(makeSession({ taskId: "task-2", completedAt: null }));
+		store.recordSession(makeSession({ taskId: "task-3", completedAt: "2026-01-01T00:10:00Z" }));
 
 		const summary = generateSummary(store);
 
@@ -79,21 +79,21 @@ describe("generateSummary", () => {
 	test("groups by capability with correct counts and avg durations", () => {
 		store.recordSession(
 			makeSession({
-				beadId: "task-1",
+				taskId: "task-1",
 				capability: "builder",
 				durationMs: 100_000,
 			}),
 		);
 		store.recordSession(
 			makeSession({
-				beadId: "task-2",
+				taskId: "task-2",
 				capability: "builder",
 				durationMs: 200_000,
 			}),
 		);
 		store.recordSession(
 			makeSession({
-				beadId: "task-3",
+				taskId: "task-3",
 				capability: "scout",
 				durationMs: 50_000,
 			}),
@@ -112,10 +112,10 @@ describe("generateSummary", () => {
 	});
 
 	test("respects the limit parameter for recentSessions", () => {
-		store.recordSession(makeSession({ beadId: "task-1" }));
-		store.recordSession(makeSession({ beadId: "task-2" }));
-		store.recordSession(makeSession({ beadId: "task-3" }));
-		store.recordSession(makeSession({ beadId: "task-4" }));
+		store.recordSession(makeSession({ taskId: "task-1" }));
+		store.recordSession(makeSession({ taskId: "task-2" }));
+		store.recordSession(makeSession({ taskId: "task-3" }));
+		store.recordSession(makeSession({ taskId: "task-4" }));
 
 		const summary = generateSummary(store, 2);
 
@@ -124,9 +124,9 @@ describe("generateSummary", () => {
 	});
 
 	test("sessions without completedAt counted in total but not completed", () => {
-		store.recordSession(makeSession({ beadId: "task-1", completedAt: null }));
-		store.recordSession(makeSession({ beadId: "task-2", completedAt: null }));
-		store.recordSession(makeSession({ beadId: "task-3", completedAt: "2026-01-01T00:05:00Z" }));
+		store.recordSession(makeSession({ taskId: "task-1", completedAt: null }));
+		store.recordSession(makeSession({ taskId: "task-2", completedAt: null }));
+		store.recordSession(makeSession({ taskId: "task-3", completedAt: "2026-01-01T00:05:00Z" }));
 
 		const summary = generateSummary(store);
 
@@ -137,7 +137,7 @@ describe("generateSummary", () => {
 	test("aggregates token totals across all sessions", () => {
 		store.recordSession(
 			makeSession({
-				beadId: "task-1",
+				taskId: "task-1",
 				inputTokens: 10_000,
 				outputTokens: 2_000,
 				cacheReadTokens: 50_000,
@@ -147,7 +147,7 @@ describe("generateSummary", () => {
 		);
 		store.recordSession(
 			makeSession({
-				beadId: "task-2",
+				taskId: "task-2",
 				inputTokens: 20_000,
 				outputTokens: 3_000,
 				cacheReadTokens: 80_000,
@@ -166,7 +166,7 @@ describe("generateSummary", () => {
 	});
 
 	test("token totals are zero when no sessions have token data", () => {
-		store.recordSession(makeSession({ beadId: "task-1" }));
+		store.recordSession(makeSession({ taskId: "task-1" }));
 
 		const summary = generateSummary(store);
 
@@ -180,14 +180,14 @@ describe("generateSummary", () => {
 	test("token totals skip null cost entries gracefully", () => {
 		store.recordSession(
 			makeSession({
-				beadId: "task-1",
+				taskId: "task-1",
 				inputTokens: 100,
 				estimatedCostUsd: 0.5,
 			}),
 		);
 		store.recordSession(
 			makeSession({
-				beadId: "task-2",
+				taskId: "task-2",
 				inputTokens: 200,
 				estimatedCostUsd: null, // no cost data
 			}),
@@ -202,7 +202,7 @@ describe("generateSummary", () => {
 	test("capability breakdown excludes incomplete sessions from avgDurationMs", () => {
 		store.recordSession(
 			makeSession({
-				beadId: "task-1",
+				taskId: "task-1",
 				capability: "builder",
 				durationMs: 100_000,
 				completedAt: null,
@@ -210,14 +210,14 @@ describe("generateSummary", () => {
 		);
 		store.recordSession(
 			makeSession({
-				beadId: "task-2",
+				taskId: "task-2",
 				capability: "builder",
 				durationMs: 200_000,
 			}),
 		);
 		store.recordSession(
 			makeSession({
-				beadId: "task-3",
+				taskId: "task-3",
 				capability: "builder",
 				durationMs: 300_000,
 			}),
@@ -242,8 +242,8 @@ describe("formatSummary", () => {
 	});
 
 	test("shows total/completed/average duration", () => {
-		store.recordSession(makeSession({ beadId: "task-1", durationMs: 100_000 }));
-		store.recordSession(makeSession({ beadId: "task-2", durationMs: 200_000 }));
+		store.recordSession(makeSession({ taskId: "task-1", durationMs: 100_000 }));
+		store.recordSession(makeSession({ taskId: "task-2", durationMs: 200_000 }));
 
 		const summary = generateSummary(store);
 		const formatted = formatSummary(summary);
@@ -254,8 +254,8 @@ describe("formatSummary", () => {
 	});
 
 	test("shows capability breakdown", () => {
-		store.recordSession(makeSession({ beadId: "task-1", capability: "builder" }));
-		store.recordSession(makeSession({ beadId: "task-2", capability: "scout" }));
+		store.recordSession(makeSession({ taskId: "task-1", capability: "builder" }));
+		store.recordSession(makeSession({ taskId: "task-2", capability: "scout" }));
 
 		const summary = generateSummary(store);
 		const formatted = formatSummary(summary);
@@ -268,14 +268,14 @@ describe("formatSummary", () => {
 	test("shows recent sessions with status (done vs running)", () => {
 		store.recordSession(
 			makeSession({
-				beadId: "task-1",
+				taskId: "task-1",
 				agentName: "agent-done",
 				completedAt: "2026-01-01T00:05:00Z",
 			}),
 		);
 		store.recordSession(
 			makeSession({
-				beadId: "task-2",
+				taskId: "task-2",
 				agentName: "agent-running",
 				completedAt: null,
 			}),
@@ -293,7 +293,7 @@ describe("formatSummary", () => {
 	});
 
 	test("formatDuration: <1000ms shows ms", () => {
-		store.recordSession(makeSession({ beadId: "task-1", durationMs: 500 }));
+		store.recordSession(makeSession({ taskId: "task-1", durationMs: 500 }));
 
 		const summary = generateSummary(store);
 		const formatted = formatSummary(summary);
@@ -302,7 +302,7 @@ describe("formatSummary", () => {
 	});
 
 	test("formatDuration: <60000ms shows seconds", () => {
-		store.recordSession(makeSession({ beadId: "task-1", durationMs: 5_500 }));
+		store.recordSession(makeSession({ taskId: "task-1", durationMs: 5_500 }));
 
 		const summary = generateSummary(store);
 		const formatted = formatSummary(summary);
@@ -311,7 +311,7 @@ describe("formatSummary", () => {
 	});
 
 	test("formatDuration: >=60000ms shows minutes+seconds", () => {
-		store.recordSession(makeSession({ beadId: "task-1", durationMs: 125_000 }));
+		store.recordSession(makeSession({ taskId: "task-1", durationMs: 125_000 }));
 
 		const summary = generateSummary(store);
 		const formatted = formatSummary(summary);
@@ -322,7 +322,7 @@ describe("formatSummary", () => {
 	test("shows token usage section when sessions have token data", () => {
 		store.recordSession(
 			makeSession({
-				beadId: "task-1",
+				taskId: "task-1",
 				inputTokens: 15_000,
 				outputTokens: 3_000,
 				cacheReadTokens: 100_000,
@@ -344,7 +344,7 @@ describe("formatSummary", () => {
 	});
 
 	test("hides token usage section when no token data exists", () => {
-		store.recordSession(makeSession({ beadId: "task-1" }));
+		store.recordSession(makeSession({ taskId: "task-1" }));
 
 		const summary = generateSummary(store);
 		const formatted = formatSummary(summary);
@@ -355,7 +355,7 @@ describe("formatSummary", () => {
 	test("shows per-session cost in recent sessions", () => {
 		store.recordSession(
 			makeSession({
-				beadId: "task-1",
+				taskId: "task-1",
 				agentName: "agent-costly",
 				inputTokens: 10_000,
 				outputTokens: 2_000,
@@ -373,7 +373,7 @@ describe("formatSummary", () => {
 	test("formats large token counts with M suffix", () => {
 		store.recordSession(
 			makeSession({
-				beadId: "task-1",
+				taskId: "task-1",
 				inputTokens: 2_500_000,
 				outputTokens: 500_000,
 				cacheReadTokens: 0,

@@ -36,7 +36,7 @@ async function readStdin(): Promise<string> {
  */
 export async function writeSpec(
 	projectRoot: string,
-	beadId: string,
+	taskId: string,
 	body: string,
 	agent?: string,
 ): Promise<string> {
@@ -55,7 +55,7 @@ export async function writeSpec(
 		content += "\n";
 	}
 
-	const specPath = join(specsDir, `${beadId}.md`);
+	const specPath = join(specsDir, `${taskId}.md`);
 	await Bun.write(specPath, content);
 
 	return specPath;
@@ -64,14 +64,14 @@ export async function writeSpec(
 /**
  * Entry point for `overstory spec write <bead-id> [flags]`.
  *
- * @param beadId - The bead/task ID for the spec file
+ * @param taskId - The bead/task ID for the spec file
  * @param opts - Command options
  */
-export async function specWriteCommand(beadId: string, opts: SpecWriteOptions): Promise<void> {
-	if (!beadId || beadId.trim().length === 0) {
+export async function specWriteCommand(taskId: string, opts: SpecWriteOptions): Promise<void> {
+	if (!taskId || taskId.trim().length === 0) {
 		throw new ValidationError(
-			"Bead ID is required: overstory spec write <bead-id> --body <content>",
-			{ field: "beadId" },
+			"Task ID is required: overstory spec write <task-id> --body <content>",
+			{ field: "taskId" },
 		);
 	}
 
@@ -94,6 +94,6 @@ export async function specWriteCommand(beadId: string, opts: SpecWriteOptions): 
 	const { resolveProjectRoot } = await import("../config.ts");
 	const projectRoot = await resolveProjectRoot(process.cwd());
 
-	const specPath = await writeSpec(projectRoot, beadId, body, opts.agent);
+	const specPath = await writeSpec(projectRoot, taskId, body, opts.agent);
 	process.stdout.write(`${specPath}\n`);
 }

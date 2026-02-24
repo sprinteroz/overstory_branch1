@@ -180,8 +180,8 @@ specCmd
 	.argument("<bead-id>", "Task ID for the spec file")
 	.option("--body <content>", "Spec content (or pipe via stdin)")
 	.option("--agent <name>", "Agent writing the spec (for attribution)")
-	.action(async (beadId, opts) => {
-		await specWriteCommand(beadId, opts);
+	.action(async (taskId, opts) => {
+		await specWriteCommand(taskId, opts);
 	});
 
 program

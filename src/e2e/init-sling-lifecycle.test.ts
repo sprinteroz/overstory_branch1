@@ -174,7 +174,7 @@ describe("E2E: init→sling lifecycle on external project", () => {
 
 		const overlayConfig: OverlayConfig = {
 			agentName: "test-agent",
-			beadId: "test-bead-001",
+			taskId: "test-bead-001",
 			specPath: null,
 			branchName: "overstory/test-agent/test-bead-001",
 			worktreePath: join(tempDir, ".overstory", "worktrees", "test-agent"),
@@ -241,7 +241,7 @@ describe("E2E: init→sling lifecycle on external project", () => {
 		const builderDef = await Bun.file(join(agentDefsDir, "builder.md")).text();
 		const overlayConfig: OverlayConfig = {
 			agentName: "lifecycle-builder",
-			beadId: "lifecycle-001",
+			taskId: "lifecycle-001",
 			specPath: join(tempDir, ".overstory", "specs", "lifecycle-001.md"),
 			branchName: "overstory/lifecycle-builder/lifecycle-001",
 			worktreePath: join(tempDir, ".overstory", "worktrees", "lifecycle-builder"),

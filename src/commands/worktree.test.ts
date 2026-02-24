@@ -68,7 +68,7 @@ describe("worktreeCommand", () => {
 			capability: "builder",
 			worktreePath: join(tempDir, ".overstory", "worktrees", "test-agent"),
 			branchName: "overstory/test-agent/task-1",
-			beadId: "task-1",
+			taskId: "task-1",
 			tmuxSession: "overstory-test-agent-fake", // FAKE tmux session name
 			state: "working",
 			pid: 12345,
@@ -156,7 +156,7 @@ describe("worktreeCommand", () => {
 					capability: "builder",
 					worktreePath,
 					branchName: "overstory/test-agent/task-1",
-					beadId: "task-1",
+					taskId: "task-1",
 					tmuxSession: "overstory-test-agent",
 					state: "working",
 					pid: 12345,
@@ -203,7 +203,7 @@ describe("worktreeCommand", () => {
 					capability: "builder",
 					worktreePath,
 					branchName: "overstory/test-agent/task-1",
-					beadId: "task-1",
+					taskId: "task-1",
 					tmuxSession: "overstory-test-agent",
 					state: "working",
 					pid: 12345,
@@ -226,7 +226,7 @@ describe("worktreeCommand", () => {
 				head: string;
 				agentName: string | null;
 				state: string | null;
-				beadId: string | null;
+				taskId: string | null;
 			}>;
 
 			expect(parsed).toHaveLength(1);
@@ -234,7 +234,7 @@ describe("worktreeCommand", () => {
 			expect(parsed[0]?.branch).toBe("overstory/test-agent/task-1");
 			expect(parsed[0]?.agentName).toBe("test-agent");
 			expect(parsed[0]?.state).toBe("working");
-			expect(parsed[0]?.beadId).toBe("task-1");
+			expect(parsed[0]?.taskId).toBe("task-1");
 		});
 
 		test("worktrees without sessions show unknown state", async () => {
@@ -291,7 +291,7 @@ describe("worktreeCommand", () => {
 					capability: "builder",
 					worktreePath,
 					branchName: "overstory/completed-agent/task-done",
-					beadId: "task-done",
+					taskId: "task-done",
 					tmuxSession: "overstory-completed-agent",
 					state: "completed",
 					pid: 12345,
@@ -345,7 +345,7 @@ describe("worktreeCommand", () => {
 					capability: "builder",
 					worktreePath,
 					branchName: "overstory/done-agent/task-x",
-					beadId: "task-x",
+					taskId: "task-x",
 					tmuxSession: "overstory-done-agent",
 					state: "completed",
 					pid: 12345,
@@ -383,7 +383,7 @@ describe("worktreeCommand", () => {
 					capability: "builder",
 					worktreePath: nonExistentPath,
 					branchName: "overstory/ghost-agent/task-ghost",
-					beadId: "task-ghost",
+					taskId: "task-ghost",
 					tmuxSession: "overstory-ghost-agent",
 					state: "zombie",
 					pid: null,
@@ -437,7 +437,7 @@ describe("worktreeCommand", () => {
 					capability: "builder",
 					worktreePath,
 					branchName: "overstory/stalled-agent/task-stuck",
-					beadId: "task-stuck",
+					taskId: "task-stuck",
 					tmuxSession: "overstory-stalled-agent",
 					state: "stalled",
 					pid: 12345,
@@ -468,7 +468,7 @@ describe("worktreeCommand", () => {
 				baseDir: worktreesDir,
 				agentName: "completed-agent",
 				baseBranch: "main",
-				beadId: "task-done",
+				taskId: "task-done",
 			});
 
 			const { path: workingPath } = await createWorktree({
@@ -476,7 +476,7 @@ describe("worktreeCommand", () => {
 				baseDir: worktreesDir,
 				agentName: "working-agent",
 				baseBranch: "main",
-				beadId: "task-wip",
+				taskId: "task-wip",
 			});
 
 			// Write sessions.db with both agents
@@ -486,7 +486,7 @@ describe("worktreeCommand", () => {
 					agentName: "completed-agent",
 					worktreePath: completedPath,
 					branchName: "overstory/completed-agent/task-done",
-					beadId: "task-done",
+					taskId: "task-done",
 					tmuxSession: "overstory-completed-agent-fake",
 					state: "completed",
 				}),
@@ -495,7 +495,7 @@ describe("worktreeCommand", () => {
 					agentName: "working-agent",
 					worktreePath: workingPath,
 					branchName: "overstory/working-agent/task-wip",
-					beadId: "task-wip",
+					taskId: "task-wip",
 					tmuxSession: "overstory-working-agent-fake",
 					state: "working",
 					pid: 12346,
@@ -522,7 +522,7 @@ describe("worktreeCommand", () => {
 				baseDir: worktreesDir,
 				agentName: "completed-agent",
 				baseBranch: "main",
-				beadId: "task-done",
+				taskId: "task-done",
 			});
 
 			const { path: workingPath } = await createWorktree({
@@ -530,7 +530,7 @@ describe("worktreeCommand", () => {
 				baseDir: worktreesDir,
 				agentName: "working-agent",
 				baseBranch: "main",
-				beadId: "task-wip",
+				taskId: "task-wip",
 			});
 
 			const { path: stalledPath } = await createWorktree({
@@ -538,7 +538,7 @@ describe("worktreeCommand", () => {
 				baseDir: worktreesDir,
 				agentName: "stalled-agent",
 				baseBranch: "main",
-				beadId: "task-stuck",
+				taskId: "task-stuck",
 			});
 
 			// Write sessions with different states
@@ -548,7 +548,7 @@ describe("worktreeCommand", () => {
 					agentName: "completed-agent",
 					worktreePath: completedPath,
 					branchName: "overstory/completed-agent/task-done",
-					beadId: "task-done",
+					taskId: "task-done",
 					state: "completed",
 				}),
 				makeSession({
@@ -556,7 +556,7 @@ describe("worktreeCommand", () => {
 					agentName: "working-agent",
 					worktreePath: workingPath,
 					branchName: "overstory/working-agent/task-wip",
-					beadId: "task-wip",
+					taskId: "task-wip",
 					state: "working",
 				}),
 				makeSession({
@@ -564,7 +564,7 @@ describe("worktreeCommand", () => {
 					agentName: "stalled-agent",
 					worktreePath: stalledPath,
 					branchName: "overstory/stalled-agent/task-stuck",
-					beadId: "task-stuck",
+					taskId: "task-stuck",
 					state: "stalled",
 				}),
 			]);
@@ -598,7 +598,7 @@ describe("worktreeCommand", () => {
 					capability: "builder",
 					worktreePath: path1,
 					branchName: "overstory/agent-1/task-1",
-					beadId: "task-1",
+					taskId: "task-1",
 					tmuxSession: "overstory-agent-1",
 					state: "completed",
 					pid: 12345,
@@ -616,7 +616,7 @@ describe("worktreeCommand", () => {
 					capability: "builder",
 					worktreePath: path2,
 					branchName: "overstory/agent-2/task-2",
-					beadId: "task-2",
+					taskId: "task-2",
 					tmuxSession: "overstory-agent-2",
 					state: "completed",
 					pid: 12346,
@@ -645,7 +645,7 @@ describe("worktreeCommand", () => {
 				baseDir: worktreesDir,
 				agentName: "unmerged-agent",
 				baseBranch: "main",
-				beadId: "task-unmerged",
+				taskId: "task-unmerged",
 			});
 
 			// Add an unmerged commit
@@ -657,7 +657,7 @@ describe("worktreeCommand", () => {
 					agentName: "unmerged-agent",
 					worktreePath: wtPath,
 					branchName: "overstory/unmerged-agent/task-unmerged",
-					beadId: "task-unmerged",
+					taskId: "task-unmerged",
 					state: "completed",
 				}),
 			]);
@@ -682,7 +682,7 @@ describe("worktreeCommand", () => {
 				baseDir: worktreesDir,
 				agentName: "unmerged-agent",
 				baseBranch: "main",
-				beadId: "task-force",
+				taskId: "task-force",
 			});
 
 			// Add an unmerged commit
@@ -694,7 +694,7 @@ describe("worktreeCommand", () => {
 					agentName: "unmerged-agent",
 					worktreePath: wtPath,
 					branchName: "overstory/unmerged-agent/task-force",
-					beadId: "task-force",
+					taskId: "task-force",
 					state: "completed",
 				}),
 			]);
@@ -716,7 +716,7 @@ describe("worktreeCommand", () => {
 				baseDir: worktreesDir,
 				agentName: "merged-agent",
 				baseBranch: "main",
-				beadId: "task-merged",
+				taskId: "task-merged",
 			});
 
 			// Add a commit and merge it into main
@@ -729,7 +729,7 @@ describe("worktreeCommand", () => {
 					agentName: "merged-agent",
 					worktreePath: wtPath,
 					branchName: branch,
-					beadId: "task-merged",
+					taskId: "task-merged",
 					state: "completed",
 				}),
 			]);
@@ -751,7 +751,7 @@ describe("worktreeCommand", () => {
 				baseDir: worktreesDir,
 				agentName: "unmerged-json-agent",
 				baseBranch: "main",
-				beadId: "task-json",
+				taskId: "task-json",
 			});
 
 			// Add an unmerged commit
@@ -763,7 +763,7 @@ describe("worktreeCommand", () => {
 					agentName: "unmerged-json-agent",
 					worktreePath: wtPath,
 					branchName: "overstory/unmerged-json-agent/task-json",
-					beadId: "task-json",
+					taskId: "task-json",
 					state: "completed",
 				}),
 			]);

@@ -18,7 +18,7 @@ export interface DiscoveredAgent {
 	agentName: string;
 	capability: string;
 	state: string;
-	beadId: string;
+	taskId: string;
 	branchName: string;
 	parentAgent: string | null;
 	depth: number;
@@ -117,7 +117,7 @@ export async function discoverAgents(
 					agentName: session.agentName,
 					capability: session.capability,
 					state: session.state,
-					beadId: session.beadId,
+					taskId: session.taskId,
 					branchName: session.branchName,
 					parentAgent: session.parentAgent,
 					depth: session.depth,
@@ -166,7 +166,7 @@ function printAgents(agents: DiscoveredAgent[]): void {
 	for (const agent of agents) {
 		const icon = getStateIcon(agent.state);
 		w(`  ${icon} ${agent.agentName} [${agent.capability}]\n`);
-		w(`    State: ${agent.state} | Task: ${agent.beadId}\n`);
+		w(`    State: ${agent.state} | Task: ${agent.taskId}\n`);
 		w(`    Branch: ${agent.branchName}\n`);
 		w(`    Parent: ${agent.parentAgent ?? "none"} | Depth: ${agent.depth}\n`);
 

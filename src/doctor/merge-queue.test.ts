@@ -77,13 +77,13 @@ describe("checkMergeQueue", () => {
 		const queue = createMergeQueue(dbPath);
 		queue.enqueue({
 			branchName: "feature/test",
-			beadId: "beads-abc",
+			taskId: "beads-abc",
 			agentName: "test-agent",
 			filesModified: ["src/test.ts"],
 		});
 		queue.enqueue({
 			branchName: "feature/another",
-			beadId: "beads-def",
+			taskId: "beads-def",
 			agentName: "another-agent",
 			filesModified: ["src/another.ts"],
 		});
@@ -194,13 +194,13 @@ describe("checkMergeQueue", () => {
 		const queue = createMergeQueue(dbPath);
 		queue.enqueue({
 			branchName: "feature/duplicate",
-			beadId: "beads-abc",
+			taskId: "beads-abc",
 			agentName: "test-agent",
 			filesModified: ["src/test.ts"],
 		});
 		queue.enqueue({
 			branchName: "feature/duplicate",
-			beadId: "beads-def",
+			taskId: "beads-def",
 			agentName: "another-agent",
 			filesModified: ["src/another.ts"],
 		});

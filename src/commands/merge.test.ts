@@ -207,7 +207,7 @@ merge:
 
 			const parsed = JSON.parse(output);
 			expect(parsed.agentName).toBe("my-builder");
-			expect(parsed.beadId).toBe("bead-xyz");
+			expect(parsed.taskId).toBe("bead-xyz");
 		});
 	});
 
@@ -264,13 +264,13 @@ merge:
 			const queue = createMergeQueue(queuePath);
 			queue.enqueue({
 				branchName: branch1,
-				beadId: "bead-001",
+				taskId: "bead-001",
 				agentName: "agent1",
 				filesModified: [`src/${branch1}.ts`],
 			});
 			queue.enqueue({
 				branchName: branch2,
-				beadId: "bead-002",
+				taskId: "bead-002",
 				agentName: "agent2",
 				filesModified: [`src/${branch2}.ts`],
 			});
@@ -306,13 +306,13 @@ merge:
 			const queue = createMergeQueue(queuePath);
 			queue.enqueue({
 				branchName: branch1,
-				beadId: "bead-100",
+				taskId: "bead-100",
 				agentName: "builder1",
 				filesModified: [`src/${branch1}.ts`],
 			});
 			queue.enqueue({
 				branchName: branch2,
-				beadId: "bead-200",
+				taskId: "bead-200",
 				agentName: "builder2",
 				filesModified: [`src/${branch2}.ts`],
 			});
@@ -351,7 +351,7 @@ merge:
 			const queue = createMergeQueue(queuePath);
 			queue.enqueue({
 				branchName: branch1,
-				beadId: "bead-300",
+				taskId: "bead-300",
 				agentName: "builder3",
 				filesModified: [`src/${branch1}.ts`],
 			});
@@ -449,13 +449,13 @@ merge:
 			const queue = createMergeQueue(queuePath);
 			queue.enqueue({
 				branchName: branch1,
-				beadId: "bead-into-all-1",
+				taskId: "bead-into-all-1",
 				agentName: "agent1",
 				filesModified: [`src/${branch1}.ts`],
 			});
 			queue.enqueue({
 				branchName: branch2,
-				beadId: "bead-into-all-2",
+				taskId: "bead-into-all-2",
 				agentName: "agent2",
 				filesModified: [`src/${branch2}.ts`],
 			});

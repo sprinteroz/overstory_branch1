@@ -25,7 +25,7 @@ function normalizeSession(raw: Record<string, unknown>): AgentSession {
 		capability: raw.capability as string,
 		worktreePath: raw.worktreePath as string,
 		branchName: raw.branchName as string,
-		beadId: raw.beadId as string,
+		taskId: raw.taskId as string,
 		tmuxSession: raw.tmuxSession as string,
 		state: raw.state as AgentSession["state"],
 		pid: (raw.pid as number | null) ?? null,

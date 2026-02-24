@@ -73,7 +73,7 @@ async function recordFailure(
 			type: "failure",
 			description,
 			tags: ["watchdog", "auto-recorded"],
-			evidenceBead: session.beadId || undefined,
+			evidenceBead: session.taskId || undefined,
 		});
 	} catch {
 		// Fire-and-forget: recording failures must not break the watchdog

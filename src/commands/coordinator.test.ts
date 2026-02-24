@@ -286,7 +286,7 @@ function makeCoordinatorSession(overrides: Partial<AgentSession> = {}): AgentSes
 		capability: "coordinator",
 		worktreePath: tempDir,
 		branchName: "main",
-		beadId: "",
+		taskId: "",
 		tmuxSession: "overstory-test-project-coordinator",
 		state: "working",
 		pid: 99999,
@@ -437,7 +437,7 @@ describe("startCoordinator", () => {
 		expect(session?.pid).toBe(99999);
 		expect(session?.parentAgent).toBeNull();
 		expect(session?.depth).toBe(0);
-		expect(session?.beadId).toBe("");
+		expect(session?.taskId).toBe("");
 		expect(session?.branchName).toBe("main");
 		expect(session?.worktreePath).toBe(tempDir);
 		expect(session?.id).toMatch(/^session-\d+-coordinator$/);

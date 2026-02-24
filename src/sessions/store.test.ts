@@ -35,7 +35,7 @@ function makeSession(overrides: Partial<AgentSession> = {}): AgentSession {
 		capability: "builder",
 		worktreePath: "/tmp/worktrees/test-agent",
 		branchName: "overstory/test-agent/task-1",
-		beadId: "task-1",
+		taskId: "task-1",
 		tmuxSession: "overstory-test-agent",
 		state: "booting",
 		pid: 12345,
@@ -81,7 +81,7 @@ describe("upsert", () => {
 			capability: "scout",
 			worktreePath: "/tmp/worktrees/roundtrip",
 			branchName: "overstory/roundtrip-agent/task-42",
-			beadId: "task-42",
+			taskId: "task-42",
 			tmuxSession: "overstory-roundtrip-agent",
 			state: "working",
 			pid: 99999,
@@ -547,11 +547,11 @@ describe("edge cases", () => {
 	});
 
 	test("empty string fields are stored correctly", () => {
-		const session = makeSession({ beadId: "", capability: "builder" });
+		const session = makeSession({ taskId: "", capability: "builder" });
 		store.upsert(session);
 
 		const result = store.getByName("test-agent");
-		expect(result?.beadId).toBe("");
+		expect(result?.taskId).toBe("");
 	});
 });
 

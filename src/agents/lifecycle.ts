@@ -73,7 +73,7 @@ export async function initiateHandoff(options: {
 	agentsDir: string;
 	agentName: string;
 	sessionId: string;
-	beadId: string;
+	taskId: string;
 	reason: SessionHandoff["reason"];
 	progressSummary: string;
 	pendingWork: string;
@@ -83,7 +83,7 @@ export async function initiateHandoff(options: {
 }): Promise<SessionHandoff> {
 	const checkpoint: SessionCheckpoint = {
 		agentName: options.agentName,
-		beadId: options.beadId,
+		taskId: options.taskId,
 		sessionId: options.sessionId,
 		timestamp: new Date().toISOString(),
 		progressSummary: options.progressSummary,

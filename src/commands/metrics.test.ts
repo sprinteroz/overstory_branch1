@@ -54,7 +54,7 @@ describe("metricsCommand", () => {
 	function makeSession(overrides: Partial<SessionMetrics> = {}): SessionMetrics {
 		return {
 			agentName: "test-agent",
-			beadId: "bead-001",
+			taskId: "bead-001",
 			capability: "builder",
 			startedAt: new Date(Date.now() - 120_000).toISOString(),
 			completedAt: new Date().toISOString(),
@@ -177,7 +177,7 @@ describe("metricsCommand", () => {
 		store.recordSession(
 			makeSession({
 				agentName: "test-builder",
-				beadId: "bead-123",
+				taskId: "bead-123",
 				capability: "builder",
 			}),
 		);
@@ -190,7 +190,7 @@ describe("metricsCommand", () => {
 		const parsed = JSON.parse(out.trim()) as { sessions: SessionMetrics[] };
 		expect(parsed.sessions).toHaveLength(1);
 		expect(parsed.sessions[0]?.agentName).toBe("test-builder");
-		expect(parsed.sessions[0]?.beadId).toBe("bead-123");
+		expect(parsed.sessions[0]?.taskId).toBe("bead-123");
 		expect(parsed.sessions[0]?.capability).toBe("builder");
 	});
 
@@ -203,7 +203,7 @@ describe("metricsCommand", () => {
 			store.recordSession(
 				makeSession({
 					agentName: `agent-${i}`,
-					beadId: `bead-${i}`,
+					taskId: `bead-${i}`,
 					startedAt: new Date(Date.now() - (5 - i) * 1000).toISOString(),
 				}),
 			);
@@ -227,7 +227,7 @@ describe("metricsCommand", () => {
 			store.recordSession(
 				makeSession({
 					agentName: `agent-${i}`,
-					beadId: `bead-${i}`,
+					taskId: `bead-${i}`,
 				}),
 			);
 		}
@@ -363,7 +363,7 @@ describe("formatDuration helper", () => {
 	function makeSession(durationMs: number): SessionMetrics {
 		return {
 			agentName: "test-agent",
-			beadId: "bead-001",
+			taskId: "bead-001",
 			capability: "builder",
 			startedAt: new Date(Date.now() - durationMs).toISOString(),
 			completedAt: new Date().toISOString(),

@@ -134,7 +134,7 @@ expertiseDomains:
   - typescript
   - testing
 recentTasks:
-  - beadId: task-001
+  - taskId: task-001
     summary: "Implemented feature X"
     completedAt: "2026-01-10T12:00:00Z"
 `,
@@ -161,7 +161,7 @@ recentTasks:
 					capability: "builder",
 					worktreePath: join(tempDir, ".overstory", "worktrees", "active-builder"),
 					branchName: "overstory/active-builder/task-001",
-					beadId: "task-001",
+					taskId: "task-001",
 					tmuxSession: "overstory-active-builder",
 					state: "working",
 					pid: 12345,
@@ -198,7 +198,7 @@ recentTasks:
 					capability: "builder",
 					worktreePath: join(tempDir, ".overstory", "worktrees", "completed-builder"),
 					branchName: "overstory/completed-builder/task-002",
-					beadId: "task-002",
+					taskId: "task-002",
 					tmuxSession: "overstory-completed-builder",
 					state: "completed",
 					pid: null,
@@ -233,7 +233,7 @@ recentTasks:
 				`${JSON.stringify(
 					{
 						agentName: "recovery-agent",
-						beadId: "task-003",
+						taskId: "task-003",
 						sessionId: "session-003",
 						timestamp: new Date().toISOString(),
 						progressSummary: "Implemented initial tests for prime command",

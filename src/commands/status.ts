@@ -273,7 +273,7 @@ export function printStatus(data: StatusData): void {
 			const tmuxAlive = tmuxSessionNames.has(agent.tmuxSession);
 			const aliveMarker = tmuxAlive ? "●" : "○";
 			w(`   ${aliveMarker} ${agent.agentName} [${agent.capability}] `);
-			w(`${agent.state} | ${agent.beadId} | ${duration}\n`);
+			w(`${agent.state} | ${agent.taskId} | ${duration}\n`);
 
 			const detail = data.verboseDetails?.[agent.agentName];
 			if (detail) {

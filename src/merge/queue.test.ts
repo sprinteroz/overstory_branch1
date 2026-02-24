@@ -23,14 +23,14 @@ describe("createMergeQueue", () => {
 	function makeInput(
 		overrides?: Partial<{
 			branchName: string;
-			beadId: string;
+			taskId: string;
 			agentName: string;
 			filesModified: string[];
 		}>,
 	) {
 		return {
 			branchName: overrides?.branchName ?? "overstory/test-agent/bead-123",
-			beadId: overrides?.beadId ?? "bead-123",
+			taskId: overrides?.taskId ?? "bead-123",
 			agentName: overrides?.agentName ?? "test-agent",
 			filesModified: overrides?.filesModified ?? ["src/test.ts"],
 		};
@@ -52,7 +52,7 @@ describe("createMergeQueue", () => {
 			const after = new Date().toISOString();
 
 			expect(entry.branchName).toBe("overstory/test-agent/bead-123");
-			expect(entry.beadId).toBe("bead-123");
+			expect(entry.taskId).toBe("bead-123");
 			expect(entry.agentName).toBe("test-agent");
 			expect(entry.filesModified).toEqual(["src/test.ts"]);
 			expect(entry.enqueuedAt).toBeDefined();
@@ -65,7 +65,7 @@ describe("createMergeQueue", () => {
 			const queue = createMergeQueue(queuePath);
 			const input = makeInput({
 				branchName: "overstory/builder-1/bead-xyz",
-				beadId: "bead-xyz",
+				taskId: "bead-xyz",
 				agentName: "builder-1",
 				filesModified: ["src/a.ts", "src/b.ts"],
 			});
@@ -73,7 +73,7 @@ describe("createMergeQueue", () => {
 			const entry = queue.enqueue(input);
 
 			expect(entry.branchName).toBe("overstory/builder-1/bead-xyz");
-			expect(entry.beadId).toBe("bead-xyz");
+			expect(entry.taskId).toBe("bead-xyz");
 			expect(entry.agentName).toBe("builder-1");
 			expect(entry.filesModified).toEqual(["src/a.ts", "src/b.ts"]);
 		});
@@ -82,8 +82,8 @@ describe("createMergeQueue", () => {
 	describe("dequeue", () => {
 		test("returns first pending entry (FIFO)", () => {
 			const queue = createMergeQueue(queuePath);
-			queue.enqueue(makeInput({ branchName: "branch-a", beadId: "bead-a" }));
-			queue.enqueue(makeInput({ branchName: "branch-b", beadId: "bead-b" }));
+			queue.enqueue(makeInput({ branchName: "branch-a", taskId: "bead-a" }));
+			queue.enqueue(makeInput({ branchName: "branch-b", taskId: "bead-b" }));
 
 			const dequeued = queue.dequeue();
 
@@ -363,17 +363,17 @@ describe("createMergeQueue", () => {
 			const entries = queue.list();
 
 			expect(entries).toHaveLength(1);
-			expect(entries[0]?.beadId).toBe("bead-1");
+			expect(entries[0]?.taskId).toBe("bead-1");
 			expect(entries[0]?.branchName).toBe("overstory/test/bead-1");
 
 			// New inserts should also work
 			const newEntry = queue.enqueue({
 				branchName: "overstory/test/bead-2",
-				beadId: "bead-2",
+				taskId: "bead-2",
 				agentName: "test",
 				filesModified: ["src/b.ts"],
 			});
-			expect(newEntry.beadId).toBe("bead-2");
+			expect(newEntry.taskId).toBe("bead-2");
 
 			queue.close();
 		});
@@ -383,7 +383,7 @@ describe("createMergeQueue", () => {
 			const queue1 = createMergeQueue(queuePath);
 			queue1.enqueue({
 				branchName: "overstory/test/bead-1",
-				beadId: "bead-1",
+				taskId: "bead-1",
 				agentName: "test",
 				filesModified: [],
 			});
@@ -394,7 +394,7 @@ describe("createMergeQueue", () => {
 			const entries = queue2.list();
 
 			expect(entries).toHaveLength(1);
-			expect(entries[0]?.beadId).toBe("bead-1");
+			expect(entries[0]?.taskId).toBe("bead-1");
 			queue2.close();
 		});
 	});

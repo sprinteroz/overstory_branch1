@@ -496,7 +496,7 @@ function recordConflictPattern(
 			type: "pattern",
 			description,
 			tags: ["merge-conflict"],
-			evidenceBead: entry.beadId,
+			evidenceBead: entry.taskId,
 		})
 		.catch(() => {});
 }

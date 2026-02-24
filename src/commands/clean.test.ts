@@ -113,7 +113,7 @@ describe("--all", () => {
 		const store = createMetricsStore(metricsDbPath);
 		store.recordSession({
 			agentName: "test-agent",
-			beadId: "task-1",
+			taskId: "task-1",
 			capability: "builder",
 			startedAt: new Date().toISOString(),
 			completedAt: null,
@@ -148,7 +148,7 @@ describe("--all", () => {
 			capability: "builder",
 			worktreePath: "/tmp/wt",
 			branchName: "overstory/test/task",
-			beadId: "task-1",
+			taskId: "task-1",
 			tmuxSession: "overstory-test-agent",
 			state: "completed",
 			pid: 12345,
@@ -177,7 +177,7 @@ describe("--all", () => {
 		const queue = createMergeQueue(queuePath);
 		queue.enqueue({
 			branchName: "test-branch",
-			beadId: "beads-test",
+			taskId: "beads-test",
 			agentName: "test",
 			filesModified: ["src/test.ts"],
 		});
@@ -292,7 +292,7 @@ describe("individual flags", () => {
 			capability: "builder",
 			worktreePath: "/tmp/wt",
 			branchName: "overstory/test/task",
-			beadId: "task-1",
+			taskId: "task-1",
 			tmuxSession: "overstory-test-agent",
 			state: "completed",
 			pid: 12345,
@@ -413,7 +413,7 @@ describe("synthetic session-end events", () => {
 			capability: "builder",
 			worktreePath: "/tmp/wt",
 			branchName: "overstory/test-builder/task-1",
-			beadId: "task-1",
+			taskId: "task-1",
 			tmuxSession: "overstory-test-builder",
 			state: "working",
 			pid: 12345,

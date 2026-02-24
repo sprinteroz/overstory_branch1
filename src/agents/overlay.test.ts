@@ -25,7 +25,7 @@ Read your assignment. Execute immediately.
 function makeConfig(overrides?: Partial<OverlayConfig>): OverlayConfig {
 	return {
 		agentName: "test-builder",
-		beadId: "overstory-abc",
+		taskId: "overstory-abc",
 		specPath: ".overstory/specs/overstory-abc.md",
 		branchName: "agent/test-builder/overstory-abc",
 		worktreePath: "/tmp/test-project/.overstory/worktrees/test-builder",
@@ -48,8 +48,8 @@ describe("generateOverlay", () => {
 		expect(output).toContain("my-scout");
 	});
 
-	test("output contains bead ID", async () => {
-		const config = makeConfig({ beadId: "overstory-xyz" });
+	test("output contains task ID", async () => {
+		const config = makeConfig({ taskId: "overstory-xyz" });
 		const output = await generateOverlay(config);
 
 		expect(output).toContain("overstory-xyz");
@@ -261,7 +261,7 @@ describe("generateOverlay", () => {
 		const config = makeConfig({
 			capability: "scout",
 			agentName: "recon-1",
-			beadId: "overstory-task1",
+			taskId: "overstory-task1",
 			parentAgent: "lead-alpha",
 		});
 		const output = await generateOverlay(config);
@@ -419,7 +419,7 @@ describe("generateOverlay", () => {
 	});
 
 	test("default trackerCli renders as bd in quality gates", async () => {
-		const config = makeConfig({ capability: "builder", beadId: "overstory-task1" });
+		const config = makeConfig({ capability: "builder", taskId: "overstory-task1" });
 		const output = await generateOverlay(config);
 
 		expect(output).toContain("bd close overstory-task1");
@@ -429,7 +429,7 @@ describe("generateOverlay", () => {
 		const config = makeConfig({
 			capability: "builder",
 			trackerCli: "sd",
-			beadId: "overstory-test1",
+			taskId: "overstory-test1",
 		});
 		const output = await generateOverlay(config);
 
@@ -451,7 +451,7 @@ describe("generateOverlay", () => {
 		const config = makeConfig({
 			capability: "scout",
 			trackerCli: "sd",
-			beadId: "overstory-test2",
+			taskId: "overstory-test2",
 		});
 		const output = await generateOverlay(config);
 
@@ -482,7 +482,7 @@ describe("generateOverlay", () => {
 	});
 
 	test("defaults backward-compatible: no trackerCli/trackerName produces bd/beads", async () => {
-		const config = makeConfig({ capability: "builder", beadId: "overstory-back" });
+		const config = makeConfig({ capability: "builder", taskId: "overstory-back" });
 		const output = await generateOverlay(config);
 
 		expect(output).toContain("bd close overstory-back");
@@ -521,7 +521,7 @@ describe("writeOverlay", () => {
 		const outputPath = join(worktreePath, ".claude", "CLAUDE.md");
 		const content = await Bun.file(outputPath).text();
 		expect(content).toContain("file-writer-test");
-		expect(content).toContain(config.beadId);
+		expect(content).toContain(config.taskId);
 		expect(content).toContain(config.branchName);
 	});
 

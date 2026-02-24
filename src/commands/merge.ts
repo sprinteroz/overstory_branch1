@@ -29,7 +29,7 @@ export interface MergeOptions {
 
 /**
  * Extract agent name from a branch following the overstory naming convention.
- * Pattern: overstory/{agentName}/{beadId}
+ * Pattern: overstory/{agentName}/{taskId}
  * Falls back to "unknown" if the pattern does not match.
  */
 function parseAgentName(branchName: string): string {
@@ -41,8 +41,8 @@ function parseAgentName(branchName: string): string {
 }
 
 /**
- * Extract bead ID from a branch following the overstory naming convention.
- * Pattern: overstory/{agentName}/{beadId}
+ * Extract task ID from a branch following the overstory naming convention.
+ * Pattern: overstory/{agentName}/{taskId}
  * Falls back to "unknown" if the pattern does not match.
  */
 function parseBeadId(branchName: string): string {
@@ -89,7 +89,7 @@ function formatResult(result: MergeResult): string {
 	const statusIcon = result.success ? "Merged" : "Failed";
 	const lines: string[] = [
 		`Merging branch: ${result.entry.branchName}`,
-		`   Agent: ${result.entry.agentName} | Task: ${result.entry.beadId}`,
+		`   Agent: ${result.entry.agentName} | Task: ${result.entry.taskId}`,
 		`   Files: ${result.entry.filesModified.length} modified`,
 		`   Result: ${statusIcon} (tier: ${result.tier})`,
 	];
@@ -109,7 +109,7 @@ function formatResult(result: MergeResult): string {
 function formatDryRun(entry: MergeEntry): string {
 	const lines: string[] = [
 		`[dry-run] Branch: ${entry.branchName}`,
-		`   Agent: ${entry.agentName} | Task: ${entry.beadId}`,
+		`   Agent: ${entry.agentName} | Task: ${entry.taskId}`,
 		`   Status: ${entry.status}`,
 		`   Files: ${entry.filesModified.length} modified`,
 	];
@@ -176,7 +176,7 @@ export async function mergeCommand(opts: MergeOptions): Promise<void> {
 /**
  * Handle merging a specific branch.
  * If the branch is not in the queue, creates a new entry by detecting
- * agent name, bead ID, and modified files from git.
+ * agent name, task ID, and modified files from git.
  */
 async function handleBranch(
 	branchName: string,
@@ -211,12 +211,12 @@ async function handleBranch(
 		}
 
 		const agentName = parseAgentName(branchName);
-		const beadId = parseBeadId(branchName);
+		const taskId = parseBeadId(branchName);
 		const filesModified = await detectModifiedFiles(repoRoot, canonicalBranch, branchName);
 
 		entry = queue.enqueue({
 			branchName,
-			beadId,
+			taskId,
 			agentName,
 			filesModified,
 		});

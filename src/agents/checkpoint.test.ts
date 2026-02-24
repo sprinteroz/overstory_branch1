@@ -9,7 +9,7 @@ import { clearCheckpoint, loadCheckpoint, saveCheckpoint } from "./checkpoint.ts
 function makeCheckpoint(overrides?: Partial<SessionCheckpoint>): SessionCheckpoint {
 	return {
 		agentName: "test-agent",
-		beadId: "overstory-abc1",
+		taskId: "overstory-abc1",
 		sessionId: "session-001",
 		timestamp: "2025-01-01T00:00:00.000Z",
 		progressSummary: "Implemented checkpoint module",
@@ -40,7 +40,7 @@ describe("checkpoint", () => {
 
 		expect(loaded).not.toBeNull();
 		expect(loaded?.agentName).toBe("test-agent");
-		expect(loaded?.beadId).toBe("overstory-abc1");
+		expect(loaded?.taskId).toBe("overstory-abc1");
 		expect(loaded?.sessionId).toBe("session-001");
 		expect(loaded?.progressSummary).toBe("Implemented checkpoint module");
 		expect(loaded?.filesModified).toEqual(["src/agents/checkpoint.ts"]);

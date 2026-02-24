@@ -22,7 +22,7 @@ import { costsCommand } from "./costs.ts";
 function makeMetrics(overrides: Partial<SessionMetrics> = {}): SessionMetrics {
 	return {
 		agentName: "builder-1",
-		beadId: "task-001",
+		taskId: "task-001",
 		capability: "builder",
 		startedAt: new Date().toISOString(),
 		completedAt: new Date().toISOString(),
@@ -142,8 +142,8 @@ describe("costsCommand", () => {
 		test("outputs valid JSON array with sessions", async () => {
 			const dbPath = join(tempDir, ".overstory", "metrics.db");
 			const store = createMetricsStore(dbPath);
-			store.recordSession(makeMetrics({ agentName: "builder-1", beadId: "t1" }));
-			store.recordSession(makeMetrics({ agentName: "scout-1", beadId: "t2", capability: "scout" }));
+			store.recordSession(makeMetrics({ agentName: "builder-1", taskId: "t1" }));
+			store.recordSession(makeMetrics({ agentName: "scout-1", taskId: "t2", capability: "scout" }));
 			store.close();
 
 			await costsCommand(["--json"]);
@@ -160,7 +160,7 @@ describe("costsCommand", () => {
 			store.recordSession(
 				makeMetrics({
 					agentName: "builder-1",
-					beadId: "t1",
+					taskId: "t1",
 					inputTokens: 100,
 					outputTokens: 50,
 					cacheReadTokens: 30,
@@ -187,7 +187,7 @@ describe("costsCommand", () => {
 		test("JSON output returns empty array when no sessions match", async () => {
 			const dbPath = join(tempDir, ".overstory", "metrics.db");
 			const store = createMetricsStore(dbPath);
-			store.recordSession(makeMetrics({ agentName: "builder-1", beadId: "t1" }));
+			store.recordSession(makeMetrics({ agentName: "builder-1", taskId: "t1" }));
 			store.close();
 
 			await costsCommand(["--json", "--agent", "nonexistent"]);
@@ -203,7 +203,7 @@ describe("costsCommand", () => {
 			store.recordSession(
 				makeMetrics({
 					agentName: "builder-1",
-					beadId: "t1",
+					taskId: "t1",
 					capability: "builder",
 					inputTokens: 100,
 				}),
@@ -211,7 +211,7 @@ describe("costsCommand", () => {
 			store.recordSession(
 				makeMetrics({
 					agentName: "scout-1",
-					beadId: "t2",
+					taskId: "t2",
 					capability: "scout",
 					inputTokens: 50,
 				}),
@@ -238,7 +238,7 @@ describe("costsCommand", () => {
 		test("shows Cost Summary header", async () => {
 			const dbPath = join(tempDir, ".overstory", "metrics.db");
 			const store = createMetricsStore(dbPath);
-			store.recordSession(makeMetrics({ agentName: "builder-1", beadId: "t1" }));
+			store.recordSession(makeMetrics({ agentName: "builder-1", taskId: "t1" }));
 			store.close();
 
 			await costsCommand([]);
@@ -250,7 +250,7 @@ describe("costsCommand", () => {
 		test("shows column headers", async () => {
 			const dbPath = join(tempDir, ".overstory", "metrics.db");
 			const store = createMetricsStore(dbPath);
-			store.recordSession(makeMetrics({ agentName: "builder-1", beadId: "t1" }));
+			store.recordSession(makeMetrics({ agentName: "builder-1", taskId: "t1" }));
 			store.close();
 
 			await costsCommand([]);
@@ -270,7 +270,7 @@ describe("costsCommand", () => {
 			store.recordSession(
 				makeMetrics({
 					agentName: "builder-1",
-					beadId: "t1",
+					taskId: "t1",
 					capability: "builder",
 				}),
 			);
@@ -286,7 +286,7 @@ describe("costsCommand", () => {
 		test("shows separator line", async () => {
 			const dbPath = join(tempDir, ".overstory", "metrics.db");
 			const store = createMetricsStore(dbPath);
-			store.recordSession(makeMetrics({ agentName: "builder-1", beadId: "t1" }));
+			store.recordSession(makeMetrics({ agentName: "builder-1", taskId: "t1" }));
 			store.close();
 
 			await costsCommand([]);
@@ -298,7 +298,7 @@ describe("costsCommand", () => {
 		test("shows Total row", async () => {
 			const dbPath = join(tempDir, ".overstory", "metrics.db");
 			const store = createMetricsStore(dbPath);
-			store.recordSession(makeMetrics({ agentName: "builder-1", beadId: "t1" }));
+			store.recordSession(makeMetrics({ agentName: "builder-1", taskId: "t1" }));
 			store.close();
 
 			await costsCommand([]);
@@ -329,7 +329,7 @@ describe("costsCommand", () => {
 			store.recordSession(
 				makeMetrics({
 					agentName: "builder-1",
-					beadId: "t1",
+					taskId: "t1",
 					inputTokens: 12345,
 					outputTokens: 5678,
 				}),
@@ -349,7 +349,7 @@ describe("costsCommand", () => {
 			store.recordSession(
 				makeMetrics({
 					agentName: "builder-1",
-					beadId: "t1",
+					taskId: "t1",
 					estimatedCostUsd: 0.42,
 				}),
 			);
@@ -367,7 +367,7 @@ describe("costsCommand", () => {
 			store.recordSession(
 				makeMetrics({
 					agentName: "builder-1",
-					beadId: "t1",
+					taskId: "t1",
 					inputTokens: 0,
 					outputTokens: 0,
 					cacheReadTokens: 0,
@@ -389,7 +389,7 @@ describe("costsCommand", () => {
 			store.recordSession(
 				makeMetrics({
 					agentName: "builder-1",
-					beadId: "t1",
+					taskId: "t1",
 					estimatedCostUsd: null,
 				}),
 			);
@@ -408,8 +408,8 @@ describe("costsCommand", () => {
 		test("filters sessions by agent name", async () => {
 			const dbPath = join(tempDir, ".overstory", "metrics.db");
 			const store = createMetricsStore(dbPath);
-			store.recordSession(makeMetrics({ agentName: "builder-1", beadId: "t1", inputTokens: 100 }));
-			store.recordSession(makeMetrics({ agentName: "scout-1", beadId: "t2", inputTokens: 200 }));
+			store.recordSession(makeMetrics({ agentName: "builder-1", taskId: "t1", inputTokens: 100 }));
+			store.recordSession(makeMetrics({ agentName: "scout-1", taskId: "t2", inputTokens: 200 }));
 			store.close();
 
 			await costsCommand(["--json", "--agent", "builder-1"]);
@@ -423,7 +423,7 @@ describe("costsCommand", () => {
 		test("returns empty for non-existent agent", async () => {
 			const dbPath = join(tempDir, ".overstory", "metrics.db");
 			const store = createMetricsStore(dbPath);
-			store.recordSession(makeMetrics({ agentName: "builder-1", beadId: "t1" }));
+			store.recordSession(makeMetrics({ agentName: "builder-1", taskId: "t1" }));
 			store.close();
 
 			await costsCommand(["--json", "--agent", "nonexistent"]);
@@ -441,12 +441,12 @@ describe("costsCommand", () => {
 			const dbPath = join(tempDir, ".overstory", "metrics.db");
 			const store = createMetricsStore(dbPath);
 			store.recordSession(
-				makeMetrics({ agentName: "builder-1", beadId: "task-001", runId: "run-2026-01-01" }),
+				makeMetrics({ agentName: "builder-1", taskId: "task-001", runId: "run-2026-01-01" }),
 			);
 			store.recordSession(
 				makeMetrics({
 					agentName: "scout-1",
-					beadId: "task-002",
+					taskId: "task-002",
 					capability: "scout",
 					runId: "run-other",
 				}),
@@ -465,7 +465,7 @@ describe("costsCommand", () => {
 			const dbPath = join(tempDir, ".overstory", "metrics.db");
 			const store = createMetricsStore(dbPath);
 			store.recordSession(
-				makeMetrics({ agentName: "builder-1", beadId: "t1", runId: "run-2026-01-01" }),
+				makeMetrics({ agentName: "builder-1", taskId: "t1", runId: "run-2026-01-01" }),
 			);
 			store.close();
 
@@ -484,7 +484,7 @@ describe("costsCommand", () => {
 			const dbPath = join(tempDir, ".overstory", "metrics.db");
 			const store = createMetricsStore(dbPath);
 			store.recordSession(
-				makeMetrics({ agentName: "builder-1", beadId: "t1", capability: "builder" }),
+				makeMetrics({ agentName: "builder-1", taskId: "t1", capability: "builder" }),
 			);
 			store.close();
 
@@ -498,7 +498,7 @@ describe("costsCommand", () => {
 			const dbPath = join(tempDir, ".overstory", "metrics.db");
 			const store = createMetricsStore(dbPath);
 			store.recordSession(
-				makeMetrics({ agentName: "builder-1", beadId: "t1", capability: "builder" }),
+				makeMetrics({ agentName: "builder-1", taskId: "t1", capability: "builder" }),
 			);
 			store.close();
 
@@ -514,7 +514,7 @@ describe("costsCommand", () => {
 			store.recordSession(
 				makeMetrics({
 					agentName: "builder-1",
-					beadId: "t1",
+					taskId: "t1",
 					capability: "builder",
 					inputTokens: 1000,
 				}),
@@ -522,7 +522,7 @@ describe("costsCommand", () => {
 			store.recordSession(
 				makeMetrics({
 					agentName: "builder-2",
-					beadId: "t2",
+					taskId: "t2",
 					capability: "builder",
 					inputTokens: 2000,
 				}),
@@ -530,7 +530,7 @@ describe("costsCommand", () => {
 			store.recordSession(
 				makeMetrics({
 					agentName: "scout-1",
-					beadId: "t3",
+					taskId: "t3",
 					capability: "scout",
 					inputTokens: 500,
 				}),
@@ -548,10 +548,10 @@ describe("costsCommand", () => {
 		test("shows correct session count per capability", async () => {
 			const dbPath = join(tempDir, ".overstory", "metrics.db");
 			const store = createMetricsStore(dbPath);
-			store.recordSession(makeMetrics({ agentName: "b1", beadId: "t1", capability: "builder" }));
-			store.recordSession(makeMetrics({ agentName: "b2", beadId: "t2", capability: "builder" }));
-			store.recordSession(makeMetrics({ agentName: "b3", beadId: "t3", capability: "builder" }));
-			store.recordSession(makeMetrics({ agentName: "s1", beadId: "t4", capability: "scout" }));
+			store.recordSession(makeMetrics({ agentName: "b1", taskId: "t1", capability: "builder" }));
+			store.recordSession(makeMetrics({ agentName: "b2", taskId: "t2", capability: "builder" }));
+			store.recordSession(makeMetrics({ agentName: "b3", taskId: "t3", capability: "builder" }));
+			store.recordSession(makeMetrics({ agentName: "s1", taskId: "t4", capability: "scout" }));
 			store.close();
 
 			await costsCommand(["--json", "--by-capability"]);
@@ -584,7 +584,7 @@ describe("costsCommand", () => {
 			const dbPath = join(tempDir, ".overstory", "metrics.db");
 			const store = createMetricsStore(dbPath);
 			for (let i = 0; i < 10; i++) {
-				store.recordSession(makeMetrics({ agentName: `agent-${i}`, beadId: `t-${i}` }));
+				store.recordSession(makeMetrics({ agentName: `agent-${i}`, taskId: `t-${i}` }));
 			}
 			store.close();
 
@@ -599,7 +599,7 @@ describe("costsCommand", () => {
 			const dbPath = join(tempDir, ".overstory", "metrics.db");
 			const store = createMetricsStore(dbPath);
 			for (let i = 0; i < 25; i++) {
-				store.recordSession(makeMetrics({ agentName: `agent-${i}`, beadId: `t-${i}` }));
+				store.recordSession(makeMetrics({ agentName: `agent-${i}`, taskId: `t-${i}` }));
 			}
 			store.close();
 
@@ -620,7 +620,7 @@ describe("costsCommand", () => {
 			store.recordSession(
 				makeMetrics({
 					agentName: "builder-1",
-					beadId: "t1",
+					taskId: "t1",
 					inputTokens: 0,
 					outputTokens: 0,
 					cacheReadTokens: 0,
@@ -644,7 +644,7 @@ describe("costsCommand", () => {
 			store.recordSession(
 				makeMetrics({
 					agentName: "builder-1",
-					beadId: "t1",
+					taskId: "t1",
 					estimatedCostUsd: null,
 				}),
 			);
@@ -664,7 +664,7 @@ describe("costsCommand", () => {
 			store.recordSession(
 				makeMetrics({
 					agentName: "builder-1",
-					beadId: "t1",
+					taskId: "t1",
 					cacheReadTokens: 8000,
 					cacheCreationTokens: 901,
 				}),
@@ -684,7 +684,7 @@ describe("costsCommand", () => {
 			store.recordSession(
 				makeMetrics({
 					agentName: "builder-1",
-					beadId: "t1",
+					taskId: "t1",
 					inputTokens: 100,
 					outputTokens: 50,
 					estimatedCostUsd: 0.1,
@@ -693,7 +693,7 @@ describe("costsCommand", () => {
 			store.recordSession(
 				makeMetrics({
 					agentName: "scout-1",
-					beadId: "t2",
+					taskId: "t2",
 					capability: "scout",
 					inputTokens: 200,
 					outputTokens: 100,
@@ -716,10 +716,10 @@ describe("costsCommand", () => {
 			const dbPath = join(tempDir, ".overstory", "metrics.db");
 			const store = createMetricsStore(dbPath);
 			store.recordSession(
-				makeMetrics({ agentName: "builder-1", beadId: "t1", capability: "builder" }),
+				makeMetrics({ agentName: "builder-1", taskId: "t1", capability: "builder" }),
 			);
 			store.recordSession(
-				makeMetrics({ agentName: "builder-2", beadId: "t2", capability: "builder" }),
+				makeMetrics({ agentName: "builder-2", taskId: "t2", capability: "builder" }),
 			);
 			store.close();
 
@@ -759,7 +759,7 @@ describe("costsCommand", () => {
 				capability: "builder",
 				worktreePath: "/tmp/wt1",
 				branchName: "feat/task1",
-				beadId: "task-001",
+				taskId: "task-001",
 				tmuxSession: "tmux-001",
 				state: "working",
 				pid: 12345,
@@ -815,7 +815,7 @@ describe("costsCommand", () => {
 				capability: "builder",
 				worktreePath: "/tmp/wt1",
 				branchName: "feat/task1",
-				beadId: "task-001",
+				taskId: "task-001",
 				tmuxSession: "tmux-001",
 				state: "working",
 				pid: 12345,
@@ -879,7 +879,7 @@ describe("costsCommand", () => {
 				capability: "builder",
 				worktreePath: "/tmp/wt1",
 				branchName: "feat/task1",
-				beadId: "task-001",
+				taskId: "task-001",
 				tmuxSession: "tmux-001",
 				state: "working",
 				pid: 12345,
@@ -897,7 +897,7 @@ describe("costsCommand", () => {
 				capability: "scout",
 				worktreePath: "/tmp/wt2",
 				branchName: "feat/task2",
-				beadId: "task-002",
+				taskId: "task-002",
 				tmuxSession: "tmux-002",
 				state: "working",
 				pid: 12346,
@@ -956,7 +956,7 @@ describe("costsCommand", () => {
 				capability: "builder",
 				worktreePath: "/tmp/wt1",
 				branchName: "feat/task1",
-				beadId: "task-001",
+				taskId: "task-001",
 				tmuxSession: "tmux-001",
 				state: "working",
 				pid: 12345,

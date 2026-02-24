@@ -598,7 +598,7 @@ describe("createMailClient", () => {
 	describe("sendProtocol", () => {
 		test("sends a worker_done message with serialized payload", () => {
 			const payload: WorkerDonePayload = {
-				beadId: "beads-abc",
+				taskId: "beads-abc",
 				branch: "agent/builder-1",
 				exitCode: 0,
 				filesModified: ["src/foo.ts", "src/bar.ts"],
@@ -625,7 +625,7 @@ describe("createMailClient", () => {
 				subject: "Merged",
 				body: "Branch merged",
 				type: "merged",
-				payload: { branch: "agent/b1", beadId: "beads-xyz", tier: "clean-merge" as const },
+				payload: { branch: "agent/b1", taskId: "beads-xyz", tier: "clean-merge" as const },
 			});
 
 			const msg = store.getById(id);
@@ -640,7 +640,7 @@ describe("createMailClient", () => {
 				body: "Build failing",
 				type: "escalation",
 				priority: "urgent",
-				payload: { severity: "critical" as const, beadId: null, context: "OOM" },
+				payload: { severity: "critical" as const, taskId: null, context: "OOM" },
 			});
 
 			const msg = store.getById(id);
@@ -656,7 +656,7 @@ describe("createMailClient", () => {
 				type: "assign",
 				threadId: "thread-dispatch-1",
 				payload: {
-					beadId: "beads-123",
+					taskId: "beads-123",
 					specPath: ".overstory/specs/beads-123.md",
 					workerName: "builder-1",
 					branch: "agent/builder-1",
@@ -671,7 +671,7 @@ describe("createMailClient", () => {
 	describe("parsePayload", () => {
 		test("parses a valid JSON payload", () => {
 			const payload: WorkerDonePayload = {
-				beadId: "beads-abc",
+				taskId: "beads-abc",
 				branch: "agent/builder-1",
 				exitCode: 0,
 				filesModified: ["src/foo.ts"],
@@ -727,7 +727,7 @@ describe("createMailClient", () => {
 	describe("checkInject with protocol messages", () => {
 		test("includes payload in injection output for protocol messages", () => {
 			const payload: WorkerDonePayload = {
-				beadId: "beads-abc",
+				taskId: "beads-abc",
 				branch: "agent/builder-1",
 				exitCode: 0,
 				filesModified: ["src/foo.ts"],

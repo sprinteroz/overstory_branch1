@@ -2,7 +2,7 @@
  * CLI command: overstory trace <target> [--json] [--since <ts>] [--until <ts>] [--limit <n>]
  *
  * Shows a chronological timeline of events for an agent or bead task.
- * Target can be an agent name or a bead ID (resolved to agent name via SessionStore).
+ * Target can be an agent name or a task ID (resolved to agent name via SessionStore).
  */
 
 import { join } from "node:path";
@@ -29,7 +29,7 @@ const EVENT_LABELS: Record<EventType, { label: string; color: ColorFn }> = {
 };
 
 /**
- * Detect whether a target string looks like a bead ID.
+ * Detect whether a target string looks like a task ID.
  * Bead IDs follow the pattern: word-alphanumeric (e.g., "overstory-rj1k", "myproject-abc1").
  */
 function looksLikeBeadId(target: string): boolean {
@@ -221,15 +221,15 @@ async function executeTrace(target: string, opts: TraceOpts): Promise<void> {
 	let agentName = target;
 
 	if (looksLikeBeadId(target)) {
-		// Try to resolve bead ID to agent name via SessionStore
+		// Try to resolve task ID to agent name via SessionStore
 		const { store: sessionStore } = openSessionStore(overstoryDir);
 		try {
 			const allSessions = sessionStore.getAll();
-			const matchingSession = allSessions.find((s) => s.beadId === target);
+			const matchingSession = allSessions.find((s) => s.taskId === target);
 			if (matchingSession) {
 				agentName = matchingSession.agentName;
 			} else {
-				// No session found for this bead ID; treat it as an agent name anyway
+				// No session found for this task ID; treat it as an agent name anyway
 				// (the event query will return empty results if no events match)
 				agentName = target;
 			}
@@ -275,7 +275,7 @@ async function executeTrace(target: string, opts: TraceOpts): Promise<void> {
 export function createTraceCommand(): Command {
 	return new Command("trace")
 		.description("Chronological event timeline for agent/bead")
-		.argument("<target>", "Agent name or bead ID")
+		.argument("<target>", "Agent name or task ID")
 		.option("--json", "Output as JSON array of StoredEvent objects")
 		.option("--since <timestamp>", "Start time filter (ISO 8601)")
 		.option("--until <timestamp>", "End time filter (ISO 8601)")

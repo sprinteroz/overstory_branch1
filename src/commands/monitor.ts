@@ -156,7 +156,7 @@ async function startMonitor(opts: { json: boolean; attach: boolean }): Promise<v
 			capability: "monitor",
 			worktreePath: projectRoot, // Monitor uses project root, not a worktree
 			branchName: config.project.canonicalBranch, // Operates on canonical branch
-			beadId: "", // No specific bead assignment
+			taskId: "", // No specific bead assignment
 			tmuxSession,
 			state: "booting",
 			pid,

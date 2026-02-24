@@ -74,7 +74,7 @@ function rowToEntry(row: MergeQueueRow): MergeEntry {
 
 	return {
 		branchName: row.branch_name,
-		beadId: row.task_id,
+		taskId: row.task_id,
 		agentName: row.agent_name,
 		filesModified,
 		enqueuedAt: row.enqueued_at,
@@ -172,7 +172,7 @@ export function createMergeQueue(dbPath: string): MergeQueue {
 
 			const row = insertStmt.get({
 				$branch_name: input.branchName,
-				$task_id: input.beadId,
+				$task_id: input.taskId,
 				$agent_name: input.agentName,
 				$files_modified: filesModifiedJson,
 				$enqueued_at: enqueuedAt,

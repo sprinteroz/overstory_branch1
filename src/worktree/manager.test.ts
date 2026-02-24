@@ -58,7 +58,7 @@ describe("createWorktree", () => {
 			baseDir: worktreesDir,
 			agentName: "auth-login",
 			baseBranch: defaultBranch,
-			beadId: "bead-abc123",
+			taskId: "bead-abc123",
 		});
 
 		expect(result.path).toBe(join(worktreesDir, "auth-login"));
@@ -71,7 +71,7 @@ describe("createWorktree", () => {
 			baseDir: worktreesDir,
 			agentName: "auth-login",
 			baseBranch: defaultBranch,
-			beadId: "bead-abc123",
+			taskId: "bead-abc123",
 		});
 
 		expect(existsSync(result.path)).toBe(true);
@@ -85,7 +85,7 @@ describe("createWorktree", () => {
 			baseDir: worktreesDir,
 			agentName: "auth-login",
 			baseBranch: defaultBranch,
-			beadId: "bead-abc123",
+			taskId: "bead-abc123",
 		});
 
 		const branchList = await git(repoDir, ["branch", "--list"]);
@@ -98,7 +98,7 @@ describe("createWorktree", () => {
 			baseDir: worktreesDir,
 			agentName: "auth-login",
 			baseBranch: defaultBranch,
-			beadId: "bead-abc123",
+			taskId: "bead-abc123",
 		});
 
 		await expect(
@@ -107,7 +107,7 @@ describe("createWorktree", () => {
 				baseDir: worktreesDir,
 				agentName: "auth-login",
 				baseBranch: defaultBranch,
-				beadId: "bead-abc123",
+				taskId: "bead-abc123",
 			}),
 		).rejects.toThrow(WorktreeError);
 	});
@@ -119,7 +119,7 @@ describe("createWorktree", () => {
 			baseDir: worktreesDir,
 			agentName: "auth-login",
 			baseBranch: defaultBranch,
-			beadId: "bead-abc123",
+			taskId: "bead-abc123",
 		});
 
 		try {
@@ -128,7 +128,7 @@ describe("createWorktree", () => {
 				baseDir: worktreesDir,
 				agentName: "auth-login",
 				baseBranch: defaultBranch,
-				beadId: "bead-abc123",
+				taskId: "bead-abc123",
 			});
 			// Should not reach here
 			expect(true).toBe(false);
@@ -174,7 +174,7 @@ describe("listWorktrees", () => {
 			baseDir: worktreesDir,
 			agentName: "auth-login",
 			baseBranch: defaultBranch,
-			beadId: "bead-abc",
+			taskId: "bead-abc",
 		});
 
 		await createWorktree({
@@ -182,7 +182,7 @@ describe("listWorktrees", () => {
 			baseDir: worktreesDir,
 			agentName: "data-sync",
 			baseBranch: defaultBranch,
-			beadId: "bead-xyz",
+			taskId: "bead-xyz",
 		});
 
 		const entries = await listWorktrees(repoDir);
@@ -206,7 +206,7 @@ describe("listWorktrees", () => {
 			baseDir: worktreesDir,
 			agentName: "feature-worker",
 			baseBranch: defaultBranch,
-			beadId: "bead-123",
+			taskId: "bead-123",
 		});
 
 		const entries = await listWorktrees(repoDir);
@@ -223,7 +223,7 @@ describe("listWorktrees", () => {
 			baseDir: worktreesDir,
 			agentName: "auth-login",
 			baseBranch: defaultBranch,
-			beadId: "bead-abc",
+			taskId: "bead-abc",
 		});
 
 		const entries = await listWorktrees(repoDir);
@@ -266,7 +266,7 @@ describe("isBranchMerged", () => {
 			baseDir: worktreesDir,
 			agentName: "feature-agent",
 			baseBranch: defaultBranch,
-			beadId: "bead-merged",
+			taskId: "bead-merged",
 		});
 
 		// Add a commit to the feature branch
@@ -285,7 +285,7 @@ describe("isBranchMerged", () => {
 			baseDir: worktreesDir,
 			agentName: "feature-agent",
 			baseBranch: defaultBranch,
-			beadId: "bead-unmerged",
+			taskId: "bead-unmerged",
 		});
 
 		// Add a commit to the feature branch (not merged)
@@ -302,7 +302,7 @@ describe("isBranchMerged", () => {
 			baseDir: worktreesDir,
 			agentName: "feature-agent",
 			baseBranch: defaultBranch,
-			beadId: "bead-same",
+			taskId: "bead-same",
 		});
 
 		// The branch was created from defaultBranch with no additional commits,
@@ -334,7 +334,7 @@ describe("removeWorktree", () => {
 			baseDir: worktreesDir,
 			agentName: "auth-login",
 			baseBranch: defaultBranch,
-			beadId: "bead-abc",
+			taskId: "bead-abc",
 		});
 
 		expect(existsSync(wtPath)).toBe(true);
@@ -350,7 +350,7 @@ describe("removeWorktree", () => {
 			baseDir: worktreesDir,
 			agentName: "auth-login",
 			baseBranch: defaultBranch,
-			beadId: "bead-abc",
+			taskId: "bead-abc",
 		});
 
 		await removeWorktree(repoDir, wtPath);
@@ -365,7 +365,7 @@ describe("removeWorktree", () => {
 			baseDir: worktreesDir,
 			agentName: "auth-login",
 			baseBranch: defaultBranch,
-			beadId: "bead-abc",
+			taskId: "bead-abc",
 		});
 
 		await removeWorktree(repoDir, wtPath);
@@ -381,7 +381,7 @@ describe("removeWorktree", () => {
 			baseDir: worktreesDir,
 			agentName: "auth-login",
 			baseBranch: defaultBranch,
-			beadId: "bead-abc",
+			taskId: "bead-abc",
 		});
 
 		// Create an untracked file in the worktree
@@ -400,7 +400,7 @@ describe("removeWorktree", () => {
 			baseDir: worktreesDir,
 			agentName: "auth-login",
 			baseBranch: defaultBranch,
-			beadId: "bead-abc",
+			taskId: "bead-abc",
 		});
 
 		// Add a commit in the worktree so the branch diverges (making it "unmerged")
@@ -419,7 +419,7 @@ describe("removeWorktree", () => {
 			baseDir: worktreesDir,
 			agentName: "auth-login",
 			baseBranch: defaultBranch,
-			beadId: "bead-abc",
+			taskId: "bead-abc",
 		});
 
 		// Add a commit to make the branch unmerged

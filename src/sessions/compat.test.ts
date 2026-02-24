@@ -39,7 +39,7 @@ function makeJsonSession(overrides: Record<string, unknown> = {}): Record<string
 		capability: "builder",
 		worktreePath: "/tmp/worktrees/test-agent",
 		branchName: "overstory/test-agent/task-1",
-		beadId: "task-1",
+		taskId: "task-1",
 		tmuxSession: "overstory-test-agent",
 		state: "working",
 		pid: 12345,
@@ -198,7 +198,7 @@ describe("data integrity", () => {
 			capability: "scout",
 			worktreePath: "/tmp/worktrees/full-agent",
 			branchName: "overstory/full-agent/task-42",
-			beadId: "task-42",
+			taskId: "task-42",
 			tmuxSession: "overstory-full-agent",
 			state: "stalled",
 			pid: 99999,
@@ -221,7 +221,7 @@ describe("data integrity", () => {
 		expect(result?.capability).toBe("scout");
 		expect(result?.worktreePath).toBe("/tmp/worktrees/full-agent");
 		expect(result?.branchName).toBe("overstory/full-agent/task-42");
-		expect(result?.beadId).toBe("task-42");
+		expect(result?.taskId).toBe("task-42");
 		expect(result?.tmuxSession).toBe("overstory-full-agent");
 		expect(result?.state).toBe("stalled");
 		expect(result?.pid).toBe(99999);

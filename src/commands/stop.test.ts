@@ -137,7 +137,7 @@ function makeAgentSession(overrides: Partial<AgentSession> = {}): AgentSession {
 		capability: "builder",
 		worktreePath: join(tempDir, ".overstory", "worktrees", "my-builder"),
 		branchName: "overstory/my-builder/bead-123",
-		beadId: "bead-123",
+		taskId: "bead-123",
 		tmuxSession: "overstory-test-project-my-builder",
 		state: "working",
 		pid: 99999,

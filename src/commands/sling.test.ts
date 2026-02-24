@@ -554,13 +554,13 @@ describe("isRunningAsRoot", () => {
 /**
  * Tests for checkBeadLock.
  *
- * checkBeadLock prevents concurrent agents from working the same bead ID.
+ * checkBeadLock prevents concurrent agents from working the same task ID.
  * It checks the active session list and returns the agent name that holds
  * the lock (i.e., is already working on the bead), or null if the bead is free.
  */
 
-function makeBeadSession(agentName: string, beadId: string): { agentName: string; beadId: string } {
-	return { agentName, beadId };
+function makeBeadSession(agentName: string, taskId: string): { agentName: string; taskId: string } {
+	return { agentName, taskId };
 }
 
 describe("checkBeadLock", () => {
@@ -568,7 +568,7 @@ describe("checkBeadLock", () => {
 		expect(checkBeadLock([], "overstory-abc")).toBeNull();
 	});
 
-	test("returns null when no session matches the bead ID", () => {
+	test("returns null when no session matches the task ID", () => {
 		const sessions = [
 			makeBeadSession("builder-1", "overstory-xyz"),
 			makeBeadSession("builder-2", "overstory-def"),
@@ -587,7 +587,7 @@ describe("checkBeadLock", () => {
 	});
 
 	test("returns the first matching agent when multiple sessions match", () => {
-		// Multiple sessions can have the same beadId (e.g., retried agent)
+		// Multiple sessions can have the same taskId (e.g., retried agent)
 		// checkBeadLock returns the first match
 		const sessions = [
 			makeBeadSession("builder-1", "overstory-abc"),

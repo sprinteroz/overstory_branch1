@@ -36,7 +36,7 @@ function makeSession(overrides: Partial<AgentSession> = {}): AgentSession {
 		capability: "builder",
 		worktreePath: "/tmp/test",
 		branchName: "overstory/test-agent/test-task",
-		beadId: "test-task",
+		taskId: "test-task",
 		tmuxSession: "overstory-test-agent",
 		state: "booting",
 		pid: ALIVE_PID,

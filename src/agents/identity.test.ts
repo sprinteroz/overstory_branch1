@@ -72,12 +72,12 @@ describe("identity", () => {
 				expertiseDomains: [],
 				recentTasks: [
 					{
-						beadId: "beads-001",
+						taskId: "beads-001",
 						summary: "Fixed authentication bug",
 						completedAt: "2024-01-15T12:00:00Z",
 					},
 					{
-						beadId: "beads-002",
+						taskId: "beads-002",
 						summary: "Added user profile page",
 						completedAt: "2024-01-16T14:30:00Z",
 					},
@@ -89,10 +89,10 @@ describe("identity", () => {
 			const filePath = join(tempDir, "test-agent", "identity.yaml");
 			const content = await Bun.file(filePath).text();
 			expect(content).toContain("recentTasks:");
-			expect(content).toContain("\t- beadId: beads-001");
+			expect(content).toContain("\t- taskId: beads-001");
 			expect(content).toContain("\t\tsummary: Fixed authentication bug");
 			expect(content).toContain('\t\tcompletedAt: "2024-01-15T12:00:00Z"');
-			expect(content).toContain("\t- beadId: beads-002");
+			expect(content).toContain("\t- taskId: beads-002");
 			expect(content).toContain("\t\tsummary: Added user profile page");
 			expect(content).toContain('\t\tcompletedAt: "2024-01-16T14:30:00Z"');
 		});
@@ -106,7 +106,7 @@ describe("identity", () => {
 				expertiseDomains: ["domain: with colon", "domain#with hash", " leading space"],
 				recentTasks: [
 					{
-						beadId: "beads-001",
+						taskId: "beads-001",
 						summary: 'Fixed bug: "memory leak"',
 						completedAt: "2024-01-15T12:00:00Z",
 					},
@@ -198,7 +198,7 @@ describe("identity", () => {
 				expertiseDomains: ["typescript", "testing"],
 				recentTasks: [
 					{
-						beadId: "beads-001",
+						taskId: "beads-001",
 						summary: "Fixed bug",
 						completedAt: "2024-01-15T12:00:00Z",
 					},
@@ -216,7 +216,7 @@ describe("identity", () => {
 			expect(loaded?.sessionsCompleted).toBe(7);
 			expect(loaded?.expertiseDomains).toEqual(["typescript", "testing"]);
 			expect(loaded?.recentTasks).toHaveLength(1);
-			expect(loaded?.recentTasks[0]?.beadId).toBe("beads-001");
+			expect(loaded?.recentTasks[0]?.taskId).toBe("beads-001");
 			expect(loaded?.recentTasks[0]?.summary).toBe("Fixed bug");
 			expect(loaded?.recentTasks[0]?.completedAt).toBe("2024-01-15T12:00:00Z");
 		});
@@ -252,17 +252,17 @@ describe("identity", () => {
 				expertiseDomains: [],
 				recentTasks: [
 					{
-						beadId: "beads-001",
+						taskId: "beads-001",
 						summary: "Task 1",
 						completedAt: "2024-01-15T12:00:00Z",
 					},
 					{
-						beadId: "beads-002",
+						taskId: "beads-002",
 						summary: "Task 2",
 						completedAt: "2024-01-16T12:00:00Z",
 					},
 					{
-						beadId: "beads-003",
+						taskId: "beads-003",
 						summary: "Task 3",
 						completedAt: "2024-01-17T12:00:00Z",
 					},
@@ -273,9 +273,9 @@ describe("identity", () => {
 			const loaded = await loadIdentity(tempDir, "test-agent");
 
 			expect(loaded?.recentTasks).toHaveLength(3);
-			expect(loaded?.recentTasks[0]?.beadId).toBe("beads-001");
-			expect(loaded?.recentTasks[1]?.beadId).toBe("beads-002");
-			expect(loaded?.recentTasks[2]?.beadId).toBe("beads-003");
+			expect(loaded?.recentTasks[0]?.taskId).toBe("beads-001");
+			expect(loaded?.recentTasks[1]?.taskId).toBe("beads-002");
+			expect(loaded?.recentTasks[2]?.taskId).toBe("beads-003");
 		});
 
 		test("handles quoted strings with special characters", async () => {
@@ -287,7 +287,7 @@ describe("identity", () => {
 				expertiseDomains: ["domain: with colon", "domain#with hash"],
 				recentTasks: [
 					{
-						beadId: "beads-001",
+						taskId: "beads-001",
 						summary: 'Fixed bug: "memory leak"',
 						completedAt: "2024-01-15T12:00:00Z",
 					},
@@ -311,7 +311,7 @@ describe("identity", () => {
 				expertiseDomains: [],
 				recentTasks: [
 					{
-						beadId: "beads-001",
+						taskId: "beads-001",
 						summary: "Path: C:\\Users\\test\\file.txt",
 						completedAt: "2024-01-15T12:00:00Z",
 					},
@@ -435,14 +435,14 @@ recentTasks: []
 			const beforeUpdate = Date.now();
 			const updated = await updateIdentity(tempDir, "test-agent", {
 				completedTask: {
-					beadId: "beads-001",
+					taskId: "beads-001",
 					summary: "Fixed authentication bug",
 				},
 			});
 			const afterUpdate = Date.now();
 
 			expect(updated.recentTasks).toHaveLength(1);
-			expect(updated.recentTasks[0]?.beadId).toBe("beads-001");
+			expect(updated.recentTasks[0]?.taskId).toBe("beads-001");
 			expect(updated.recentTasks[0]?.summary).toBe("Fixed authentication bug");
 
 			// Verify timestamp is within the update window
@@ -454,7 +454,7 @@ recentTasks: []
 		test("caps recentTasks at 20 entries, dropping oldest", async () => {
 			// Create identity with 19 tasks
 			const existingTasks = Array.from({ length: 19 }, (_, i) => ({
-				beadId: `beads-${i.toString().padStart(3, "0")}`,
+				taskId: `beads-${i.toString().padStart(3, "0")}`,
 				summary: `Task ${i}`,
 				completedAt: `2024-01-${(i + 1).toString().padStart(2, "0")}T12:00:00Z`,
 			}));
@@ -472,20 +472,20 @@ recentTasks: []
 
 			// Add two more tasks (total would be 21)
 			let updated = await updateIdentity(tempDir, "test-agent", {
-				completedTask: { beadId: "beads-019", summary: "Task 19" },
+				completedTask: { taskId: "beads-019", summary: "Task 19" },
 			});
 
 			expect(updated.recentTasks).toHaveLength(20);
-			expect(updated.recentTasks[0]?.beadId).toBe("beads-000");
+			expect(updated.recentTasks[0]?.taskId).toBe("beads-000");
 
 			updated = await updateIdentity(tempDir, "test-agent", {
-				completedTask: { beadId: "beads-020", summary: "Task 20" },
+				completedTask: { taskId: "beads-020", summary: "Task 20" },
 			});
 
 			expect(updated.recentTasks).toHaveLength(20);
 			// Oldest task (beads-000) should be dropped
-			expect(updated.recentTasks[0]?.beadId).toBe("beads-001");
-			expect(updated.recentTasks[19]?.beadId).toBe("beads-020");
+			expect(updated.recentTasks[0]?.taskId).toBe("beads-001");
+			expect(updated.recentTasks[19]?.taskId).toBe("beads-020");
 		});
 
 		test("applies multiple updates simultaneously", async () => {
@@ -503,7 +503,7 @@ recentTasks: []
 				sessionsCompleted: 2,
 				expertiseDomains: ["testing", "architecture"],
 				completedTask: {
-					beadId: "beads-001",
+					taskId: "beads-001",
 					summary: "Completed task",
 				},
 			});
@@ -554,12 +554,12 @@ recentTasks: []
 				expertiseDomains: ["typescript", "testing", "architecture"],
 				recentTasks: [
 					{
-						beadId: "beads-001",
+						taskId: "beads-001",
 						summary: "Implemented feature X",
 						completedAt: "2024-01-15T12:00:00Z",
 					},
 					{
-						beadId: "beads-002",
+						taskId: "beads-002",
 						summary: "Fixed bug in module Y",
 						completedAt: "2024-01-16T14:30:00Z",
 					},
@@ -587,7 +587,7 @@ recentTasks: []
 				],
 				recentTasks: [
 					{
-						beadId: "beads-001",
+						taskId: "beads-001",
 						summary: 'Summary with "quotes" and: colons',
 						completedAt: "2024-01-15T12:00:00Z",
 					},

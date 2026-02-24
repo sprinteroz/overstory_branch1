@@ -161,17 +161,17 @@ export function parentHasScouts(
 }
 
 /**
- * Check if any active agent is already working on the given bead ID.
+ * Check if any active agent is already working on the given task ID.
  * Returns the agent name if locked, or null if the bead is free.
  *
  * @param activeSessions - Currently active (non-zombie) sessions
- * @param beadId - The bead task ID to check for concurrent work
+ * @param taskId - The bead task ID to check for concurrent work
  */
 export function checkBeadLock(
-	activeSessions: ReadonlyArray<{ agentName: string; beadId: string }>,
-	beadId: string,
+	activeSessions: ReadonlyArray<{ agentName: string; taskId: string }>,
+	taskId: string,
 ): string | null {
-	const existing = activeSessions.find((s) => s.beadId === beadId);
+	const existing = activeSessions.find((s) => s.taskId === taskId);
 	return existing?.agentName ?? null;
 }
 
@@ -393,7 +393,7 @@ export async function slingCommand(taskId: string, opts: SlingOptions): Promise<
 			});
 		}
 
-		// 5d. Bead-level locking: prevent concurrent agents on the same bead ID.
+		// 5d. Bead-level locking: prevent concurrent agents on the same task ID.
 		// Exception: the parent agent may delegate its own task to a child.
 		const lockHolder = checkBeadLock(activeSessions, taskId);
 		if (lockHolder !== null && lockHolder !== parentAgent) {
@@ -453,7 +453,7 @@ export async function slingCommand(taskId: string, opts: SlingOptions): Promise<
 			baseDir: worktreeBaseDir,
 			agentName: name,
 			baseBranch: config.project.canonicalBranch,
-			beadId: taskId,
+			taskId: taskId,
 		});
 
 		// 8. Generate + write overlay CLAUDE.md
@@ -474,7 +474,7 @@ export async function slingCommand(taskId: string, opts: SlingOptions): Promise<
 
 		const overlayConfig: OverlayConfig = {
 			agentName: name,
-			beadId: taskId,
+			taskId: taskId,
 			specPath: absoluteSpecPath,
 			branchName,
 			worktreePath,
@@ -557,7 +557,7 @@ export async function slingCommand(taskId: string, opts: SlingOptions): Promise<
 			capability,
 			worktreePath,
 			branchName,
-			beadId: taskId,
+			taskId: taskId,
 			tmuxSession: tmuxSessionName,
 			state: "booting",
 			pid,

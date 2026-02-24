@@ -58,8 +58,8 @@ afterEach(async () => {
 // === validation ===
 
 describe("validation", () => {
-	test("write without bead-id throws ValidationError", async () => {
-		await expect(specWriteCommand("", {})).rejects.toThrow("Bead ID is required");
+	test("write without task-id throws ValidationError", async () => {
+		await expect(specWriteCommand("", {})).rejects.toThrow("Task ID is required");
 	});
 
 	test("write without body throws ValidationError", async () => {

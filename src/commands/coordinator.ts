@@ -379,7 +379,7 @@ async function startCoordinator(
 			capability: "coordinator",
 			worktreePath: projectRoot, // Coordinator uses project root, not a worktree
 			branchName: config.project.canonicalBranch, // Operates on canonical branch
-			beadId: "", // No specific bead assignment
+			taskId: "", // No specific bead assignment
 			tmuxSession,
 			state: "booting",
 			pid,

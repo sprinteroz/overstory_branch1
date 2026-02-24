@@ -65,7 +65,7 @@ function formatMetrics(sessions: SessionMetrics[]): string {
 		const status = s.completedAt !== null ? "completed" : "in-progress";
 		const duration = s.durationMs > 0 ? ` (${Math.round(s.durationMs / 1000)}s)` : "";
 		const merge = s.mergeResult !== null ? ` [${s.mergeResult}]` : "";
-		lines.push(`- ${s.agentName} (${s.capability}): ${s.beadId} — ${status}${duration}${merge}`);
+		lines.push(`- ${s.agentName} (${s.capability}): ${s.taskId} — ${status}${duration}${merge}`);
 	}
 	return lines.join("\n");
 }
@@ -86,7 +86,7 @@ function formatIdentity(identity: AgentIdentity): string {
 	if (identity.recentTasks.length > 0) {
 		lines.push("Recent tasks:");
 		for (const task of identity.recentTasks) {
-			lines.push(`  - ${task.beadId}: ${task.summary} (${task.completedAt})`);
+			lines.push(`  - ${task.taskId}: ${task.summary} (${task.completedAt})`);
 		}
 	}
 
@@ -184,7 +184,7 @@ async function outputAgentContext(
 	const overstoryDir = join(config.project.root, ".overstory");
 	const { store } = openSessionStore(overstoryDir);
 	let sessionExists = false;
-	let boundSession: { beadId: string } | null = null;
+	let boundSession: { taskId: string } | null = null;
 	try {
 		const agentSession = store.getByName(agentName);
 		sessionExists = agentSession !== null;
@@ -192,9 +192,9 @@ async function outputAgentContext(
 			agentSession &&
 			agentSession.state !== "completed" &&
 			agentSession.state !== "zombie" &&
-			agentSession.beadId
+			agentSession.taskId
 		) {
-			boundSession = { beadId: agentSession.beadId };
+			boundSession = { taskId: agentSession.taskId };
 		}
 	} finally {
 		store.close();
@@ -226,7 +226,7 @@ async function outputAgentContext(
 	// Activation context: if agent has a bound task, inject it
 	if (boundSession) {
 		sections.push("\n## Activation");
-		sections.push(`You have a bound task: **${boundSession.beadId}**`);
+		sections.push(`You have a bound task: **${boundSession.taskId}**`);
 		sections.push("Read your overlay at `.claude/CLAUDE.md` and begin working immediately.");
 		sections.push("Do not wait for dispatch mail. Your assignment was bound at spawn time.");
 	}

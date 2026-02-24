@@ -227,7 +227,7 @@ export async function autoRecordExpertise(params: {
 	mulchClient: MulchClient;
 	agentName: string;
 	capability: string;
-	beadId: string | null;
+	taskId: string | null;
 	mailDbPath: string;
 	parentAgent: string | null;
 	projectRoot: string;
@@ -247,7 +247,7 @@ export async function autoRecordExpertise(params: {
 				type: "reference",
 				description: `${params.capability} agent ${params.agentName} completed work in this domain. Files: ${filesList}`,
 				tags: ["auto-session-end", params.capability],
-				evidenceBead: params.beadId ?? undefined,
+				evidenceBead: params.taskId ?? undefined,
 			});
 			recordedDomains.push(domain);
 		} catch {
@@ -286,7 +286,7 @@ export async function autoRecordExpertise(params: {
 					type: insight.type,
 					description: insight.description,
 					tags: insight.tags,
-					evidenceBead: params.beadId ?? undefined,
+					evidenceBead: params.taskId ?? undefined,
 				});
 				if (!recordedDomains.includes(insight.domain)) {
 					recordedDomains.push(insight.domain);
@@ -503,14 +503,14 @@ async function runLog(opts: {
 			// Look up agent session for identity update and metrics recording
 			{
 				const agentSession = getAgentSession(config.project.root, opts.agent);
-				const beadId = agentSession?.beadId ?? null;
+				const taskId = agentSession?.taskId ?? null;
 
 				// Update agent identity with completed session
 				const identityBaseDir = join(config.project.root, ".overstory", "agents");
 				try {
 					await updateIdentity(identityBaseDir, opts.agent, {
 						sessionsCompleted: 1,
-						completedTask: beadId ? { beadId, summary: `Completed task ${beadId}` } : undefined,
+						completedTask: taskId ? { taskId, summary: `Completed task ${taskId}` } : undefined,
 					});
 				} catch {
 					// Non-fatal: identity may not exist for this agent
@@ -601,7 +601,7 @@ async function runLog(opts: {
 
 						metricsStore.recordSession({
 							agentName: opts.agent,
-							beadId: agentSession.beadId,
+							taskId: agentSession.taskId,
 							capability: agentSession.capability,
 							startedAt: agentSession.startedAt,
 							completedAt: now,
@@ -632,7 +632,7 @@ async function runLog(opts: {
 								mulchClient,
 								agentName: opts.agent,
 								capability: agentSession.capability,
-								beadId,
+								taskId,
 								mailDbPath,
 								parentAgent: agentSession.parentAgent,
 								projectRoot: config.project.root,

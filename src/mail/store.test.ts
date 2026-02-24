@@ -638,7 +638,7 @@ describe("createMailStore", () => {
 
 		test("stores JSON payload string", () => {
 			const payload = JSON.stringify({
-				beadId: "beads-abc",
+				taskId: "beads-abc",
 				branch: "agent/builder-1",
 				exitCode: 0,
 				filesModified: ["src/foo.ts"],
@@ -661,7 +661,7 @@ describe("createMailStore", () => {
 		});
 
 		test("returns payload in getUnread results", () => {
-			const payload = JSON.stringify({ severity: "critical", beadId: null, context: "OOM" });
+			const payload = JSON.stringify({ severity: "critical", taskId: null, context: "OOM" });
 			store.insert({
 				id: "msg-escalation",
 				from: "builder-1",
@@ -682,7 +682,7 @@ describe("createMailStore", () => {
 		test("returns payload in getAll results", () => {
 			const payload = JSON.stringify({
 				branch: "agent/b1",
-				beadId: "beads-xyz",
+				taskId: "beads-xyz",
 				tier: "clean-merge",
 			});
 			store.insert({

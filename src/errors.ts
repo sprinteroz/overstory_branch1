@@ -152,7 +152,7 @@ export class MergeError extends OverstoryError {
 
 /**
  * Raised when input validation fails.
- * Examples: invalid agent names, malformed beadIds, bad CLI arguments.
+ * Examples: invalid agent names, malformed taskIds, bad CLI arguments.
  */
 export class ValidationError extends OverstoryError {
 	readonly field: string | null;

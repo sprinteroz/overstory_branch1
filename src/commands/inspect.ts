@@ -259,7 +259,7 @@ export function printInspectData(data: InspectData): void {
 	const stateIcon = getStateIcon(session.state);
 	w(`${stateIcon} State: ${session.state}\n`);
 	w(`⏱  Last activity: ${formatDuration(data.timeSinceLastActivity)} ago\n`);
-	w(`🎯 Task: ${session.beadId}\n`);
+	w(`🎯 Task: ${session.taskId}\n`);
 	w(`🔧 Capability: ${session.capability}\n`);
 	w(`🌿 Branch: ${session.branchName}\n`);
 	if (session.parentAgent) {

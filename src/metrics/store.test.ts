@@ -32,7 +32,7 @@ afterEach(async () => {
 function makeSession(overrides: Partial<SessionMetrics> = {}): SessionMetrics {
 	return {
 		agentName: "test-agent",
-		beadId: "test-task-123",
+		taskId: "test-task-123",
 		capability: "builder",
 		startedAt: new Date("2026-01-01T00:00:00Z").toISOString(),
 		completedAt: new Date("2026-01-01T00:05:00Z").toISOString(),
@@ -78,7 +78,7 @@ describe("recordSession", () => {
 	test("all fields roundtrip correctly (camelCase TS → snake_case SQLite → camelCase TS)", () => {
 		const session = makeSession({
 			agentName: "special-agent",
-			beadId: "task-xyz",
+			taskId: "task-xyz",
 			capability: "reviewer",
 			startedAt: "2026-02-01T12:00:00Z",
 			completedAt: "2026-02-01T12:30:00Z",
@@ -119,15 +119,15 @@ describe("recordSession", () => {
 describe("getRecentSessions", () => {
 	test("returns sessions ordered by started_at DESC (most recent first)", () => {
 		const session1 = makeSession({
-			beadId: "task-1",
+			taskId: "task-1",
 			startedAt: "2026-01-01T10:00:00Z",
 		});
 		const session2 = makeSession({
-			beadId: "task-2",
+			taskId: "task-2",
 			startedAt: "2026-01-01T12:00:00Z",
 		});
 		const session3 = makeSession({
-			beadId: "task-3",
+			taskId: "task-3",
 			startedAt: "2026-01-01T11:00:00Z",
 		});
 
@@ -137,9 +137,9 @@ describe("getRecentSessions", () => {
 
 		const retrieved = store.getRecentSessions(10);
 		expect(retrieved).toHaveLength(3);
-		expect(retrieved[0]?.beadId).toBe("task-2"); // most recent
-		expect(retrieved[1]?.beadId).toBe("task-3");
-		expect(retrieved[2]?.beadId).toBe("task-1"); // oldest
+		expect(retrieved[0]?.taskId).toBe("task-2"); // most recent
+		expect(retrieved[1]?.taskId).toBe("task-3");
+		expect(retrieved[2]?.taskId).toBe("task-1"); // oldest
 	});
 
 	test("default limit is 20", () => {
@@ -147,7 +147,7 @@ describe("getRecentSessions", () => {
 		for (let i = 0; i < 25; i++) {
 			store.recordSession(
 				makeSession({
-					beadId: `task-${i}`,
+					taskId: `task-${i}`,
 					startedAt: new Date(Date.now() + i * 1000).toISOString(),
 				}),
 			);
@@ -158,9 +158,9 @@ describe("getRecentSessions", () => {
 	});
 
 	test("custom limit works (e.g., limit=2 returns only 2)", () => {
-		store.recordSession(makeSession({ beadId: "task-1" }));
-		store.recordSession(makeSession({ beadId: "task-2" }));
-		store.recordSession(makeSession({ beadId: "task-3" }));
+		store.recordSession(makeSession({ taskId: "task-1" }));
+		store.recordSession(makeSession({ taskId: "task-2" }));
+		store.recordSession(makeSession({ taskId: "task-3" }));
 
 		const retrieved = store.getRecentSessions(2);
 		expect(retrieved).toHaveLength(2);
@@ -176,9 +176,9 @@ describe("getRecentSessions", () => {
 
 describe("getSessionsByAgent", () => {
 	test("filters by agent name correctly", () => {
-		store.recordSession(makeSession({ agentName: "agent-a", beadId: "task-1" }));
-		store.recordSession(makeSession({ agentName: "agent-b", beadId: "task-2" }));
-		store.recordSession(makeSession({ agentName: "agent-a", beadId: "task-3" }));
+		store.recordSession(makeSession({ agentName: "agent-a", taskId: "task-1" }));
+		store.recordSession(makeSession({ agentName: "agent-b", taskId: "task-2" }));
+		store.recordSession(makeSession({ agentName: "agent-a", taskId: "task-3" }));
 
 		const retrieved = store.getSessionsByAgent("agent-a");
 		expect(retrieved).toHaveLength(2);
@@ -197,30 +197,30 @@ describe("getSessionsByAgent", () => {
 		store.recordSession(
 			makeSession({
 				agentName: "agent-x",
-				beadId: "task-1",
+				taskId: "task-1",
 				startedAt: "2026-01-01T10:00:00Z",
 			}),
 		);
 		store.recordSession(
 			makeSession({
 				agentName: "agent-x",
-				beadId: "task-2",
+				taskId: "task-2",
 				startedAt: "2026-01-01T12:00:00Z",
 			}),
 		);
 		store.recordSession(
 			makeSession({
 				agentName: "agent-x",
-				beadId: "task-3",
+				taskId: "task-3",
 				startedAt: "2026-01-01T11:00:00Z",
 			}),
 		);
 
 		const retrieved = store.getSessionsByAgent("agent-x");
 		expect(retrieved).toHaveLength(3);
-		expect(retrieved[0]?.beadId).toBe("task-2"); // most recent
-		expect(retrieved[1]?.beadId).toBe("task-3");
-		expect(retrieved[2]?.beadId).toBe("task-1"); // oldest
+		expect(retrieved[0]?.taskId).toBe("task-2"); // most recent
+		expect(retrieved[1]?.taskId).toBe("task-3");
+		expect(retrieved[2]?.taskId).toBe("task-1"); // oldest
 	});
 });
 
@@ -228,9 +228,9 @@ describe("getSessionsByAgent", () => {
 
 describe("getAverageDuration", () => {
 	test("average across all completed sessions (completedAt IS NOT NULL)", () => {
-		store.recordSession(makeSession({ beadId: "task-1", durationMs: 100_000 }));
-		store.recordSession(makeSession({ beadId: "task-2", durationMs: 200_000 }));
-		store.recordSession(makeSession({ beadId: "task-3", durationMs: 300_000 }));
+		store.recordSession(makeSession({ taskId: "task-1", durationMs: 100_000 }));
+		store.recordSession(makeSession({ taskId: "task-2", durationMs: 200_000 }));
+		store.recordSession(makeSession({ taskId: "task-3", durationMs: 300_000 }));
 
 		const avg = store.getAverageDuration();
 		expect(avg).toBe(200_000);
@@ -238,11 +238,11 @@ describe("getAverageDuration", () => {
 
 	test("average filtered by capability", () => {
 		store.recordSession(
-			makeSession({ beadId: "task-1", capability: "builder", durationMs: 100_000 }),
+			makeSession({ taskId: "task-1", capability: "builder", durationMs: 100_000 }),
 		);
-		store.recordSession(makeSession({ beadId: "task-2", capability: "scout", durationMs: 50_000 }));
+		store.recordSession(makeSession({ taskId: "task-2", capability: "scout", durationMs: 50_000 }));
 		store.recordSession(
-			makeSession({ beadId: "task-3", capability: "builder", durationMs: 200_000 }),
+			makeSession({ taskId: "task-3", capability: "builder", durationMs: 200_000 }),
 		);
 
 		const avgBuilder = store.getAverageDuration("builder");
@@ -258,9 +258,9 @@ describe("getAverageDuration", () => {
 	});
 
 	test("sessions with completedAt=null are excluded from average", () => {
-		store.recordSession(makeSession({ beadId: "task-1", durationMs: 100_000, completedAt: null }));
-		store.recordSession(makeSession({ beadId: "task-2", durationMs: 200_000 }));
-		store.recordSession(makeSession({ beadId: "task-3", durationMs: 300_000 }));
+		store.recordSession(makeSession({ taskId: "task-1", durationMs: 100_000, completedAt: null }));
+		store.recordSession(makeSession({ taskId: "task-2", durationMs: 200_000 }));
+		store.recordSession(makeSession({ taskId: "task-3", durationMs: 300_000 }));
 
 		const avg = store.getAverageDuration();
 		expect(avg).toBe(250_000); // (200_000 + 300_000) / 2
@@ -359,7 +359,7 @@ describe("token fields", () => {
 		store.recordSession(
 			makeSession({
 				agentName: "new-agent",
-				beadId: "new-task",
+				taskId: "new-task",
 				inputTokens: 5000,
 				outputTokens: 1000,
 				estimatedCostUsd: 0.42,
@@ -378,9 +378,9 @@ describe("token fields", () => {
 
 describe("getSessionsByRun", () => {
 	test("returns sessions matching run_id", () => {
-		store.recordSession(makeSession({ agentName: "a1", beadId: "t1", runId: "run-001" }));
-		store.recordSession(makeSession({ agentName: "a2", beadId: "t2", runId: "run-001" }));
-		store.recordSession(makeSession({ agentName: "a3", beadId: "t3", runId: "run-002" }));
+		store.recordSession(makeSession({ agentName: "a1", taskId: "t1", runId: "run-001" }));
+		store.recordSession(makeSession({ agentName: "a2", taskId: "t2", runId: "run-001" }));
+		store.recordSession(makeSession({ agentName: "a3", taskId: "t3", runId: "run-002" }));
 
 		const sessions = store.getSessionsByRun("run-001");
 		expect(sessions).toHaveLength(2);
@@ -388,13 +388,13 @@ describe("getSessionsByRun", () => {
 	});
 
 	test("returns empty array for unknown run_id", () => {
-		store.recordSession(makeSession({ agentName: "a1", beadId: "t1", runId: "run-001" }));
+		store.recordSession(makeSession({ agentName: "a1", taskId: "t1", runId: "run-001" }));
 		expect(store.getSessionsByRun("run-nonexistent")).toEqual([]);
 	});
 
 	test("sessions with null run_id are not returned", () => {
-		store.recordSession(makeSession({ agentName: "a1", beadId: "t1", runId: null }));
-		store.recordSession(makeSession({ agentName: "a2", beadId: "t2", runId: "run-001" }));
+		store.recordSession(makeSession({ agentName: "a1", taskId: "t1", runId: null }));
+		store.recordSession(makeSession({ agentName: "a2", taskId: "t2", runId: "run-001" }));
 		expect(store.getSessionsByRun("run-001")).toHaveLength(1);
 	});
 });
@@ -403,9 +403,9 @@ describe("getSessionsByRun", () => {
 
 describe("purge", () => {
 	test("purge all deletes everything and returns count", () => {
-		store.recordSession(makeSession({ agentName: "agent-a", beadId: "task-1" }));
-		store.recordSession(makeSession({ agentName: "agent-b", beadId: "task-2" }));
-		store.recordSession(makeSession({ agentName: "agent-c", beadId: "task-3" }));
+		store.recordSession(makeSession({ agentName: "agent-a", taskId: "task-1" }));
+		store.recordSession(makeSession({ agentName: "agent-b", taskId: "task-2" }));
+		store.recordSession(makeSession({ agentName: "agent-c", taskId: "task-3" }));
 
 		const count = store.purge({ all: true });
 		expect(count).toBe(3);
@@ -413,9 +413,9 @@ describe("purge", () => {
 	});
 
 	test("purge by agent deletes only that agent's records", () => {
-		store.recordSession(makeSession({ agentName: "agent-a", beadId: "task-1" }));
-		store.recordSession(makeSession({ agentName: "agent-b", beadId: "task-2" }));
-		store.recordSession(makeSession({ agentName: "agent-a", beadId: "task-3" }));
+		store.recordSession(makeSession({ agentName: "agent-a", taskId: "task-1" }));
+		store.recordSession(makeSession({ agentName: "agent-b", taskId: "task-2" }));
+		store.recordSession(makeSession({ agentName: "agent-a", taskId: "task-3" }));
 
 		const count = store.purge({ agent: "agent-a" });
 		expect(count).toBe(2);
@@ -431,7 +431,7 @@ describe("purge", () => {
 	});
 
 	test("purge with no options returns 0 without deleting", () => {
-		store.recordSession(makeSession({ beadId: "task-1" }));
+		store.recordSession(makeSession({ taskId: "task-1" }));
 
 		const count = store.purge({});
 		expect(count).toBe(0);

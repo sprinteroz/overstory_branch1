@@ -39,7 +39,7 @@ function serializeIdentityYaml(identity: AgentIdentity): string {
 	} else {
 		lines.push("recentTasks:");
 		for (const task of identity.recentTasks) {
-			lines.push(`\t- beadId: ${quoteIfNeeded(task.beadId)}`);
+			lines.push(`\t- taskId: ${quoteIfNeeded(task.taskId)}`);
 			lines.push(`\t\tsummary: ${quoteIfNeeded(task.summary)}`);
 			lines.push(`\t\tcompletedAt: ${quoteIfNeeded(task.completedAt)}`);
 		}
@@ -82,7 +82,7 @@ function quoteIfNeeded(value: string): string {
  * This is a purpose-built parser for the identity YAML format. It handles:
  * - Simple key: value pairs (strings, numbers)
  * - Arrays of scalars (expertiseDomains)
- * - Arrays of objects (recentTasks with beadId, summary, completedAt)
+ * - Arrays of objects (recentTasks with taskId, summary, completedAt)
  * - Empty arrays (`[]`)
  * - Quoted strings
  * - Tab indentation
@@ -95,10 +95,10 @@ function parseIdentityYaml(text: string): AgentIdentity {
 	let created = "";
 	let sessionsCompleted = 0;
 	const expertiseDomains: string[] = [];
-	const recentTasks: Array<{ beadId: string; summary: string; completedAt: string }> = [];
+	const recentTasks: Array<{ taskId: string; summary: string; completedAt: string }> = [];
 
 	let currentSection: "none" | "expertiseDomains" | "recentTasks" = "none";
-	let currentTask: { beadId: string; summary: string; completedAt: string } | null = null;
+	let currentTask: { taskId: string; summary: string; completedAt: string } | null = null;
 
 	for (const rawLine of lines) {
 		const trimmed = rawLine.trim();
@@ -169,7 +169,7 @@ function parseIdentityYaml(text: string): AgentIdentity {
 				if (currentTask !== null) {
 					recentTasks.push(currentTask);
 				}
-				currentTask = { beadId: "", summary: "", completedAt: "" };
+				currentTask = { taskId: "", summary: "", completedAt: "" };
 
 				// Parse the key-value on the same line as the dash
 				const itemContent = trimmed.slice(2).trim();
@@ -210,13 +210,13 @@ function parseIdentityYaml(text: string): AgentIdentity {
  * Assign a parsed field value to a task object by key name.
  */
 function assignTaskField(
-	task: { beadId: string; summary: string; completedAt: string },
+	task: { taskId: string; summary: string; completedAt: string },
 	key: string,
 	value: string,
 ): void {
 	switch (key) {
-		case "beadId":
-			task.beadId = value;
+		case "taskId":
+			task.taskId = value;
 			break;
 		case "summary":
 			task.summary = value;
@@ -336,7 +336,7 @@ export async function updateIdentity(
 	baseDir: string,
 	name: string,
 	update: Partial<Pick<AgentIdentity, "sessionsCompleted" | "expertiseDomains">> & {
-		completedTask?: { beadId: string; summary: string };
+		completedTask?: { taskId: string; summary: string };
 	},
 ): Promise<AgentIdentity> {
 	const identity = await loadIdentity(baseDir, name);
@@ -364,7 +364,7 @@ export async function updateIdentity(
 	// Append completed task
 	if (update.completedTask !== undefined) {
 		identity.recentTasks.push({
-			beadId: update.completedTask.beadId,
+			taskId: update.completedTask.taskId,
 			summary: update.completedTask.summary,
 			completedAt: new Date().toISOString(),
 		});
