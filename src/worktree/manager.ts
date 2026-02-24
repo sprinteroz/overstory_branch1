@@ -1,3 +1,4 @@
+import { unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { WorktreeError } from "../errors.ts";
 
@@ -193,6 +194,121 @@ export async function removeWorktree(
 		} catch {
 			// Branch deletion failed — may be unmerged (with -d) or checked out elsewhere.
 			// This is best-effort; the worktree itself is already removed.
+		}
+	}
+}
+
+/**
+ * Preserve .seeds/ changes from a branch into the canonical branch.
+ *
+ * Lead agent branches are never merged via the normal merge pipeline, so
+ * any .seeds/ issue files they create would be lost when the worktree is
+ * cleaned. This function extracts only the .seeds/ diff from the branch
+ * and applies it to the canonical branch via a patch.
+ *
+ * @returns `{ preserved: true }` if changes were found and committed,
+ *          `{ preserved: false }` if there were no .seeds/ changes,
+ *          `{ preserved: false, error: "..." }` if something went wrong.
+ */
+export async function preserveSeedsChanges(
+	repoRoot: string,
+	branch: string,
+	canonicalBranch: string,
+	agentName: string,
+): Promise<{ preserved: boolean; error?: string }> {
+	// Step 1: Get the .seeds/ diff between canonical and the branch (three-dot diff).
+	// Three-dot diff shows changes introduced on branch since it diverged from canonicalBranch.
+	let diff: string;
+	try {
+		diff = await runGit(repoRoot, ["diff", `${canonicalBranch}...${branch}`, "--", ".seeds/"]);
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		return { preserved: false, error: `Failed to compute .seeds/ diff: ${msg}` };
+	}
+
+	if (diff.trim() === "") {
+		// No .seeds/ changes on this branch
+		return { preserved: false };
+	}
+
+	// Step 2: Verify the repo root is currently on canonicalBranch.
+	let currentBranch: string;
+	try {
+		currentBranch = (await runGit(repoRoot, ["rev-parse", "--abbrev-ref", "HEAD"])).trim();
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		return { preserved: false, error: `Failed to determine current branch: ${msg}` };
+	}
+
+	if (currentBranch !== canonicalBranch) {
+		return {
+			preserved: false,
+			error: `Repo root is on '${currentBranch}', expected '${canonicalBranch}'. Cannot apply patch.`,
+		};
+	}
+
+	// Step 3: Check that .seeds/ is clean in the canonical branch.
+	let statusOutput: string;
+	try {
+		statusOutput = await runGit(repoRoot, ["status", "--porcelain", "--", ".seeds/"]);
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		return { preserved: false, error: `Failed to check .seeds/ status: ${msg}` };
+	}
+
+	if (statusOutput.trim() !== "") {
+		return {
+			preserved: false,
+			error: `.seeds/ has uncommitted changes in canonical branch. Cannot apply patch safely.`,
+		};
+	}
+
+	// Step 4: Write diff to a temp file.
+	const tmpFile = join(repoRoot, ".overstory", `_seeds-patch-${Date.now()}.diff`);
+	try {
+		await Bun.write(tmpFile, diff);
+
+		// Step 5: Apply the patch with --index (stages changes).
+		try {
+			await runGit(repoRoot, ["apply", "--index", tmpFile]);
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			// Revert any partial changes
+			try {
+				await runGit(repoRoot, ["reset", "HEAD", "--", ".seeds/"]);
+				await runGit(repoRoot, ["checkout", "--", ".seeds/"]);
+			} catch {
+				// Best-effort revert
+			}
+			return { preserved: false, error: `Failed to apply .seeds/ patch: ${msg}` };
+		}
+
+		// Step 6: Commit the changes.
+		try {
+			await runGit(repoRoot, [
+				"commit",
+				"-m",
+				`chore: preserve .seeds/ changes from lead ${agentName}`,
+			]);
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			// Revert any staged changes
+			try {
+				await runGit(repoRoot, ["reset", "HEAD", "--", ".seeds/"]);
+				await runGit(repoRoot, ["checkout", "--", ".seeds/"]);
+			} catch {
+				// Best-effort revert
+			}
+			return { preserved: false, error: `Failed to commit .seeds/ changes: ${msg}` };
+		}
+
+		return { preserved: true };
+	} finally {
+		// Step 8: Always clean up the temp file.
+		try {
+			await unlink(tmpFile);
+		} catch {
+			// Ignore cleanup errors
 		}
 	}
 }

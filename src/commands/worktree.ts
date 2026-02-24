@@ -13,7 +13,12 @@ import { ValidationError } from "../errors.ts";
 import { createMailStore } from "../mail/store.ts";
 import { openSessionStore } from "../sessions/compat.ts";
 import type { AgentSession } from "../types.ts";
-import { isBranchMerged, listWorktrees, removeWorktree } from "../worktree/manager.ts";
+import {
+	isBranchMerged,
+	listWorktrees,
+	preserveSeedsChanges,
+	removeWorktree,
+} from "../worktree/manager.ts";
 import { isSessionAlive, killSession } from "../worktree/tmux.ts";
 
 /**
@@ -92,6 +97,7 @@ async function handleClean(
 	const cleaned: string[] = [];
 	const failed: string[] = [];
 	const skipped: string[] = [];
+	const seedsPreserved: string[] = [];
 
 	try {
 		for (const wt of overstoryWts) {
@@ -102,8 +108,11 @@ async function handleClean(
 				continue;
 			}
 
-			// Check if the branch has been merged into the canonical branch (unless --force)
-			if (!force && wt.branch.length > 0) {
+			// Lead branches are never merged via the normal pipeline — skip merge check for leads.
+			const isLead = session?.capability === "lead";
+
+			// Check if the branch has been merged into the canonical branch (unless --force or lead)
+			if (!force && !isLead && wt.branch.length > 0) {
 				let merged = false;
 				try {
 					merged = await isBranchMerged(root, wt.branch, canonicalBranch);
@@ -131,8 +140,8 @@ async function handleClean(
 				}
 			}
 
-			// Warn about force-deleting unmerged branch
-			if (force && wt.branch.length > 0) {
+			// Warn about force-deleting unmerged branch (non-lead only)
+			if (force && !isLead && wt.branch.length > 0) {
 				let merged = false;
 				try {
 					merged = await isBranchMerged(root, wt.branch, canonicalBranch);
@@ -141,6 +150,29 @@ async function handleClean(
 				}
 				if (!merged && !json) {
 					process.stdout.write(`⚠️  Force-deleting unmerged branch: ${wt.branch}\n`);
+				}
+			}
+
+			// Preserve .seeds/ changes from lead worktrees before removal.
+			// Lead branches are never merged, so .seeds/ files would otherwise be lost.
+			if (isLead && wt.branch.length > 0) {
+				const result = await preserveSeedsChanges(
+					root,
+					wt.branch,
+					canonicalBranch,
+					session?.agentName ?? "unknown-lead",
+				);
+				if (result.preserved) {
+					seedsPreserved.push(wt.branch);
+					if (!json) {
+						process.stdout.write(
+							`🌱 Preserved .seeds/ changes from lead ${session?.agentName ?? "unknown-lead"}\n`,
+						);
+					}
+				} else if (result.error) {
+					process.stderr.write(
+						`⚠️  Failed to preserve .seeds/ from ${wt.branch}: ${result.error}\n`,
+					);
 				}
 			}
 
@@ -210,13 +242,14 @@ async function handleClean(
 
 		if (json) {
 			process.stdout.write(
-				`${JSON.stringify({ cleaned, failed, skipped, pruned: pruneCount, mailPurged })}\n`,
+				`${JSON.stringify({ cleaned, failed, skipped, pruned: pruneCount, mailPurged, seedsPreserved })}\n`,
 			);
 		} else if (
 			cleaned.length === 0 &&
 			pruneCount === 0 &&
 			failed.length === 0 &&
-			skipped.length === 0
+			skipped.length === 0 &&
+			seedsPreserved.length === 0
 		) {
 			process.stdout.write("No worktrees to clean.\n");
 		} else {
@@ -238,6 +271,11 @@ async function handleClean(
 			if (pruneCount > 0) {
 				process.stdout.write(
 					`Pruned ${pruneCount} zombie session${pruneCount === 1 ? "" : "s"} from store.\n`,
+				);
+			}
+			if (seedsPreserved.length > 0) {
+				process.stdout.write(
+					`Preserved .seeds/ changes from ${seedsPreserved.length} lead${seedsPreserved.length === 1 ? "" : "s"}.\n`,
 				);
 			}
 			if (skipped.length > 0) {

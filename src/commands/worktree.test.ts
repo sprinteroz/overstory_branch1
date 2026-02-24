@@ -782,5 +782,181 @@ describe("worktreeCommand", () => {
 			expect(parsed.cleaned).toEqual([]);
 			expect(parsed.skipped).toEqual(["overstory/unmerged-json-agent/task-json"]);
 		});
+
+		test("lead worktree with .seeds/ changes preserves them to canonical before cleanup", async () => {
+			const worktreesDir = join(tempDir, ".overstory", "worktrees");
+			await mkdir(worktreesDir, { recursive: true });
+
+			const { path: wtPath, branch } = await createWorktree({
+				repoRoot: tempDir,
+				baseDir: worktreesDir,
+				agentName: "lead-with-seeds",
+				baseBranch: "main",
+				beadId: "task-lead-seeds",
+			});
+
+			// Commit a .seeds/ file in the lead worktree
+			await commitFile(
+				wtPath,
+				".seeds/issues/test-issue.yaml",
+				"id: test-issue\ntitle: Test Issue\nstatus: open\n",
+				"seeds: add test issue",
+			);
+
+			writeSessionsToStore([
+				makeSession({
+					id: "session-lead-seeds",
+					agentName: "lead-with-seeds",
+					capability: "lead",
+					worktreePath: wtPath,
+					branchName: branch,
+					beadId: "task-lead-seeds",
+					state: "completed",
+				}),
+			]);
+
+			await worktreeCommand(["clean"]);
+			const out = output();
+
+			// The worktree should be removed
+			expect(existsSync(wtPath)).toBe(false);
+
+			// The .seeds/ changes should have been preserved to main
+			const showProc = Bun.spawn(["git", "show", "main:.seeds/issues/test-issue.yaml"], {
+				cwd: tempDir,
+				stdout: "pipe",
+				stderr: "pipe",
+			});
+			const showOut = await new Response(showProc.stdout).text();
+			const showExit = await showProc.exited;
+			expect(showExit).toBe(0);
+			expect(showOut).toContain("test-issue");
+
+			// Output should mention preservation
+			expect(out).toContain("Preserved .seeds/");
+		});
+
+		test("lead worktree without .seeds/ changes cleans normally", async () => {
+			const worktreesDir = join(tempDir, ".overstory", "worktrees");
+			await mkdir(worktreesDir, { recursive: true });
+
+			const { path: wtPath, branch } = await createWorktree({
+				repoRoot: tempDir,
+				baseDir: worktreesDir,
+				agentName: "lead-no-seeds",
+				baseBranch: "main",
+				beadId: "task-lead-no-seeds",
+			});
+
+			// Commit a non-.seeds/ file
+			await commitFile(wtPath, "src/work.ts", "export const x = 1;", "non-seeds work");
+
+			writeSessionsToStore([
+				makeSession({
+					id: "session-lead-no-seeds",
+					agentName: "lead-no-seeds",
+					capability: "lead",
+					worktreePath: wtPath,
+					branchName: branch,
+					beadId: "task-lead-no-seeds",
+					state: "completed",
+				}),
+			]);
+
+			await worktreeCommand(["clean"]);
+			const out = output();
+
+			// Worktree should be removed
+			expect(existsSync(wtPath)).toBe(false);
+			// Output should NOT mention .seeds/ preservation
+			expect(out).not.toContain("Preserved .seeds/");
+			// Should still report as cleaned
+			expect(out).toContain("Cleaned 1 worktree");
+		});
+
+		test("lead worktrees are cleaned without --force even with unmerged non-seeds changes", async () => {
+			const worktreesDir = join(tempDir, ".overstory", "worktrees");
+			await mkdir(worktreesDir, { recursive: true });
+
+			const { path: wtPath, branch } = await createWorktree({
+				repoRoot: tempDir,
+				baseDir: worktreesDir,
+				agentName: "lead-unmerged",
+				baseBranch: "main",
+				beadId: "task-lead-unmerged",
+			});
+
+			// Add unmerged non-.seeds/ commit
+			await commitFile(wtPath, "src/lead-work.ts", "export const y = 2;", "unmerged lead work");
+
+			writeSessionsToStore([
+				makeSession({
+					id: "session-lead-unmerged",
+					agentName: "lead-unmerged",
+					capability: "lead",
+					worktreePath: wtPath,
+					branchName: branch,
+					beadId: "task-lead-unmerged",
+					state: "completed",
+				}),
+			]);
+
+			// Run clean WITHOUT --force — leads bypass merge check
+			await worktreeCommand(["clean"]);
+			const out = output();
+
+			// Lead worktree SHOULD be removed (not skipped)
+			expect(existsSync(wtPath)).toBe(false);
+			expect(out).toContain("Cleaned 1 worktree");
+			expect(out).not.toContain("Skipped");
+		});
+
+		test("--json output includes seedsPreserved array", async () => {
+			const worktreesDir = join(tempDir, ".overstory", "worktrees");
+			await mkdir(worktreesDir, { recursive: true });
+
+			const { path: wtPath, branch } = await createWorktree({
+				repoRoot: tempDir,
+				baseDir: worktreesDir,
+				agentName: "lead-seeds-json",
+				baseBranch: "main",
+				beadId: "task-seeds-json",
+			});
+
+			// Commit a .seeds/ file in the lead worktree
+			await commitFile(
+				wtPath,
+				".seeds/issues/json-issue.yaml",
+				"id: json-issue\ntitle: JSON Issue\nstatus: open\n",
+				"seeds: add json issue",
+			);
+
+			writeSessionsToStore([
+				makeSession({
+					id: "session-lead-json",
+					agentName: "lead-seeds-json",
+					capability: "lead",
+					worktreePath: wtPath,
+					branchName: branch,
+					beadId: "task-seeds-json",
+					state: "completed",
+				}),
+			]);
+
+			await worktreeCommand(["clean", "--json"]);
+			const out = output();
+
+			const parsed = JSON.parse(out.trim()) as {
+				cleaned: string[];
+				failed: string[];
+				skipped: string[];
+				pruned: number;
+				mailPurged: number;
+				seedsPreserved: string[];
+			};
+
+			expect(parsed.cleaned).toContain(branch);
+			expect(parsed.seedsPreserved).toContain(branch);
+		});
 	});
 });
