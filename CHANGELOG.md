@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.4] - 2026-02-24
+
+### Added
+
+#### Commander.js CLI Framework
+- **Full CLI migration to Commander.js** — all 30+ commands migrated from custom `args` array parsing to Commander.js with typed options, subcommand hierarchy, and auto-generated `--help`; migration completed in 6 incremental commits covering core workflow, nudge, mail, observability, infrastructure, and final cleanup
+- **Shell completions via Commander** — `createCompletionsCommand()` now uses Commander's built-in completion infrastructure
+
+#### Chalk v5 Color System
+- **Chalk-based color module** — `src/logging/color.ts` rewritten from custom ANSI escape code strings to Chalk v5 wrapper functions with native `NO_COLOR`/`FORCE_COLOR`/`TERM=dumb` support
+- **Brand palette** — three named brand colors exported: `brand` (forest green), `accent` (amber), `muted` (stone gray) via `chalk.rgb()`
+- **Chainable color API** — `color.bold`, `color.dim`, `color.red`, etc. now delegate to Chalk for composable styling
+
+#### Testing
+- Merge queue SQL schema consistency tests added
+- Test suite: 2128 tests across 76 files (5360 expect() calls)
+
+### Changed
+- **Runtime dependencies** — chalk v5 added as first runtime dependency (previously zero runtime deps); chalk is ESM-only and handles color detection natively
+- **CLI parsing** — all commands converted from manual `args` array indexing to Commander.js `.option()` / `.argument()` declarations with automatic type coercion and validation
+- **Color module API** — `color` export changed from a record of ANSI string constants to a record of Chalk wrapper functions; consumers call `color.red("text")` (function) instead of `${color.red}text${color.reset}` (string interpolation)
+- **`noColor` identity function** — replaces the old `color.white` default for cases where no coloring is needed
+
+### Fixed
+- **Merge queue migration** — added missing `bead_id` → `task_id` column migration for `merge-queue.db`, aligning with the schema migration already applied to sessions.db, events.db, and metrics.db in v0.6.0
+- **npm publish auth** — fixed authentication issues in publish workflow and cleaned up post-merge artifacts from Commander migration
+- **Commander direct parse** — fixed 6 command wrapper functions that incorrectly delegated to Commander instead of using direct `.action()` pattern (metrics, replay, status, trace, supervisor, and others)
+
 ## [0.6.3] - 2026-02-24
 
 ### Added
@@ -621,7 +649,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Biome configuration for formatting and linting
 - TypeScript strict mode with `noUncheckedIndexedAccess`
 
-[Unreleased]: https://github.com/jayminwest/overstory/compare/v0.6.3...HEAD
+[Unreleased]: https://github.com/jayminwest/overstory/compare/v0.6.4...HEAD
+[0.6.4]: https://github.com/jayminwest/overstory/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/jayminwest/overstory/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/jayminwest/overstory/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/jayminwest/overstory/compare/v0.6.0...v0.6.1

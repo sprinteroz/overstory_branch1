@@ -9,7 +9,8 @@ Project-agnostic swarm system for Claude Code agent orchestration. Overstory tur
 - **Runtime:** Bun (runs TypeScript directly, no build step)
 - **Language:** TypeScript with strict mode (`noUncheckedIndexedAccess`, no `any`)
 - **Linting:** Biome (formatter + linter in one tool)
-- **Runtime dependencies:** Zero. Only Bun built-in APIs (`bun:sqlite`, `Bun.spawn`, `Bun.file`, etc.)
+- **Runtime dependencies:** `chalk` (v5, ESM-only color output). Core I/O uses Bun built-in APIs (`bun:sqlite`, `Bun.spawn`, `Bun.file`, etc.)
+- **CLI framework:** Commander.js (typed options, subcommands, auto-generated help)
 - **Dev dependencies:** `@types/bun`, `typescript`, `@biomejs/biome`
 - **External CLIs (not npm deps):** `bd` (beads) or `sd` (seeds) for issue tracking, `mulch` for expertise, `git`, `tmux`
 
@@ -50,7 +51,7 @@ Purpose-built messaging via `bun:sqlite` in `.overstory/mail.db`. WAL mode for c
 ```
 overstory/                        # This repo (the overstory tool itself)
   src/
-    index.ts                      # CLI entry point (command router, 30 commands)
+    index.ts                      # CLI entry point (Commander.js program, 30 commands)
     types.ts                      # ALL shared types and interfaces
     config.ts                     # Config loader + defaults + validation
     errors.ts                     # Custom error types (extend OverstoryError)
@@ -193,8 +194,8 @@ target-project/
 
 ### Dependencies
 
-- **Zero runtime dependencies.** This is a hard rule.
-- Use only Bun built-in APIs: `bun:sqlite` for databases, `Bun.spawn` for subprocesses, `Bun.file` for file I/O, `Bun.write` for writes
+- **Minimal runtime dependencies.** Only `chalk` (color output) and `commander` (CLI framework) are allowed as runtime deps.
+- Use Bun built-in APIs: `bun:sqlite` for databases, `Bun.spawn` for subprocesses, `Bun.file` for file I/O, `Bun.write` for writes
 - External tools (`bd`, `mulch`, `git`, `tmux`) are invoked as subprocesses via `Bun.spawn`, never as npm imports
 - Dev dependencies are limited to types and tooling
 

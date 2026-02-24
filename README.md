@@ -270,16 +270,16 @@ Global Flags:
 ## Tech Stack
 
 - **Runtime**: Bun (TypeScript directly, no build step)
-- **Dependencies**: Zero runtime dependencies — only Bun built-in APIs
+- **Dependencies**: Minimal runtime — `chalk` (color output), core I/O via Bun built-in APIs
 - **Database**: SQLite via `bun:sqlite` (WAL mode for concurrent access)
 - **Linting**: Biome (formatter + linter)
-- **Testing**: `bun test` (2137 tests across 76 files, colocated with source)
+- **Testing**: `bun test` (2128 tests across 76 files, colocated with source)
 - **External CLIs**: `bd` (beads) or `sd` (seeds), `mulch`, `git`, `tmux` — invoked as subprocesses
 
 ## Development
 
 ```bash
-# Run tests (2137 tests across 76 files)
+# Run tests (2128 tests across 76 files)
 bun test
 
 # Run a single test
@@ -315,7 +315,7 @@ Git tags, npm publishing, and GitHub releases are handled automatically by the `
 ```
 overstory/
   src/
-    index.ts                      CLI entry point (command router)
+    index.ts                      CLI entry point (Commander.js program)
     types.ts                      Shared types and interfaces
     config.ts                     Config loader + validation
     errors.ts                     Custom error types
@@ -323,7 +323,7 @@ overstory/
       agents.ts                   Agent discovery and querying
       coordinator.ts              Persistent orchestrator lifecycle
       supervisor.ts               Team lead management
-      dashboard.ts                Live TUI dashboard (ANSI, zero deps)
+      dashboard.ts                Live TUI dashboard (ANSI via Chalk)
       hooks.ts                    Orchestrator hooks management
       sling.ts                    Agent spawning
       group.ts                    Task group batch tracking

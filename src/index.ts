@@ -42,7 +42,7 @@ import { createWorktreeCommand } from "./commands/worktree.ts";
 import { OverstoryError, WorktreeError } from "./errors.ts";
 import { setQuiet } from "./logging/color.ts";
 
-const VERSION = "0.6.3";
+const VERSION = "0.6.4";
 
 const COMMANDS = [
 	"agents",
@@ -303,7 +303,7 @@ async function main(): Promise<void> {
 	await program.parseAsync(process.argv);
 }
 
-main().catch((err: unknown) => {
+if (import.meta.main) main().catch((err: unknown) => {
 	// Friendly message when running outside a git repository
 	if (err instanceof WorktreeError && err.message.includes("not a git repository")) {
 		process.stderr.write("Not in an overstory project. Run 'overstory init' first.\n");
