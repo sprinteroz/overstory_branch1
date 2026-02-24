@@ -11,7 +11,7 @@ Project-agnostic swarm system for Claude Code agent orchestration. Overstory tur
 - **Linting:** Biome (formatter + linter in one tool)
 - **Runtime dependencies:** Zero. Only Bun built-in APIs (`bun:sqlite`, `Bun.spawn`, `Bun.file`, etc.)
 - **Dev dependencies:** `@types/bun`, `typescript`, `@biomejs/biome`
-- **External CLIs (not npm deps):** `bd` (beads) for issue tracking, `mulch` for expertise, `git`, `tmux`
+- **External CLIs (not npm deps):** `bd` (beads) or `sd` (seeds) for issue tracking, `mulch` for expertise, `git`, `tmux`
 
 ## Architecture
 
@@ -104,9 +104,11 @@ overstory/                        # This repo (the overstory tool itself)
       tool-filter.ts              # Smart arg filtering for event storage
     insights/
       analyzer.ts                 # Session insight analyzer for auto-expertise
-    beads/
-      client.ts                   # bd CLI wrapper (--json parsing)
-      molecules.ts                # Molecule management helpers
+    tracker/
+      types.ts                    # TrackerClient interface, TrackerIssue, TrackerBackend
+      factory.ts                  # createTrackerClient(), resolveBackend(), trackerCliName()
+      beads.ts                    # Beads (bd) backend adapter
+      seeds.ts                    # Seeds (sd) backend adapter
     mail/
       store.ts                    # SQLite mail storage (bun:sqlite, WAL mode)
       client.ts                   # Mail operations (send/check/list/read/reply)
@@ -489,17 +491,18 @@ Shared test utilities live in `src/test-helpers.ts`:
 
 ## Tool Integration
 
-### beads (bd) -- Issue Tracking
+### Task Tracker (bd/sd) -- Issue Tracking
 
 ```bash
-bd ready                              # Find available work
+bd ready                              # Find available work (beads backend)
+sd ready                              # Find available work (seeds backend)
 bd show <id>                          # View issue details
 bd update <id> --status in_progress   # Claim work
 bd close <id> --reason "summary"      # Complete work
 bd sync                               # Sync with git
 ```
 
-Issues are tracked in `.beads/issues.jsonl`. Beads owns all task lifecycle (create, assign, close, dependencies, molecules). Overstory wraps `bd` via `src/beads/client.ts`.
+Issues are tracked by the configured task tracker backend (beads or seeds). Overstory wraps the tracker CLI via `src/tracker/` with a pluggable backend system — `resolveBackend()` auto-detects which tracker is available.
 
 ### mulch -- Structured Expertise
 

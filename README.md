@@ -137,7 +137,7 @@ overstory prime                         Load context for orchestrator/agent
   --agent <name>                         Per-agent priming
   --compact                              Restore from checkpoint (compaction)
 
-overstory status                        Show all active agents, worktrees, beads state
+overstory status                        Show all active agents, worktrees, tracker state
   --json                                 JSON output
   --verbose                              Show detailed agent info
   --all                                  Show all runs (default: current run only)
@@ -272,13 +272,13 @@ Global Flags:
 - **Dependencies**: Zero runtime dependencies — only Bun built-in APIs
 - **Database**: SQLite via `bun:sqlite` (WAL mode for concurrent access)
 - **Linting**: Biome (formatter + linter)
-- **Testing**: `bun test` (2026 tests across 74 files, colocated with source)
-- **External CLIs**: `bd` (beads), `mulch`, `git`, `tmux` — invoked as subprocesses
+- **Testing**: `bun test` (2075 tests across 75 files, colocated with source)
+- **External CLIs**: `bd` (beads) or `sd` (seeds), `mulch`, `git`, `tmux` — invoked as subprocesses
 
 ## Development
 
 ```bash
-# Run tests (2026 tests across 74 files)
+# Run tests (2075 tests across 75 files)
 bun test
 
 # Run a single test
@@ -365,7 +365,7 @@ overstory/
     metrics/                      SQLite metrics + transcript parsing
     doctor/                       Health check modules (9 checks)
     insights/                     Session insight analyzer for auto-expertise
-    beads/                        bd CLI wrapper + molecules
+    tracker/                      Pluggable task tracker (beads + seeds backends)
     mulch/                        mulch CLI wrapper
     e2e/                          End-to-end lifecycle tests
   agents/                         Base agent definitions (.md, 8 roles)

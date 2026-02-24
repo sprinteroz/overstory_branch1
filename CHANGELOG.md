@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-02-23
+
+### Added
+
+#### Tracker Abstraction Layer
+- **`src/tracker/` module** — pluggable task tracker backend system replacing the hardcoded beads dependency
+  - `TrackerClient` interface with unified API: `ready()`, `show()`, `create()`, `claim()`, `close()`, `list()`, `sync()`
+  - `TrackerIssue` type for backend-agnostic issue representation
+  - `createTrackerClient()` factory function dispatching to concrete backends
+  - `resolveBackend()` auto-detection — probes `.seeds/` then `.beads/` directories when configured as `"auto"`
+  - `trackerCliName()` helper returning `"sd"` or `"bd"` based on resolved backend
+  - Beads adapter (`src/tracker/beads.ts`) — wraps `bd` CLI with `--json` parsing
+  - Seeds adapter (`src/tracker/seeds.ts`) — wraps `sd` CLI with `--json` parsing
+  - Factory tests (`src/tracker/factory.test.ts`) — 80 lines covering resolution and client creation
+
+#### Configurable Quality Gates
+- `QualityGate` type (`{ name, command, description }`) in `types.ts` — replaces hardcoded `bun test && bun run lint && bun run typecheck`
+- `project.qualityGates` config field — projects can now define custom quality gate commands in `config.yaml`
+- `DEFAULT_QUALITY_GATES` constant in `config.ts` — preserves the default 3-gate pipeline (Tests, Lint, Typecheck)
+- Quality gate validation in `validateConfig()` — ensures each gate has non-empty `name`, `command`, and `description`
+- Overlay template renders configured gates dynamically instead of hardcoded commands
+- `OverlayConfig.qualityGates` field threads gates from config through to agent overlays
+
+#### Config Migration for Task Tracker
+- `taskTracker: { backend, enabled }` config field replaces legacy `beads:` and `seeds:` sections
+- Automatic migration: `beads: { enabled: true }` → `taskTracker: { backend: "beads", enabled: true }` (and same for `seeds:`)
+- `TaskTrackerBackend` type: `"auto" | "beads" | "seeds"` with `"auto"` as default
+- Deprecation warnings emitted when legacy config keys are detected
+
+#### Template & Agent Definition Updates
+- `TRACKER_CLI` and `TRACKER_NAME` template variables in overlay.ts — agent defs no longer hardcode `bd`/`beads`
+- All 8 agent definitions (`agents/*.md`) updated: `bd` → `TRACKER_CLI`, `beads` → `TRACKER_NAME`
+- Coordinator beacon updated with tracker-aware context
+- Hooks-deployer safe prefixes updated for tracker CLI commands
+
+#### Hooks Improvements
+- `mergeHooksByEventType()` — `overstory hooks install --force` now merges hooks per event type with deduplication instead of wholesale replacement, preserving user-added hooks
+
+#### Testing
+- Test suite grew from 2026 to 2075 tests across 75 files (5128 expect() calls)
+
+### Changed
+- **beads → taskTracker config**: `config.beads` renamed to `config.taskTracker` with backward-compatible migration
+- **bead_id → task_id**: Column renamed across all SQLite schemas (metrics.db, merge-queue.db, sessions.db, events.db) with automatic migration for existing databases
+- `group.ts` and `supervisor.ts` now use tracker abstraction instead of direct beads client calls
+- `sling.ts` uses `resolveBackend()` and `trackerCliName()` from factory module
+- Doctor dependency checks updated to detect the active tracker CLI (`bd` or `sd`)
+
+### Fixed
+- `overstory hooks install --force` now merges hooks by event type instead of replacing the entire settings file — preserves non-overstory hooks
+- `detectCanonicalBranch()` now accepts any branch name (removed restrictive regex)
+- `bead_id` → `task_id` SQLite column migration for existing databases (metrics, merge-queue, sessions, events)
+- `config.seeds` → `config.taskTracker` bootstrap path in `sling.ts`
+- `group.ts` and `supervisor.ts` now use `resolveBackend()` for proper tracker resolution instead of hardcoded backend
+- Seeds adapter validates envelope `success` field before unwrapping response data
+- Hooks tests use literal keys instead of string indexing for `noUncheckedIndexedAccess` compliance
+- Removed old `src/beads/` directory (replaced by `src/tracker/`)
+
 ## [0.5.9] - 2026-02-21
 
 ### Added
@@ -477,7 +535,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Biome configuration for formatting and linting
 - TypeScript strict mode with `noUncheckedIndexedAccess`
 
-[Unreleased]: https://github.com/jayminwest/overstory/compare/v0.5.9...HEAD
+[Unreleased]: https://github.com/jayminwest/overstory/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/jayminwest/overstory/compare/v0.5.9...v0.6.0
 [0.5.9]: https://github.com/jayminwest/overstory/compare/v0.5.8...v0.5.9
 [0.5.8]: https://github.com/jayminwest/overstory/compare/v0.5.7...v0.5.8
 [0.5.7]: https://github.com/jayminwest/overstory/compare/v0.5.6...v0.5.7
