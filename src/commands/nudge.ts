@@ -10,7 +10,8 @@
  */
 
 import { join } from "node:path";
-import { AgentError, ValidationError } from "../errors.ts";
+import { Command } from "commander";
+import { AgentError } from "../errors.ts";
 import { createEventStore } from "../events/store.ts";
 import { openSessionStore } from "../sessions/compat.ts";
 import type { EventStore } from "../types.ts";
@@ -20,44 +21,6 @@ const DEFAULT_MESSAGE = "Check your mail inbox for new messages.";
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 500;
 const DEBOUNCE_MS = 500;
-
-/**
- * Parse a named flag value from args.
- */
-function getFlag(args: string[], flag: string): string | undefined {
-	const idx = args.indexOf(flag);
-	if (idx === -1 || idx + 1 >= args.length) {
-		return undefined;
-	}
-	return args[idx + 1];
-}
-
-/** Boolean flags that do NOT consume the next arg. */
-const BOOLEAN_FLAGS = new Set(["--json", "--force", "--help", "-h"]);
-
-/**
- * Extract positional arguments, skipping flag-value pairs.
- */
-function getPositionalArgs(args: string[]): string[] {
-	const positional: string[] = [];
-	let i = 0;
-	while (i < args.length) {
-		const arg = args[i];
-		if (arg?.startsWith("-")) {
-			if (BOOLEAN_FLAGS.has(arg)) {
-				i += 1;
-			} else {
-				i += 2;
-			}
-		} else {
-			if (arg !== undefined) {
-				positional.push(arg);
-			}
-			i += 1;
-		}
-	}
-	return positional;
-}
 
 /**
  * Load the orchestrator's registered tmux session name.
@@ -317,56 +280,45 @@ export async function nudgeAgent(
 /**
  * Entry point for `overstory nudge <agent-name> [message]`.
  */
-const NUDGE_HELP = `overstory nudge — Send a text nudge to an agent
-
-Usage: overstory nudge <agent-name> [message]
-
-Arguments:
-  <agent-name>           Name of the agent to nudge
-  [message]              Text to send (default: "${DEFAULT_MESSAGE}")
-
-Options:
-  --from <name>          Sender name for the nudge prefix (default: orchestrator)
-  --force                Skip debounce check
-  --json                 Output result as JSON
-  --help, -h             Show this help`;
-
 export async function nudgeCommand(args: string[]): Promise<void> {
-	if (args.includes("--help") || args.includes("-h")) {
-		process.stdout.write(`${NUDGE_HELP}\n`);
-		return;
-	}
+	const program = new Command();
+	program
+		.name("overstory nudge")
+		.description("Send a text nudge to an agent")
+		.argument("<agent-name>", "Name of the agent to nudge")
+		.argument("[message...]", "Text to send (default: check mail prompt)")
+		.option("--from <name>", "Sender name", "orchestrator")
+		.option("--force", "Skip debounce check")
+		.option("--json", "Output result as JSON")
+		.exitOverride()
+		.action(
+			async (
+				agentName: string,
+				messageParts: string[],
+				opts: { from: string; force?: boolean; json?: boolean },
+			) => {
+				// Build the nudge message: prefix with sender, use custom or default text
+				const customMessage = messageParts.join(" ");
+				const rawMessage = customMessage.length > 0 ? customMessage : DEFAULT_MESSAGE;
+				const message = `[NUDGE from ${opts.from}] ${rawMessage}`;
 
-	const positional = getPositionalArgs(args);
-	const agentName = positional[0];
-	if (!agentName || agentName.trim().length === 0) {
-		throw new ValidationError("Agent name is required: overstory nudge <agent-name> [message]", {
-			field: "agentName",
-		});
-	}
+				// Resolve project root
+				const { resolveProjectRoot } = await import("../config.ts");
+				const projectRoot = await resolveProjectRoot(process.cwd());
 
-	const from = getFlag(args, "--from") ?? "orchestrator";
-	const force = args.includes("--force");
-	const json = args.includes("--json");
+				const result = await nudgeAgent(projectRoot, agentName, message, opts.force ?? false);
 
-	// Build the nudge message: prefix with sender, use custom or default text
-	const customMessage = positional.slice(1).join(" ");
-	const rawMessage = customMessage.length > 0 ? customMessage : DEFAULT_MESSAGE;
-	const message = `[NUDGE from ${from}] ${rawMessage}`;
-
-	// Resolve project root
-	const { resolveProjectRoot } = await import("../config.ts");
-	const projectRoot = await resolveProjectRoot(process.cwd());
-
-	const result = await nudgeAgent(projectRoot, agentName, message, force);
-
-	if (json) {
-		process.stdout.write(
-			`${JSON.stringify({ agentName, delivered: result.delivered, reason: result.reason })}\n`,
+				if (opts.json) {
+					process.stdout.write(
+						`${JSON.stringify({ agentName, delivered: result.delivered, reason: result.reason })}\n`,
+					);
+				} else if (result.delivered) {
+					process.stdout.write(`📢 Nudged "${agentName}"\n`);
+				} else {
+					throw new AgentError(`Nudge failed: ${result.reason}`, { agentName });
+				}
+			},
 		);
-	} else if (result.delivered) {
-		process.stdout.write(`📢 Nudged "${agentName}"\n`);
-	} else {
-		throw new AgentError(`Nudge failed: ${result.reason}`, { agentName });
-	}
+
+	await program.parseAsync(["node", "overstory-nudge", ...args]);
 }
