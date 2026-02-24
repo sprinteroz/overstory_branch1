@@ -52,7 +52,7 @@ describe("E2E: init→sling lifecycle on external project", () => {
 	});
 
 	test("init creates all expected artifacts", async () => {
-		await initCommand([]);
+		await initCommand({});
 
 		const overstoryDir = join(tempDir, ".overstory");
 
@@ -92,7 +92,7 @@ describe("E2E: init→sling lifecycle on external project", () => {
 	});
 
 	test("loadConfig returns valid config pointing to temp dir", async () => {
-		await initCommand([]);
+		await initCommand({});
 
 		const config = await loadConfig(tempDir);
 
@@ -110,7 +110,7 @@ describe("E2E: init→sling lifecycle on external project", () => {
 	});
 
 	test("manifest loads successfully with all 8 agents", async () => {
-		await initCommand([]);
+		await initCommand({});
 
 		const manifestPath = join(tempDir, ".overstory", "agent-manifest.json");
 		const agentDefsDir = join(tempDir, ".overstory", "agent-defs");
@@ -145,7 +145,7 @@ describe("E2E: init→sling lifecycle on external project", () => {
 	});
 
 	test("manifest capability index is consistent", async () => {
-		await initCommand([]);
+		await initCommand({});
 
 		const manifestPath = join(tempDir, ".overstory", "agent-manifest.json");
 		const agentDefsDir = join(tempDir, ".overstory", "agent-defs");
@@ -167,7 +167,7 @@ describe("E2E: init→sling lifecycle on external project", () => {
 	});
 
 	test("overlay generation works for external project", async () => {
-		await initCommand([]);
+		await initCommand({});
 
 		const agentDefsDir = join(tempDir, ".overstory", "agent-defs");
 		const baseDefinition = await Bun.file(join(agentDefsDir, "builder.md")).text();
@@ -215,7 +215,7 @@ describe("E2E: init→sling lifecycle on external project", () => {
 		// init → load config → load manifest → generate overlay
 
 		// Step 1: Init
-		await initCommand([]);
+		await initCommand({});
 
 		// Step 2: Load config
 		const config = await loadConfig(tempDir);

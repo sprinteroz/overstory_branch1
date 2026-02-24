@@ -63,50 +63,12 @@ merge:
 		await runGitInDir(dir, ["checkout", defaultBranch]);
 	}
 
-	describe("help and validation", () => {
-		test("--help prints help containing 'overstory merge', '--branch', '--all', '--dry-run', '--into'", async () => {
-			let output = "";
-			const originalWrite = process.stdout.write.bind(process.stdout);
-			process.stdout.write = (chunk: unknown): boolean => {
-				output += String(chunk);
-				return true;
-			};
-
-			try {
-				await mergeCommand(["--help"]);
-			} finally {
-				process.stdout.write = originalWrite;
-			}
-
-			expect(output).toContain("overstory merge");
-			expect(output).toContain("--branch");
-			expect(output).toContain("--all");
-			expect(output).toContain("--dry-run");
-			expect(output).toContain("--into");
-		});
-
-		test("-h prints help", async () => {
-			let output = "";
-			const originalWrite = process.stdout.write.bind(process.stdout);
-			process.stdout.write = (chunk: unknown): boolean => {
-				output += String(chunk);
-				return true;
-			};
-
-			try {
-				await mergeCommand(["-h"]);
-			} finally {
-				process.stdout.write = originalWrite;
-			}
-
-			expect(output).toContain("overstory merge");
-		});
-
-		test("no flags throws ValidationError mentioning '--branch' and '--all'", async () => {
+	describe("validation", () => {
+		test("no branch/all throws ValidationError mentioning '--branch' and '--all'", async () => {
 			await setupProject(repoDir, defaultBranch);
 
 			try {
-				await mergeCommand([]);
+				await mergeCommand({});
 				expect(true).toBe(false); // Should not reach here
 			} catch (err: unknown) {
 				expect(err).toBeInstanceOf(ValidationError);
@@ -122,7 +84,7 @@ merge:
 			await setupProject(repoDir, defaultBranch);
 
 			try {
-				await mergeCommand(["--branch", "nonexistent-branch"]);
+				await mergeCommand({ branch: "nonexistent-branch" });
 				expect(true).toBe(false); // Should not reach here
 			} catch (err: unknown) {
 				expect(err).toBeInstanceOf(ValidationError);
@@ -144,7 +106,7 @@ merge:
 			};
 
 			try {
-				await mergeCommand(["--branch", branchName, "--dry-run"]);
+				await mergeCommand({ branch: branchName, dryRun: true });
 			} finally {
 				process.stdout.write = originalWrite;
 			}
@@ -170,7 +132,7 @@ merge:
 			};
 
 			try {
-				await mergeCommand(["--branch", branchName, "--dry-run", "--json"]);
+				await mergeCommand({ branch: branchName, dryRun: true, json: true });
 			} finally {
 				process.stdout.write = originalWrite;
 			}
@@ -191,7 +153,7 @@ merge:
 			};
 
 			try {
-				await mergeCommand(["--branch", branchName]);
+				await mergeCommand({ branch: branchName });
 			} finally {
 				process.stdout.write = originalWrite;
 			}
@@ -215,7 +177,7 @@ merge:
 			};
 
 			try {
-				await mergeCommand(["--branch", branchName, "--json"]);
+				await mergeCommand({ branch: branchName, json: true });
 			} finally {
 				process.stdout.write = originalWrite;
 			}
@@ -238,7 +200,7 @@ merge:
 			};
 
 			try {
-				await mergeCommand(["--branch", branchName, "--dry-run", "--json"]);
+				await mergeCommand({ branch: branchName, dryRun: true, json: true });
 			} finally {
 				process.stdout.write = originalWrite;
 			}
@@ -261,7 +223,7 @@ merge:
 			};
 
 			try {
-				await mergeCommand(["--all"]);
+				await mergeCommand({ all: true });
 			} finally {
 				process.stdout.write = originalWrite;
 			}
@@ -280,7 +242,7 @@ merge:
 			};
 
 			try {
-				await mergeCommand(["--all", "--json"]);
+				await mergeCommand({ all: true, json: true });
 			} finally {
 				process.stdout.write = originalWrite;
 			}
@@ -322,7 +284,7 @@ merge:
 			};
 
 			try {
-				await mergeCommand(["--all", "--dry-run"]);
+				await mergeCommand({ all: true, dryRun: true });
 			} finally {
 				process.stdout.write = originalWrite;
 			}
@@ -364,7 +326,7 @@ merge:
 			};
 
 			try {
-				await mergeCommand(["--all"]);
+				await mergeCommand({ all: true });
 			} finally {
 				process.stdout.write = originalWrite;
 			}
@@ -403,7 +365,7 @@ merge:
 			};
 
 			try {
-				await mergeCommand(["--all", "--json"]);
+				await mergeCommand({ all: true, json: true });
 			} finally {
 				process.stdout.write = originalWrite;
 			}
@@ -439,7 +401,7 @@ merge:
 			};
 
 			try {
-				await mergeCommand(["--branch", branchName, "--into", "develop", "--json"]);
+				await mergeCommand({ branch: branchName, into: "develop", json: true });
 			} finally {
 				process.stdout.write = originalWrite;
 			}
@@ -507,7 +469,7 @@ merge:
 			};
 
 			try {
-				await mergeCommand(["--all", "--into", "staging", "--json"]);
+				await mergeCommand({ all: true, into: "staging", json: true });
 			} finally {
 				process.stdout.write = originalWrite;
 			}
@@ -534,7 +496,7 @@ merge:
 			};
 
 			try {
-				await mergeCommand(["--branch", branchName, "--json"]);
+				await mergeCommand({ branch: branchName, json: true });
 			} finally {
 				process.stdout.write = originalWrite;
 			}
@@ -574,7 +536,7 @@ merge:
 
 			try {
 				// No --into flag — should read session-branch.txt
-				await mergeCommand(["--branch", branchName, "--json"]);
+				await mergeCommand({ branch: branchName, json: true });
 			} finally {
 				process.stdout.write = originalWrite;
 			}
@@ -621,7 +583,7 @@ merge:
 
 			try {
 				// --into overrides session-branch.txt
-				await mergeCommand(["--branch", branchName, "--into", "explicit-target", "--json"]);
+				await mergeCommand({ branch: branchName, into: "explicit-target", json: true });
 			} finally {
 				process.stdout.write = originalWrite;
 			}
@@ -657,7 +619,7 @@ merge:
 			};
 
 			try {
-				await mergeCommand(["--branch", branchName]);
+				await mergeCommand({ branch: branchName });
 			} finally {
 				process.stdout.write = originalWrite;
 			}

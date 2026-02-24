@@ -98,15 +98,17 @@ export function inferDomainsFromFiles(
 	return [...inferred].sort();
 }
 
-/**
- * Parse a named flag value from an args array.
- */
-function getFlag(args: string[], flag: string): string | undefined {
-	const idx = args.indexOf(flag);
-	if (idx === -1 || idx + 1 >= args.length) {
-		return undefined;
-	}
-	return args[idx + 1];
+export interface SlingOptions {
+	capability?: string;
+	name?: string;
+	spec?: string;
+	files?: string;
+	parent?: string;
+	depth?: string;
+	skipScout?: boolean;
+	skipTaskCheck?: boolean;
+	forceHierarchy?: boolean;
+	json?: boolean;
 }
 
 /**
@@ -225,58 +227,26 @@ export function validateHierarchy(
 /**
  * Entry point for `overstory sling <task-id> [flags]`.
  *
- * Flags:
- *   --capability <type>    builder | scout | reviewer | lead | merger
- *   --name <name>          Unique agent name
- *   --spec <path>          Path to task spec file
- *   --files <f1,f2,...>    Exclusive file scope
- *   --parent <agent-name>  Parent agent (for hierarchy tracking)
- *   --depth <n>            Current hierarchy depth (default 0)
- *   --force-hierarchy      Bypass hierarchy validation (debugging only)
+ * @param taskId - The task ID to assign to the agent
+ * @param opts - Command options
  */
-const SLING_HELP = `overstory sling — Spawn a worker agent
-
-Usage: overstory sling <task-id> [flags]
-
-Arguments:
-  <task-id>                  Beads task ID to assign
-
-Options:
-  --capability <type>        Agent type: builder | scout | reviewer | lead | merger (default: builder)
-  --name <name>              Unique agent name (required)
-  --spec <path>              Path to task spec file
-  --files <f1,f2,...>        Exclusive file scope (comma-separated)
-  --parent <agent-name>      Parent agent for hierarchy tracking
-  --depth <n>                Current hierarchy depth (default: 0)
-  --skip-scout                 Skip scout phase for lead agents (jump to build)
-  --skip-task-check              Skip task existence validation (for worktree-created issues)
-  --force-hierarchy            Bypass hierarchy validation (debugging only)
-  --json                     Output result as JSON
-  --help, -h                 Show this help`;
-
-export async function slingCommand(args: string[]): Promise<void> {
-	if (args.includes("--help") || args.includes("-h")) {
-		process.stdout.write(`${SLING_HELP}\n`);
-		return;
-	}
-
-	const taskId = args.find((a) => !a.startsWith("--"));
+export async function slingCommand(taskId: string, opts: SlingOptions): Promise<void> {
 	if (!taskId) {
 		throw new ValidationError("Task ID is required: overstory sling <task-id>", {
 			field: "taskId",
 		});
 	}
 
-	const capability = getFlag(args, "--capability") ?? "builder";
-	const name = getFlag(args, "--name");
-	const specPath = getFlag(args, "--spec") ?? null;
-	const filesRaw = getFlag(args, "--files");
-	const parentAgent = getFlag(args, "--parent") ?? null;
-	const depthStr = getFlag(args, "--depth");
+	const capability = opts.capability ?? "builder";
+	const name = opts.name;
+	const specPath = opts.spec ?? null;
+	const filesRaw = opts.files;
+	const parentAgent = opts.parent ?? null;
+	const depthStr = opts.depth;
 	const depth = depthStr !== undefined ? Number.parseInt(depthStr, 10) : 0;
-	const forceHierarchy = args.includes("--force-hierarchy");
-	const skipScout = args.includes("--skip-scout");
-	const skipTaskCheck = args.includes("--skip-task-check");
+	const forceHierarchy = opts.forceHierarchy ?? false;
+	const skipScout = opts.skipScout ?? false;
+	const skipTaskCheck = opts.skipTaskCheck ?? false;
 
 	if (!name || name.trim().length === 0) {
 		throw new ValidationError("--name is required for sling", { field: "name" });
@@ -645,7 +615,7 @@ export async function slingCommand(args: string[]): Promise<void> {
 			pid,
 		};
 
-		if (args.includes("--json")) {
+		if (opts.json ?? false) {
 			process.stdout.write(`${JSON.stringify(output)}\n`);
 		} else {
 			process.stdout.write(`🚀 Agent "${name}" launched!\n`);

@@ -71,26 +71,11 @@ afterEach(async () => {
 	await cleanupTempDir(tempDir);
 });
 
-// === help ===
-
-describe("help", () => {
-	test("--help shows usage", async () => {
-		await cleanCommand(["--help"]);
-		expect(stdoutOutput).toContain("overstory clean");
-		expect(stdoutOutput).toContain("--all");
-	});
-
-	test("-h shows usage", async () => {
-		await cleanCommand(["-h"]);
-		expect(stdoutOutput).toContain("overstory clean");
-	});
-});
-
 // === validation ===
 
 describe("validation", () => {
 	test("no flags throws ValidationError", async () => {
-		await expect(cleanCommand([])).rejects.toThrow("No cleanup targets specified");
+		await expect(cleanCommand({})).rejects.toThrow("No cleanup targets specified");
 	});
 });
 
@@ -116,7 +101,7 @@ describe("--all", () => {
 		// Verify DB exists
 		expect(await Bun.file(mailDbPath).exists()).toBe(true);
 
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 
 		// DB should be gone
 		expect(await Bun.file(mailDbPath).exists()).toBe(false);
@@ -148,7 +133,7 @@ describe("--all", () => {
 
 		expect(await Bun.file(metricsDbPath).exists()).toBe(true);
 
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 
 		expect(await Bun.file(metricsDbPath).exists()).toBe(false);
 		expect(stdoutOutput).toContain("Wiped metrics.db");
@@ -180,7 +165,7 @@ describe("--all", () => {
 		const sessionsDbPath = join(overstoryDir, "sessions.db");
 		expect(await Bun.file(sessionsDbPath).exists()).toBe(true);
 
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 
 		expect(await Bun.file(sessionsDbPath).exists()).toBe(false);
 		expect(stdoutOutput).toContain("Wiped sessions.db");
@@ -198,7 +183,7 @@ describe("--all", () => {
 		});
 		queue.close();
 
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 
 		expect(await Bun.file(queuePath).exists()).toBe(false);
 		expect(stdoutOutput).toContain("Wiped merge-queue.db");
@@ -209,7 +194,7 @@ describe("--all", () => {
 		await mkdir(join(logsDir, "agent-a", "2026-01-01"), { recursive: true });
 		await writeFile(join(logsDir, "agent-a", "2026-01-01", "session.log"), "log data");
 
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 
 		const entries = await readdir(logsDir);
 		expect(entries).toHaveLength(0);
@@ -221,7 +206,7 @@ describe("--all", () => {
 		await mkdir(join(agentsDir, "test-agent"), { recursive: true });
 		await writeFile(join(agentsDir, "test-agent", "identity.yaml"), "name: test-agent");
 
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 
 		const entries = await readdir(agentsDir);
 		expect(entries).toHaveLength(0);
@@ -232,7 +217,7 @@ describe("--all", () => {
 		const specsDir = join(overstoryDir, "specs");
 		await writeFile(join(specsDir, "task-123.md"), "# Spec");
 
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 
 		const entries = await readdir(specsDir);
 		expect(entries).toHaveLength(0);
@@ -243,7 +228,7 @@ describe("--all", () => {
 		const nudgePath = join(overstoryDir, "nudge-state.json");
 		await Bun.write(nudgePath, "{}");
 
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 
 		expect(await Bun.file(nudgePath).exists()).toBe(false);
 		expect(stdoutOutput).toContain("Cleared nudge-state.json");
@@ -253,7 +238,7 @@ describe("--all", () => {
 		const currentRunPath = join(overstoryDir, "current-run.txt");
 		await Bun.write(currentRunPath, "run-2026-02-13T10-00-00-000Z");
 
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 
 		expect(await Bun.file(currentRunPath).exists()).toBe(false);
 		expect(stdoutOutput).toContain("Cleared current-run.txt");
@@ -261,7 +246,7 @@ describe("--all", () => {
 
 	test("handles missing current-run.txt gracefully", async () => {
 		// current-run.txt does not exist — should not error
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 		expect(stdoutOutput).not.toContain("Cleared current-run.txt");
 	});
 });
@@ -288,7 +273,7 @@ describe("individual flags", () => {
 		const sessionsPath = join(overstoryDir, "sessions.json");
 		await Bun.write(sessionsPath, '[{"id":"s1"}]\n');
 
-		await cleanCommand(["--mail"]);
+		await cleanCommand({ mail: true });
 
 		// Mail gone
 		expect(await Bun.file(mailDbPath).exists()).toBe(false);
@@ -324,7 +309,7 @@ describe("individual flags", () => {
 		// Create a spec file that should survive
 		await writeFile(join(overstoryDir, "specs", "task.md"), "spec");
 
-		await cleanCommand(["--sessions"]);
+		await cleanCommand({ sessions: true });
 
 		// sessions.db should be gone
 		expect(await Bun.file(sessionsDbPath).exists()).toBe(false);
@@ -341,7 +326,7 @@ describe("individual flags", () => {
 
 		await writeFile(join(overstoryDir, "specs", "task.md"), "spec");
 
-		await cleanCommand(["--logs"]);
+		await cleanCommand({ logs: true });
 
 		const logEntries = await readdir(logsDir);
 		expect(logEntries).toHaveLength(0);
@@ -356,7 +341,7 @@ describe("individual flags", () => {
 
 describe("idempotent", () => {
 	test("running --all when nothing exists does not error", async () => {
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 		expect(stdoutOutput).toContain("Nothing to clean");
 	});
 
@@ -366,9 +351,9 @@ describe("idempotent", () => {
 		const store = createMailStore(mailDbPath);
 		store.close();
 
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 		stdoutOutput = "";
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 		expect(stdoutOutput).toContain("Nothing to clean");
 	});
 });
@@ -391,7 +376,7 @@ describe("JSON output", () => {
 		});
 		store.close();
 
-		await cleanCommand(["--all", "--json"]);
+		await cleanCommand({ all: true, json: true });
 
 		const result = JSON.parse(stdoutOutput);
 		expect(result).toHaveProperty("tmuxKilled");
@@ -402,7 +387,7 @@ describe("JSON output", () => {
 	});
 
 	test("--json includes sessionEndEventsLogged field", async () => {
-		await cleanCommand(["--all", "--json"]);
+		await cleanCommand({ all: true, json: true });
 		const result = JSON.parse(stdoutOutput);
 		expect(result).toHaveProperty("sessionEndEventsLogged");
 	});
@@ -411,7 +396,7 @@ describe("JSON output", () => {
 		const currentRunPath = join(overstoryDir, "current-run.txt");
 		await Bun.write(currentRunPath, "run-2026-02-13T10-00-00-000Z");
 
-		await cleanCommand(["--all", "--json"]);
+		await cleanCommand({ all: true, json: true });
 		const result = JSON.parse(stdoutOutput);
 		expect(result).toHaveProperty("currentRunCleared");
 		expect(result.currentRunCleared).toBe(true);
@@ -449,7 +434,7 @@ describe("synthetic session-end events", () => {
 		const sessions = [makeSession({ agentName: "builder-a", state: "working" })];
 		await Bun.write(sessionsPath, JSON.stringify(sessions));
 
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 
 		// Verify event was written to events.db
 		const eventsDbPath = join(overstoryDir, "events.db");
@@ -478,7 +463,7 @@ describe("synthetic session-end events", () => {
 		];
 		await Bun.write(sessionsPath, JSON.stringify(sessions));
 
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 
 		const eventsDbPath = join(overstoryDir, "events.db");
 		const eventStore = createEventStore(eventsDbPath);
@@ -501,7 +486,7 @@ describe("synthetic session-end events", () => {
 		];
 		await Bun.write(sessionsPath, JSON.stringify(sessions));
 
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 
 		// events.db may not even be created if there are no events to log
 		const eventsDbPath = join(overstoryDir, "events.db");
@@ -520,7 +505,7 @@ describe("synthetic session-end events", () => {
 		const sessions = [makeSession({ agentName: "wt-agent", state: "working" })];
 		await Bun.write(sessionsPath, JSON.stringify(sessions));
 
-		await cleanCommand(["--worktrees"]);
+		await cleanCommand({ worktrees: true });
 
 		const eventsDbPath = join(overstoryDir, "events.db");
 		const eventStore = createEventStore(eventsDbPath);
@@ -543,7 +528,7 @@ describe("synthetic session-end events", () => {
 		];
 		await Bun.write(sessionsPath, JSON.stringify(sessions));
 
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 
 		const eventsDbPath = join(overstoryDir, "events.db");
 		const eventStore = createEventStore(eventsDbPath);
@@ -558,7 +543,7 @@ describe("synthetic session-end events", () => {
 
 	test("handles missing sessions.json gracefully", async () => {
 		// No sessions.json file — should not error
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 		// Just verify it didn't crash
 		expect(stdoutOutput).toBeDefined();
 	});
@@ -580,7 +565,7 @@ describe("mulch health checks", () => {
 			`{"id":"mx-1","type":"convention","description":"Test record 1","recorded_at":"2026-01-01T00:00:00Z"}\n`,
 		);
 
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 
 		// Mulch health checks should have run (might show warnings or might be clean)
 		// The output should not error, and if there are no issues, it's fine
@@ -589,7 +574,7 @@ describe("mulch health checks", () => {
 
 	test("handles missing .mulch directory gracefully", async () => {
 		// No .mulch directory — should not error
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 		expect(stdoutOutput).toBeDefined();
 	});
 
@@ -606,7 +591,7 @@ describe("mulch health checks", () => {
 			`{"id":"mx-1","type":"convention","description":"Test","recorded_at":"2026-01-01T00:00:00Z"}\n`,
 		);
 
-		await cleanCommand(["--all", "--json"]);
+		await cleanCommand({ all: true, json: true });
 
 		const result = JSON.parse(stdoutOutput);
 		expect(result).toHaveProperty("mulchHealth");
@@ -632,7 +617,7 @@ describe("mulch health checks", () => {
 		const store = createMailStore(mailDbPath);
 		store.close();
 
-		await cleanCommand(["--mail", "--json"]);
+		await cleanCommand({ mail: true, json: true });
 
 		const result = JSON.parse(stdoutOutput);
 		// mulchHealth should be null because we didn't use --all
@@ -661,7 +646,7 @@ describe("mulch health checks", () => {
 			return; // Skip this test if mulch setup failed
 		}
 
-		await cleanCommand(["--all"]);
+		await cleanCommand({ all: true });
 
 		// Should show warning about domain near limit (if mulch status worked)
 		// The exact output depends on whether mulch CLI is available in the test environment

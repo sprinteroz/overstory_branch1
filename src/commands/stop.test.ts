@@ -207,37 +207,15 @@ function makeDeps(
 
 // --- Tests ---
 
-describe("stopCommand help", () => {
-	test("--help outputs help text", async () => {
-		const output = await captureStdout(() => stopCommand(["--help"]));
-		expect(output).toContain("overstory stop");
-		expect(output).toContain("<agent-name>");
-		expect(output).toContain("--force");
-		expect(output).toContain("--clean-worktree");
-		expect(output).toContain("--json");
-	});
-
-	test("-h outputs help text", async () => {
-		const output = await captureStdout(() => stopCommand(["-h"]));
-		expect(output).toContain("overstory stop");
-		expect(output).toContain("<agent-name>");
-	});
-});
-
 describe("stopCommand validation", () => {
-	test("throws ValidationError when no agent name provided", async () => {
+	test("throws ValidationError when agent name is empty string", async () => {
 		const { deps } = makeDeps();
-		await expect(stopCommand([], deps)).rejects.toThrow(ValidationError);
-	});
-
-	test("throws ValidationError when only flags are provided (no agent name)", async () => {
-		const { deps } = makeDeps();
-		await expect(stopCommand(["--json"], deps)).rejects.toThrow(ValidationError);
+		await expect(stopCommand("", {}, deps)).rejects.toThrow(ValidationError);
 	});
 
 	test("throws AgentError when agent not found", async () => {
 		const { deps } = makeDeps();
-		await expect(stopCommand(["nonexistent-agent"], deps)).rejects.toThrow(AgentError);
+		await expect(stopCommand("nonexistent-agent", {}, deps)).rejects.toThrow(AgentError);
 	});
 
 	test("throws AgentError when agent is already completed", async () => {
@@ -245,8 +223,8 @@ describe("stopCommand validation", () => {
 		saveSessionsToDb([session]);
 
 		const { deps } = makeDeps();
-		await expect(stopCommand(["my-builder"], deps)).rejects.toThrow(AgentError);
-		await expect(stopCommand(["my-builder"], deps)).rejects.toThrow(/already completed/);
+		await expect(stopCommand("my-builder", {}, deps)).rejects.toThrow(AgentError);
+		await expect(stopCommand("my-builder", {}, deps)).rejects.toThrow(/already completed/);
 	});
 
 	test("throws AgentError when agent is already zombie", async () => {
@@ -254,8 +232,8 @@ describe("stopCommand validation", () => {
 		saveSessionsToDb([session]);
 
 		const { deps } = makeDeps();
-		await expect(stopCommand(["my-builder"], deps)).rejects.toThrow(AgentError);
-		await expect(stopCommand(["my-builder"], deps)).rejects.toThrow(/zombie/);
+		await expect(stopCommand("my-builder", {}, deps)).rejects.toThrow(AgentError);
+		await expect(stopCommand("my-builder", {}, deps)).rejects.toThrow(/zombie/);
 	});
 });
 
@@ -265,7 +243,7 @@ describe("stopCommand stop behavior", () => {
 		saveSessionsToDb([session]);
 
 		const { deps, tmuxCalls } = makeDeps({ [session.tmuxSession]: true });
-		const output = await captureStdout(() => stopCommand(["my-builder"], deps));
+		const output = await captureStdout(() => stopCommand("my-builder", {}, deps));
 
 		expect(output).toContain(`Agent "my-builder" stopped`);
 		expect(output).toContain(`Tmux session killed: ${session.tmuxSession}`);
@@ -284,7 +262,7 @@ describe("stopCommand stop behavior", () => {
 		saveSessionsToDb([session]);
 
 		const { deps, tmuxCalls } = makeDeps({ [session.tmuxSession]: true });
-		await stopCommand(["my-builder"], deps);
+		await stopCommand("my-builder", {}, deps);
 
 		expect(tmuxCalls.killSession).toHaveLength(1);
 		const { store } = openSessionStore(overstoryDir);
@@ -298,7 +276,7 @@ describe("stopCommand stop behavior", () => {
 		saveSessionsToDb([session]);
 
 		const { deps, tmuxCalls } = makeDeps({ [session.tmuxSession]: true });
-		await stopCommand(["my-builder"], deps);
+		await stopCommand("my-builder", {}, deps);
 
 		expect(tmuxCalls.killSession).toHaveLength(1);
 		const { store } = openSessionStore(overstoryDir);
@@ -313,7 +291,7 @@ describe("stopCommand stop behavior", () => {
 
 		// tmux session is NOT alive
 		const { deps, tmuxCalls } = makeDeps({ [session.tmuxSession]: false });
-		const output = await captureStdout(() => stopCommand(["my-builder"], deps));
+		const output = await captureStdout(() => stopCommand("my-builder", {}, deps));
 
 		expect(output).toContain("Tmux session was already dead");
 		expect(tmuxCalls.killSession).toHaveLength(0);
@@ -332,7 +310,7 @@ describe("stopCommand --json output", () => {
 		saveSessionsToDb([session]);
 
 		const { deps } = makeDeps({ [session.tmuxSession]: true });
-		const output = await captureStdout(() => stopCommand(["my-builder", "--json"], deps));
+		const output = await captureStdout(() => stopCommand("my-builder", { json: true }, deps));
 
 		const parsed = JSON.parse(output.trim()) as Record<string, unknown>;
 		expect(parsed.stopped).toBe(true);
@@ -350,7 +328,7 @@ describe("stopCommand --json output", () => {
 
 		const { deps } = makeDeps({ [session.tmuxSession]: true });
 		const output = await captureStdout(() =>
-			stopCommand(["my-builder", "--json", "--force"], deps),
+			stopCommand("my-builder", { json: true, force: true }, deps),
 		);
 
 		const parsed = JSON.parse(output.trim()) as Record<string, unknown>;
@@ -364,7 +342,9 @@ describe("stopCommand --clean-worktree", () => {
 		saveSessionsToDb([session]);
 
 		const { deps, worktreeCalls } = makeDeps({ [session.tmuxSession]: true });
-		const output = await captureStdout(() => stopCommand(["my-builder", "--clean-worktree"], deps));
+		const output = await captureStdout(() =>
+			stopCommand("my-builder", { cleanWorktree: true }, deps),
+		);
 
 		expect(output).toContain(`Worktree removed: ${session.worktreePath}`);
 		expect(worktreeCalls.remove).toHaveLength(1);
@@ -376,7 +356,9 @@ describe("stopCommand --clean-worktree", () => {
 		saveSessionsToDb([session]);
 
 		const { deps, worktreeCalls } = makeDeps({ [session.tmuxSession]: true });
-		await captureStdout(() => stopCommand(["my-builder", "--clean-worktree", "--force"], deps));
+		await captureStdout(() =>
+			stopCommand("my-builder", { cleanWorktree: true, force: true }, deps),
+		);
 
 		expect(worktreeCalls.remove).toHaveLength(1);
 		expect(worktreeCalls.remove[0]?.options?.force).toBe(true);
@@ -389,7 +371,7 @@ describe("stopCommand --clean-worktree", () => {
 
 		const { deps } = makeDeps({ [session.tmuxSession]: true }, { shouldFail: true });
 		const { stderr, stdout } = await captureStderr(() =>
-			stopCommand(["my-builder", "--clean-worktree"], deps),
+			stopCommand("my-builder", { cleanWorktree: true }, deps),
 		);
 
 		// Agent was still stopped
@@ -410,7 +392,7 @@ describe("stopCommand --clean-worktree", () => {
 
 		const { deps } = makeDeps({ [session.tmuxSession]: true }, { shouldFail: true });
 		const { stdout } = await captureStderr(() =>
-			stopCommand(["my-builder", "--clean-worktree", "--json"], deps),
+			stopCommand("my-builder", { cleanWorktree: true, json: true }, deps),
 		);
 
 		const parsed = JSON.parse(stdout.trim()) as Record<string, unknown>;

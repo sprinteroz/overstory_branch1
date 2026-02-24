@@ -514,6 +514,10 @@ export async function writeOverstoryReadme(overstoryPath: string): Promise<void>
 	await Bun.write(readmePath, OVERSTORY_README);
 }
 
+export interface InitOptions {
+	force?: boolean;
+}
+
 /**
  * Print a success status line.
  */
@@ -526,23 +530,10 @@ function printCreated(relativePath: string): void {
  *
  * Scaffolds the .overstory/ directory structure in the current working directory.
  *
- * @param args - CLI arguments after "init" subcommand
+ * @param opts - Command options
  */
-const INIT_HELP = `overstory init — Initialize .overstory/ in current project
-
-Usage: overstory init [--force]
-
-Options:
-  --force      Reinitialize even if .overstory/ already exists
-  --help, -h   Show this help`;
-
-export async function initCommand(args: string[]): Promise<void> {
-	if (args.includes("--help") || args.includes("-h")) {
-		process.stdout.write(`${INIT_HELP}\n`);
-		return;
-	}
-
-	const force = args.includes("--force");
+export async function initCommand(opts: InitOptions): Promise<void> {
+	const force = opts.force ?? false;
 	const projectRoot = process.cwd();
 	const overstoryPath = join(projectRoot, OVERSTORY_DIR);
 

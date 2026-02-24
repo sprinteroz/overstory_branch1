@@ -15,6 +15,12 @@ import { openSessionStore } from "../sessions/compat.ts";
 import { removeWorktree } from "../worktree/manager.ts";
 import { isSessionAlive, killSession } from "../worktree/tmux.ts";
 
+export interface StopOptions {
+	force?: boolean;
+	cleanWorktree?: boolean;
+	json?: boolean;
+}
+
 /** Dependency injection for testing. Uses real implementations when omitted. */
 export interface StopDeps {
 	_tmux?: {
@@ -30,49 +36,28 @@ export interface StopDeps {
 	};
 }
 
-const STOP_HELP = `overstory stop — Terminate a running agent
-
-Usage: overstory stop <agent-name> [flags]
-
-Arguments:
-  <agent-name>          Name of the agent to stop
-
-Options:
-  --force               Force kill and force-delete branch when cleaning worktree
-  --clean-worktree      Remove the agent's worktree after stopping
-  --json                Output as JSON
-  --help, -h            Show this help
-
-Examples:
-  overstory stop my-builder
-  overstory stop my-builder --clean-worktree
-  overstory stop my-builder --clean-worktree --force
-  overstory stop my-builder --json`;
-
 /**
  * Entry point for `overstory stop <agent-name>`.
  *
- * @param args - CLI arguments after "stop"
+ * @param agentName - Name of the agent to stop
+ * @param opts - Command options
  * @param deps - Optional dependency injection for testing (tmux, worktree)
  */
-export async function stopCommand(args: string[], deps: StopDeps = {}): Promise<void> {
-	if (args.includes("--help") || args.includes("-h")) {
-		process.stdout.write(`${STOP_HELP}\n`);
-		return;
-	}
-
-	const json = args.includes("--json");
-	const force = args.includes("--force");
-	const cleanWorktree = args.includes("--clean-worktree");
-
-	// First non-flag arg is the agent name
-	const agentName = args.find((a) => !a.startsWith("-"));
-	if (!agentName) {
+export async function stopCommand(
+	agentName: string,
+	opts: StopOptions,
+	deps: StopDeps = {},
+): Promise<void> {
+	if (!agentName || agentName.trim().length === 0) {
 		throw new ValidationError("Missing required argument: <agent-name>", {
 			field: "agentName",
 			value: "",
 		});
 	}
+
+	const json = opts.json ?? false;
+	const force = opts.force ?? false;
+	const cleanWorktree = opts.cleanWorktree ?? false;
 
 	const tmux = deps._tmux ?? { isSessionAlive, killSession };
 	const worktree = deps._worktree ?? { remove: removeWorktree };

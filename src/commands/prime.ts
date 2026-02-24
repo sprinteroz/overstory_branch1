@@ -12,7 +12,6 @@ import { loadCheckpoint } from "../agents/checkpoint.ts";
 import { loadIdentity } from "../agents/identity.ts";
 import { createManifestLoader } from "../agents/manifest.ts";
 import { loadConfig } from "../config.ts";
-import { AgentError } from "../errors.ts";
 import { createMetricsStore } from "../metrics/store.ts";
 import { createMulchClient } from "../mulch/client.ts";
 import { openSessionStore } from "../sessions/compat.ts";
@@ -35,32 +34,9 @@ const OVERSTORY_GITIGNORE = `# Wildcard+whitelist: ignore everything, whitelist 
 !agent-defs/
 `;
 
-/**
- * Parse CLI flags from the args array.
- *
- * Supports:
- * - `--agent <name>` — Prime for a specific agent
- * - `--compact` — Output reduced context
- */
-function parseArgs(args: string[]): { agentName: string | null; compact: boolean } {
-	let agentName: string | null = null;
-	let compact = false;
-
-	for (let i = 0; i < args.length; i++) {
-		const arg = args[i];
-		if (arg === "--agent") {
-			const next = args[i + 1];
-			if (next === undefined || next.startsWith("--")) {
-				throw new AgentError("--agent requires a name argument");
-			}
-			agentName = next;
-			i++; // Skip the value
-		} else if (arg === "--compact") {
-			compact = true;
-		}
-	}
-
-	return { agentName, compact };
+export interface PrimeOptions {
+	agent?: string;
+	compact?: boolean;
 }
 
 /**
@@ -156,24 +132,11 @@ async function healGitignore(overstoryDir: string): Promise<void> {
  * Gathers project state and outputs context to stdout for injection
  * into Claude Code's context.
  *
- * @param args - CLI arguments after "prime" subcommand
+ * @param opts - Command options
  */
-const PRIME_HELP = `overstory prime — Load context for orchestrator/agent
-
-Usage: overstory prime [--agent <name>] [--compact]
-
-Options:
-  --agent <name>   Prime for a specific agent (default: orchestrator)
-  --compact        Output reduced context (for PreCompact hook)
-  --help, -h       Show this help`;
-
-export async function primeCommand(args: string[]): Promise<void> {
-	if (args.includes("--help") || args.includes("-h")) {
-		process.stdout.write(`${PRIME_HELP}\n`);
-		return;
-	}
-
-	const { agentName, compact } = parseArgs(args);
+export async function primeCommand(opts: PrimeOptions): Promise<void> {
+	const agentName = opts.agent ?? null;
+	const compact = opts.compact ?? false;
 
 	// 1. Load config
 	const config = await loadConfig(process.cwd());

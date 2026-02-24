@@ -32,7 +32,7 @@ import { primeCommand } from "./commands/prime.ts";
 import { replayCommand } from "./commands/replay.ts";
 import { runCommand } from "./commands/run.ts";
 import { slingCommand } from "./commands/sling.ts";
-import { specCommand } from "./commands/spec.ts";
+import { specWriteCommand } from "./commands/spec.ts";
 import { statusCommand } from "./commands/status.ts";
 import { stopCommand } from "./commands/stop.ts";
 import { supervisorCommand } from "./commands/supervisor.ts";
@@ -123,7 +123,7 @@ program
 // Apply global flags before any command action runs
 program.hook("preAction", (thisCmd) => {
 	const opts = thisCmd.optsWithGlobals();
-	if (opts["quiet"]) {
+	if (opts.quiet) {
 		setQuiet(true);
 	}
 });
@@ -140,46 +140,63 @@ program
 program
 	.command("init")
 	.description("Initialize .overstory/ in current project")
-	.allowUnknownOption()
-	.allowExcessArguments()
-	.action(async (_opts, cmd) => {
-		await initCommand(cmd.args);
+	.option("--force", "Reinitialize even if .overstory/ already exists")
+	.action(async (opts) => {
+		await initCommand(opts);
 	});
 
 program
 	.command("sling")
 	.description("Spawn a worker agent")
-	.allowUnknownOption()
-	.allowExcessArguments()
-	.action(async (_opts, cmd) => {
-		await slingCommand(cmd.args);
+	.argument("<task-id>", "Task ID to assign")
+	.option(
+		"--capability <type>",
+		"Agent type: builder | scout | reviewer | lead | merger",
+		"builder",
+	)
+	.option("--name <name>", "Unique agent name")
+	.option("--spec <path>", "Path to task spec file")
+	.option("--files <list>", "Exclusive file scope (comma-separated)")
+	.option("--parent <agent>", "Parent agent for hierarchy tracking")
+	.option("--depth <n>", "Current hierarchy depth", "0")
+	.option("--skip-scout", "Skip scout phase for lead agents")
+	.option("--skip-task-check", "Skip task existence validation")
+	.option("--force-hierarchy", "Bypass hierarchy validation")
+	.option("--json", "Output result as JSON")
+	.action(async (taskId, opts) => {
+		await slingCommand(taskId, opts);
 	});
 
-program
-	.command("spec")
-	.description("Manage task specs (write)")
-	.allowUnknownOption()
-	.allowExcessArguments()
-	.action(async (_opts, cmd) => {
-		await specCommand(cmd.args);
+const specCmd = program.command("spec").description("Manage task specifications");
+
+specCmd
+	.command("write")
+	.description("Write a spec file to .overstory/specs/<bead-id>.md")
+	.argument("<bead-id>", "Task ID for the spec file")
+	.option("--body <content>", "Spec content (or pipe via stdin)")
+	.option("--agent <name>", "Agent writing the spec (for attribution)")
+	.action(async (beadId, opts) => {
+		await specWriteCommand(beadId, opts);
 	});
 
 program
 	.command("prime")
 	.description("Load context for orchestrator/agent")
-	.allowUnknownOption()
-	.allowExcessArguments()
-	.action(async (_opts, cmd) => {
-		await primeCommand(cmd.args);
+	.option("--agent <name>", "Prime for a specific agent")
+	.option("--compact", "Output reduced context (for PreCompact hook)")
+	.action(async (opts) => {
+		await primeCommand(opts);
 	});
 
 program
 	.command("stop")
 	.description("Terminate a running agent")
-	.allowUnknownOption()
-	.allowExcessArguments()
-	.action(async (_opts, cmd) => {
-		await stopCommand(cmd.args);
+	.argument("<agent-name>", "Name of the agent to stop")
+	.option("--force", "Force kill and force-delete branch")
+	.option("--clean-worktree", "Remove the agent's worktree after stopping")
+	.option("--json", "Output as JSON")
+	.action(async (agentName, opts) => {
+		await stopCommand(agentName, opts);
 	});
 
 program
@@ -212,10 +229,18 @@ program
 program
 	.command("clean")
 	.description("Wipe runtime state (nuclear cleanup)")
-	.allowUnknownOption()
-	.allowExcessArguments()
-	.action(async (_opts, cmd) => {
-		await cleanCommand(cmd.args);
+	.option("--all", "Wipe everything (nuclear option)")
+	.option("--mail", "Delete mail.db")
+	.option("--sessions", "Wipe sessions.db")
+	.option("--metrics", "Delete metrics.db")
+	.option("--logs", "Remove all agent logs")
+	.option("--worktrees", "Remove all worktrees + kill tmux sessions")
+	.option("--branches", "Delete all overstory/* branch refs")
+	.option("--agents", "Remove agent identity files")
+	.option("--specs", "Remove task spec files")
+	.option("--json", "Output as JSON")
+	.action(async (opts) => {
+		await cleanCommand(opts);
 	});
 
 program
@@ -278,10 +303,13 @@ program
 program
 	.command("merge")
 	.description("Merge agent branches into canonical")
-	.allowUnknownOption()
-	.allowExcessArguments()
-	.action(async (_opts, cmd) => {
-		await mergeCommand(cmd.args);
+	.option("--branch <name>", "Merge a specific branch")
+	.option("--all", "Merge all pending branches in the queue")
+	.option("--into <branch>", "Target branch to merge into")
+	.option("--dry-run", "Check for conflicts without actually merging")
+	.option("--json", "Output results as JSON")
+	.action(async (opts) => {
+		await mergeCommand(opts);
 	});
 
 program

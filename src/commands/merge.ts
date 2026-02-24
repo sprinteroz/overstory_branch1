@@ -19,21 +19,12 @@ import { createMergeResolver } from "../merge/resolver.ts";
 import { createMulchClient } from "../mulch/client.ts";
 import type { MergeEntry, MergeResult } from "../types.ts";
 
-/**
- * Parse a named flag value from an args array.
- * Returns the value after the flag, or undefined if not present.
- */
-function getFlag(args: string[], flag: string): string | undefined {
-	const idx = args.indexOf(flag);
-	if (idx === -1 || idx + 1 >= args.length) {
-		return undefined;
-	}
-	return args[idx + 1];
-}
-
-/** Check if a boolean flag is present in the args. */
-function hasFlag(args: string[], flag: string): boolean {
-	return args.includes(flag);
+export interface MergeOptions {
+	branch?: string;
+	all?: boolean;
+	into?: string;
+	dryRun?: boolean;
+	json?: boolean;
 }
 
 /**
@@ -135,35 +126,14 @@ function formatDryRun(entry: MergeEntry): string {
 /**
  * Entry point for `overstory merge [flags]`.
  *
- * Flags:
- *   --branch <name>  Merge a specific branch
- *   --all            Merge all pending branches in the queue
- *   --dry-run        Check for conflicts without actually merging
- *   --json           Output results as JSON
+ * @param opts - Command options
  */
-const MERGE_HELP = `overstory merge — Merge agent branches into canonical
-
-Usage: overstory merge --branch <name> | --all [--into <branch>] [--dry-run] [--json]
-
-Options:
-  --branch <name>   Merge a specific branch
-  --all             Merge all pending branches in the queue
-  --into <branch>   Target branch to merge into (default: config canonicalBranch)
-  --dry-run         Check for conflicts without actually merging
-  --json            Output results as JSON
-  --help, -h        Show this help`;
-
-export async function mergeCommand(args: string[]): Promise<void> {
-	if (args.includes("--help") || args.includes("-h")) {
-		process.stdout.write(`${MERGE_HELP}\n`);
-		return;
-	}
-
-	const branchName = getFlag(args, "--branch");
-	const all = hasFlag(args, "--all");
-	const into = getFlag(args, "--into");
-	const dryRun = hasFlag(args, "--dry-run");
-	const json = hasFlag(args, "--json");
+export async function mergeCommand(opts: MergeOptions): Promise<void> {
+	const branchName = opts.branch;
+	const all = opts.all ?? false;
+	const into = opts.into;
+	const dryRun = opts.dryRun ?? false;
+	const json = opts.json ?? false;
 
 	if (!branchName && !all) {
 		throw new ValidationError("Either --branch <name> or --all is required for overstory merge", {

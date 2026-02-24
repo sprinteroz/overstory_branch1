@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { cleanupTempDir, createTempGitRepo } from "../test-helpers.ts";
-import { specCommand, writeSpec } from "./spec.ts";
+import { specWriteCommand, writeSpec } from "./spec.ts";
 
 let tempDir: string;
 let overstoryDir: string;
@@ -55,47 +55,21 @@ afterEach(async () => {
 	await cleanupTempDir(tempDir);
 });
 
-// === help ===
-
-describe("help", () => {
-	test("--help shows usage", async () => {
-		await specCommand(["--help"]);
-		expect(stdoutOutput).toContain("overstory spec");
-		expect(stdoutOutput).toContain("write");
-		expect(stdoutOutput).toContain("--body");
-		expect(stdoutOutput).toContain("--agent");
-	});
-
-	test("-h shows usage", async () => {
-		await specCommand(["-h"]);
-		expect(stdoutOutput).toContain("overstory spec");
-	});
-
-	test("no args shows help", async () => {
-		await specCommand([]);
-		expect(stdoutOutput).toContain("overstory spec");
-	});
-});
-
 // === validation ===
 
 describe("validation", () => {
-	test("unknown subcommand throws ValidationError", async () => {
-		await expect(specCommand(["unknown"])).rejects.toThrow("Unknown spec subcommand");
-	});
-
 	test("write without bead-id throws ValidationError", async () => {
-		await expect(specCommand(["write"])).rejects.toThrow("Bead ID is required");
+		await expect(specWriteCommand("", {})).rejects.toThrow("Bead ID is required");
 	});
 
 	test("write without body throws ValidationError", async () => {
-		await expect(specCommand(["write", "task-abc", "--agent", "scout-1"])).rejects.toThrow(
+		await expect(specWriteCommand("task-abc", { agent: "scout-1" })).rejects.toThrow(
 			"Spec body is required",
 		);
 	});
 
 	test("write with empty body throws ValidationError", async () => {
-		await expect(specCommand(["write", "task-abc", "--body", "  "])).rejects.toThrow(
+		await expect(specWriteCommand("task-abc", { body: "  " })).rejects.toThrow(
 			"Spec body is required",
 		);
 	});
@@ -165,11 +139,11 @@ describe("writeSpec", () => {
 	});
 });
 
-// === specCommand (CLI integration) ===
+// === specWriteCommand (CLI integration) ===
 
-describe("specCommand write", () => {
+describe("specWriteCommand (integration)", () => {
 	test("writes spec and prints path", async () => {
-		await specCommand(["write", "task-cmd", "--body", "# CLI Spec"]);
+		await specWriteCommand("task-cmd", { body: "# CLI Spec" });
 
 		// Path may differ due to macOS /var -> /private/var symlink resolution
 		expect(stdoutOutput.trim()).toContain(".overstory/specs/task-cmd.md");
@@ -180,7 +154,7 @@ describe("specCommand write", () => {
 	});
 
 	test("writes spec with agent attribution", async () => {
-		await specCommand(["write", "task-attr", "--body", "# Attributed", "--agent", "scout-2"]);
+		await specWriteCommand("task-attr", { body: "# Attributed", agent: "scout-2" });
 
 		expect(stdoutOutput.trim()).toContain(".overstory/specs/task-attr.md");
 
@@ -190,14 +164,14 @@ describe("specCommand write", () => {
 		expect(content).toContain("# Attributed");
 	});
 
-	test("flags can appear in any order", async () => {
-		await specCommand(["write", "--agent", "scout-3", "--body", "# Content", "task-order"]);
+	test("writes spec without agent when agent is omitted", async () => {
+		await specWriteCommand("task-noagent", { body: "# No Agent" });
 
-		expect(stdoutOutput.trim()).toContain(".overstory/specs/task-order.md");
+		expect(stdoutOutput.trim()).toContain(".overstory/specs/task-noagent.md");
 
 		const specPath = stdoutOutput.trim();
 		const content = await Bun.file(specPath).text();
-		expect(content).toContain("<!-- written-by: scout-3 -->");
-		expect(content).toContain("# Content");
+		expect(content).not.toContain("written-by");
+		expect(content).toBe("# No Agent\n");
 	});
 });

@@ -12,42 +12,9 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { ValidationError } from "../errors.ts";
 
-/** Boolean flags that do NOT consume the next arg. */
-const BOOLEAN_FLAGS = new Set(["--help", "-h"]);
-
-/**
- * Parse a named flag value from args.
- */
-function getFlag(args: string[], flag: string): string | undefined {
-	const idx = args.indexOf(flag);
-	if (idx === -1 || idx + 1 >= args.length) {
-		return undefined;
-	}
-	return args[idx + 1];
-}
-
-/**
- * Extract positional arguments, skipping flag-value pairs.
- */
-function getPositionalArgs(args: string[]): string[] {
-	const positional: string[] = [];
-	let i = 0;
-	while (i < args.length) {
-		const arg = args[i];
-		if (arg?.startsWith("-")) {
-			if (BOOLEAN_FLAGS.has(arg)) {
-				i += 1;
-			} else {
-				i += 2;
-			}
-		} else {
-			if (arg !== undefined) {
-				positional.push(arg);
-			}
-			i += 1;
-		}
-	}
-	return positional;
+export interface SpecWriteOptions {
+	body?: string;
+	agent?: string;
 }
 
 /**
@@ -61,23 +28,6 @@ async function readStdin(): Promise<string> {
 	}
 	return await new Response(Bun.stdin.stream()).text();
 }
-
-const SPEC_HELP = `overstory spec -- Manage task specifications
-
-Usage: overstory spec <subcommand> [args...]
-
-Subcommands:
-  write <bead-id>          Write a spec file to .overstory/specs/<bead-id>.md
-
-Options for 'write':
-  --body <content>         Spec content (or pipe via stdin)
-  --agent <name>           Agent writing the spec (for attribution)
-  --help, -h               Show this help
-
-Examples:
-  overstory spec write task-abc --body "# Spec\\nDetails here..."
-  echo "# Spec" | overstory spec write task-abc
-  overstory spec write task-abc --body "..." --agent scout-1`;
 
 /**
  * Write a spec file to .overstory/specs/<bead-id>.md.
@@ -112,57 +62,38 @@ export async function writeSpec(
 }
 
 /**
- * Entry point for `overstory spec <subcommand>`.
+ * Entry point for `overstory spec write <bead-id> [flags]`.
+ *
+ * @param beadId - The bead/task ID for the spec file
+ * @param opts - Command options
  */
-export async function specCommand(args: string[]): Promise<void> {
-	if (args.includes("--help") || args.includes("-h") || args.length === 0) {
-		process.stdout.write(`${SPEC_HELP}\n`);
-		return;
+export async function specWriteCommand(beadId: string, opts: SpecWriteOptions): Promise<void> {
+	if (!beadId || beadId.trim().length === 0) {
+		throw new ValidationError(
+			"Bead ID is required: overstory spec write <bead-id> --body <content>",
+			{ field: "beadId" },
+		);
 	}
 
-	const subcommand = args[0];
-	const subArgs = args.slice(1);
+	let body = opts.body;
 
-	switch (subcommand) {
-		case "write": {
-			const positional = getPositionalArgs(subArgs);
-			const beadId = positional[0];
-			if (!beadId || beadId.trim().length === 0) {
-				throw new ValidationError(
-					"Bead ID is required: overstory spec write <bead-id> --body <content>",
-					{ field: "beadId" },
-				);
-			}
-
-			const agent = getFlag(subArgs, "--agent");
-			let body = getFlag(subArgs, "--body");
-
-			// If no --body flag, try reading from stdin
-			if (body === undefined) {
-				const stdinContent = await readStdin();
-				if (stdinContent.trim().length > 0) {
-					body = stdinContent;
-				}
-			}
-
-			if (body === undefined || body.trim().length === 0) {
-				throw new ValidationError("Spec body is required: use --body <content> or pipe via stdin", {
-					field: "body",
-				});
-			}
-
-			const { resolveProjectRoot } = await import("../config.ts");
-			const projectRoot = await resolveProjectRoot(process.cwd());
-
-			const specPath = await writeSpec(projectRoot, beadId, body, agent);
-			process.stdout.write(`${specPath}\n`);
-			break;
+	// If no --body flag, try reading from stdin
+	if (body === undefined) {
+		const stdinContent = await readStdin();
+		if (stdinContent.trim().length > 0) {
+			body = stdinContent;
 		}
-
-		default:
-			throw new ValidationError(
-				`Unknown spec subcommand: ${subcommand}. Run 'overstory spec --help' for usage.`,
-				{ field: "subcommand", value: subcommand },
-			);
 	}
+
+	if (body === undefined || body.trim().length === 0) {
+		throw new ValidationError("Spec body is required: use --body <content> or pipe via stdin", {
+			field: "body",
+		});
+	}
+
+	const { resolveProjectRoot } = await import("../config.ts");
+	const projectRoot = await resolveProjectRoot(process.cwd());
+
+	const specPath = await writeSpec(projectRoot, beadId, body, opts.agent);
+	process.stdout.write(`${specPath}\n`);
 }

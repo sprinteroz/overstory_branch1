@@ -66,41 +66,9 @@ describe("primeCommand", () => {
 		return stderrChunks.join("");
 	}
 
-	describe("Help", () => {
-		test("--help shows help text", async () => {
-			await primeCommand(["--help"]);
-			const out = output();
-
-			expect(out).toContain("overstory prime");
-			expect(out).toContain("--agent");
-			expect(out).toContain("--compact");
-		});
-
-		test("-h shows help text", async () => {
-			await primeCommand(["-h"]);
-			const out = output();
-
-			expect(out).toContain("overstory prime");
-			expect(out).toContain("--agent");
-			expect(out).toContain("--compact");
-		});
-	});
-
-	describe("parseArgs validation", () => {
-		test("--agent without a name throws AgentError", async () => {
-			await expect(primeCommand(["--agent"])).rejects.toThrow("--agent requires a name argument");
-		});
-
-		test("--agent followed by another flag throws AgentError", async () => {
-			await expect(primeCommand(["--agent", "--compact"])).rejects.toThrow(
-				"--agent requires a name argument",
-			);
-		});
-	});
-
 	describe("Orchestrator priming (no --agent flag)", () => {
 		test("default prime outputs project context", async () => {
-			await primeCommand([]);
+			await primeCommand({});
 			const out = output();
 
 			expect(out).toContain("# Overstory Context");
@@ -111,7 +79,7 @@ describe("primeCommand", () => {
 		});
 
 		test("includes agent manifest section", async () => {
-			await primeCommand([]);
+			await primeCommand({});
 			const out = output();
 
 			expect(out).toContain("## Agent Manifest");
@@ -120,7 +88,7 @@ describe("primeCommand", () => {
 		});
 
 		test("without metrics.db shows no recent sessions message", async () => {
-			await primeCommand([]);
+			await primeCommand({});
 			const out = output();
 
 			expect(out).toContain("## Recent Activity");
@@ -128,7 +96,7 @@ describe("primeCommand", () => {
 		});
 
 		test("--compact skips Recent Activity and Expertise sections", async () => {
-			await primeCommand(["--compact"]);
+			await primeCommand({ compact: true });
 			const out = output();
 
 			// Should still have project basics
@@ -143,7 +111,7 @@ describe("primeCommand", () => {
 
 	describe("Agent priming (--agent <name>)", () => {
 		test("unknown agent outputs basic context and warns", async () => {
-			await primeCommand(["--agent", "unknown-agent"]);
+			await primeCommand({ agent: "unknown-agent" });
 			const out = output();
 			const err = stderr();
 
@@ -172,7 +140,7 @@ recentTasks:
 `,
 			);
 
-			await primeCommand(["--agent", "my-builder"]);
+			await primeCommand({ agent: "my-builder" });
 			const out = output();
 
 			expect(out).toContain("# Agent Context: my-builder");
@@ -212,7 +180,7 @@ recentTasks:
 				`${JSON.stringify(sessions, null, 2)}\n`,
 			);
 
-			await primeCommand(["--agent", "active-builder"]);
+			await primeCommand({ agent: "active-builder" });
 			const out = output();
 
 			expect(out).toContain("# Agent Context: active-builder");
@@ -249,7 +217,7 @@ recentTasks:
 				`${JSON.stringify(sessions, null, 2)}\n`,
 			);
 
-			await primeCommand(["--agent", "completed-builder"]);
+			await primeCommand({ agent: "completed-builder" });
 			const out = output();
 
 			expect(out).toContain("# Agent Context: completed-builder");
@@ -291,7 +259,7 @@ recentTasks: []
 `,
 			);
 
-			await primeCommand(["--agent", "recovery-agent", "--compact"]);
+			await primeCommand({ agent: "recovery-agent", compact: true });
 			const out = output();
 
 			expect(out).toContain("# Agent Context: recovery-agent");
@@ -317,7 +285,7 @@ recentTasks: []
 `,
 			);
 
-			await primeCommand(["--agent", "compact-agent", "--compact"]);
+			await primeCommand({ agent: "compact-agent", compact: true });
 			const out = output();
 
 			expect(out).toContain("# Agent Context: compact-agent");
@@ -340,7 +308,7 @@ recentTasks: []
 				// Save and change cwd to the git repo
 				process.chdir(gitRepoDir);
 
-				await primeCommand([]);
+				await primeCommand({});
 				const out = output();
 
 				expect(out).toContain("# Overstory Context");
@@ -375,7 +343,7 @@ recentTasks: []
 
 				process.chdir(gitRepoDir);
 
-				await primeCommand([]);
+				await primeCommand({});
 				const out = output();
 
 				expect(out).toContain("Session branch: feature/my-work (merge target)");
@@ -412,7 +380,7 @@ recentTasks: []
 			expect(existsBefore).toBe(false);
 
 			// Run primeCommand
-			await primeCommand([]);
+			await primeCommand({});
 
 			// Verify .gitignore was created with correct content
 			const content = await Bun.file(gitignorePath).text();
@@ -435,7 +403,7 @@ sessions.db
 			expect(contentBefore).toBe(staleContent);
 
 			// Run primeCommand
-			await primeCommand([]);
+			await primeCommand({});
 
 			// Verify .gitignore now has the wildcard+whitelist content
 			const contentAfter = await Bun.file(gitignorePath).text();
@@ -455,7 +423,7 @@ sessions.db
 			await new Promise((resolve) => setTimeout(resolve, 10));
 
 			// Run primeCommand
-			await primeCommand([]);
+			await primeCommand({});
 
 			// Verify content is still correct
 			const contentAfter = await Bun.file(gitignorePath).text();

@@ -31,8 +31,17 @@ import type { AgentSession, MulchDoctorResult, MulchPruneResult, MulchStatus } f
 import { listWorktrees, removeWorktree } from "../worktree/manager.ts";
 import { killSession, listSessions } from "../worktree/tmux.ts";
 
-function hasFlag(args: string[], flag: string): boolean {
-	return args.includes(flag);
+export interface CleanOptions {
+	all?: boolean;
+	mail?: boolean;
+	sessions?: boolean;
+	metrics?: boolean;
+	logs?: boolean;
+	worktrees?: boolean;
+	branches?: boolean;
+	agents?: boolean;
+	specs?: boolean;
+	json?: boolean;
 }
 
 /**
@@ -384,53 +393,23 @@ async function checkMulchHealth(repoRoot: string): Promise<{
 	}
 }
 
-const CLEAN_HELP = `overstory clean — Wipe runtime state (nuclear cleanup)
+/**
+ * Entry point for `overstory clean [flags]`.
+ *
+ * @param opts - Command options
+ */
+export async function cleanCommand(opts: CleanOptions): Promise<void> {
+	const json = opts.json ?? false;
+	const all = opts.all ?? false;
 
-Usage: overstory clean [flags]
-
-Flags:
-  --all           Wipe everything (nuclear option)
-  --mail          Delete mail.db (all messages)
-  --sessions      Wipe sessions.db
-  --metrics       Delete metrics.db
-  --logs          Remove all agent logs
-  --worktrees     Remove all worktrees + kill tmux sessions
-  --branches      Delete all overstory/* branch refs
-  --agents        Remove agent identity files
-  --specs         Remove task spec files
-
-Options:
-  --json          Output as JSON
-  --help, -h      Show this help
-
-When --all is passed, ALL of the above are executed in safe order:
-  0. Run mulch health checks (informational, non-destructive):
-     - Check domains approaching governance limits (warn threshold: 400 records)
-     - Run mulch prune --dry-run (report stale record counts)
-     - Run mulch doctor (report health issues)
-  1. Kill all overstory tmux sessions (processes first)
-  2. Remove all worktrees
-  3. Delete orphaned branch refs
-  4. Wipe mail.db, metrics.db, sessions.db, merge-queue.db
-  5. Clear logs, agents, specs, nudge state`;
-
-export async function cleanCommand(args: string[]): Promise<void> {
-	if (hasFlag(args, "--help") || hasFlag(args, "-h")) {
-		process.stdout.write(`${CLEAN_HELP}\n`);
-		return;
-	}
-
-	const json = hasFlag(args, "--json");
-	const all = hasFlag(args, "--all");
-
-	const doWorktrees = all || hasFlag(args, "--worktrees");
-	const doBranches = all || hasFlag(args, "--branches");
-	const doMail = all || hasFlag(args, "--mail");
-	const doSessions = all || hasFlag(args, "--sessions");
-	const doMetrics = all || hasFlag(args, "--metrics");
-	const doLogs = all || hasFlag(args, "--logs");
-	const doAgents = all || hasFlag(args, "--agents");
-	const doSpecs = all || hasFlag(args, "--specs");
+	const doWorktrees = all || (opts.worktrees ?? false);
+	const doBranches = all || (opts.branches ?? false);
+	const doMail = all || (opts.mail ?? false);
+	const doSessions = all || (opts.sessions ?? false);
+	const doMetrics = all || (opts.metrics ?? false);
+	const doLogs = all || (opts.logs ?? false);
+	const doAgents = all || (opts.agents ?? false);
+	const doSpecs = all || (opts.specs ?? false);
 
 	const anySelected =
 		doWorktrees || doBranches || doMail || doSessions || doMetrics || doLogs || doAgents || doSpecs;

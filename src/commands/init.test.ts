@@ -47,7 +47,7 @@ describe("initCommand: agent-defs deployment", () => {
 	});
 
 	test("creates .overstory/agent-defs/ with all 8 agent definition files", async () => {
-		await initCommand([]);
+		await initCommand({});
 
 		const agentDefsDir = join(tempDir, ".overstory", "agent-defs");
 		const files = await readdir(agentDefsDir);
@@ -57,7 +57,7 @@ describe("initCommand: agent-defs deployment", () => {
 	});
 
 	test("copied files match source content", async () => {
-		await initCommand([]);
+		await initCommand({});
 
 		for (const fileName of AGENT_DEF_FILES) {
 			const sourcePath = join(SOURCE_AGENTS_DIR, fileName);
@@ -72,7 +72,7 @@ describe("initCommand: agent-defs deployment", () => {
 
 	test("--force reinit overwrites existing agent def files", async () => {
 		// First init
-		await initCommand([]);
+		await initCommand({});
 
 		// Tamper with one of the deployed files
 		const tamperPath = join(tempDir, ".overstory", "agent-defs", "scout.md");
@@ -83,7 +83,7 @@ describe("initCommand: agent-defs deployment", () => {
 		expect(tampered).toBe("# tampered content\n");
 
 		// Reinit with --force
-		await initCommand(["--force"]);
+		await initCommand({ force: true });
 
 		// Verify the file was overwritten with the original source
 		const sourceContent = await Bun.file(join(SOURCE_AGENTS_DIR, "scout.md")).text();
@@ -92,7 +92,7 @@ describe("initCommand: agent-defs deployment", () => {
 	});
 
 	test("Stop hook includes mulch learn command", async () => {
-		await initCommand([]);
+		await initCommand({});
 
 		const hooksPath = join(tempDir, ".overstory", "hooks.json");
 		const content = await Bun.file(hooksPath).text();
@@ -105,7 +105,7 @@ describe("initCommand: agent-defs deployment", () => {
 	});
 
 	test("PostToolUse hooks include Bash-matched mulch diff hook", async () => {
-		await initCommand([]);
+		await initCommand({});
 
 		const hooksPath = join(tempDir, ".overstory", "hooks.json");
 		const content = await Bun.file(hooksPath).text();
@@ -147,7 +147,7 @@ describe("initCommand: .overstory/.gitignore", () => {
 	});
 
 	test("creates .overstory/.gitignore with wildcard+whitelist model", async () => {
-		await initCommand([]);
+		await initCommand({});
 
 		const gitignorePath = join(tempDir, ".overstory", ".gitignore");
 		const content = await Bun.file(gitignorePath).text();
@@ -167,7 +167,7 @@ describe("initCommand: .overstory/.gitignore", () => {
 
 	test("gitignore is always written when init completes", async () => {
 		// Init should write gitignore
-		await initCommand([]);
+		await initCommand({});
 
 		const gitignorePath = join(tempDir, ".overstory", ".gitignore");
 		const content = await Bun.file(gitignorePath).text();
@@ -182,7 +182,7 @@ describe("initCommand: .overstory/.gitignore", () => {
 
 	test("--force reinit overwrites stale .overstory/.gitignore", async () => {
 		// First init
-		await initCommand([]);
+		await initCommand({});
 
 		const gitignorePath = join(tempDir, ".overstory", ".gitignore");
 
@@ -195,7 +195,7 @@ describe("initCommand: .overstory/.gitignore", () => {
 		expect(tampered).not.toContain("!.gitignore\n");
 
 		// Reinit with --force
-		await initCommand(["--force"]);
+		await initCommand({ force: true });
 
 		// Verify the file was overwritten with the new wildcard+whitelist format
 		const restored = await Bun.file(gitignorePath).text();
@@ -206,7 +206,7 @@ describe("initCommand: .overstory/.gitignore", () => {
 
 	test("subsequent init without --force does not overwrite gitignore", async () => {
 		// First init
-		await initCommand([]);
+		await initCommand({});
 
 		const gitignorePath = join(tempDir, ".overstory", ".gitignore");
 
@@ -218,7 +218,7 @@ describe("initCommand: .overstory/.gitignore", () => {
 		expect(tampered).toBe("# custom content\n");
 
 		// Second init without --force should return early (not overwrite)
-		await initCommand([]);
+		await initCommand({});
 
 		// Verify the file was NOT overwritten (early return prevented it)
 		const afterSecondInit = await Bun.file(gitignorePath).text();
@@ -248,7 +248,7 @@ describe("initCommand: .overstory/README.md", () => {
 	});
 
 	test("creates .overstory/README.md with expected content", async () => {
-		await initCommand([]);
+		await initCommand({});
 
 		const readmePath = join(tempDir, ".overstory", "README.md");
 		const exists = await Bun.file(readmePath).exists();
@@ -264,7 +264,7 @@ describe("initCommand: .overstory/README.md", () => {
 
 	test("--force reinit overwrites README.md", async () => {
 		// First init
-		await initCommand([]);
+		await initCommand({});
 
 		const readmePath = join(tempDir, ".overstory", "README.md");
 
@@ -274,7 +274,7 @@ describe("initCommand: .overstory/README.md", () => {
 		expect(tampered).toBe("# tampered\n");
 
 		// Reinit with --force
-		await initCommand(["--force"]);
+		await initCommand({ force: true });
 
 		// Verify restored to canonical content
 		const restored = await Bun.file(readmePath).text();
@@ -283,7 +283,7 @@ describe("initCommand: .overstory/README.md", () => {
 
 	test("subsequent init without --force does not overwrite README.md", async () => {
 		// First init
-		await initCommand([]);
+		await initCommand({});
 
 		const readmePath = join(tempDir, ".overstory", "README.md");
 
@@ -293,7 +293,7 @@ describe("initCommand: .overstory/README.md", () => {
 		expect(tampered).toBe("# custom content\n");
 
 		// Second init without --force returns early
-		await initCommand([]);
+		await initCommand({});
 
 		// Verify tampered content preserved (early return)
 		const afterSecondInit = await Bun.file(readmePath).text();
@@ -329,7 +329,7 @@ describe("initCommand: canonical branch detection", () => {
 		// Switch to a non-standard branch name
 		await runGitInDir(tempDir, ["switch", "-c", "trunk"]);
 
-		await initCommand([]);
+		await initCommand({});
 
 		const configPath = join(tempDir, ".overstory", "config.yaml");
 		const content = await Bun.file(configPath).text();
@@ -338,7 +338,7 @@ describe("initCommand: canonical branch detection", () => {
 
 	test("standard branch names (main) still work as canonicalBranch", async () => {
 		// createTempGitRepo defaults to main branch
-		await initCommand([]);
+		await initCommand({});
 
 		const configPath = join(tempDir, ".overstory", "config.yaml");
 		const content = await Bun.file(configPath).text();
