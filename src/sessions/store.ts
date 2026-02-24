@@ -18,6 +18,8 @@ export interface SessionStore {
 	getActive(): AgentSession[];
 	/** Get all sessions regardless of state. */
 	getAll(): AgentSession[];
+	/** Get the total number of sessions. Lightweight alternative to getAll().length. */
+	count(): number;
 	/** Get sessions belonging to a specific run. */
 	getByRun(runId: string): AgentSession[];
 	/** Update only the state of a session. */
@@ -233,6 +235,10 @@ export function createSessionStore(dbPath: string): SessionStore {
 		SELECT * FROM sessions ORDER BY started_at ASC
 	`);
 
+	const countStmt = db.prepare<{ cnt: number }, Record<string, never>>(
+		"SELECT COUNT(*) as cnt FROM sessions",
+	);
+
 	const getByRunStmt = db.prepare<SessionRow, { $run_id: string }>(`
 		SELECT * FROM sessions WHERE run_id = $run_id ORDER BY started_at ASC
 	`);
@@ -297,6 +303,11 @@ export function createSessionStore(dbPath: string): SessionStore {
 		getAll(): AgentSession[] {
 			const rows = getAllStmt.all({});
 			return rows.map(rowToSession);
+		},
+
+		count(): number {
+			const row = countStmt.get({});
+			return row?.cnt ?? 0;
 		},
 
 		getByRun(runId: string): AgentSession[] {

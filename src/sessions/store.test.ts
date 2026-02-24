@@ -231,6 +231,43 @@ describe("getAll", () => {
 	});
 });
 
+// === count ===
+
+describe("count", () => {
+	test("returns 0 on empty database", () => {
+		expect(store.count()).toBe(0);
+	});
+
+	test("returns correct count after inserts", () => {
+		store.upsert(makeSession({ agentName: "a1", id: "s-1" }));
+		expect(store.count()).toBe(1);
+
+		store.upsert(makeSession({ agentName: "a2", id: "s-2" }));
+		expect(store.count()).toBe(2);
+
+		store.upsert(makeSession({ agentName: "a3", id: "s-3" }));
+		expect(store.count()).toBe(3);
+	});
+
+	test("count reflects removals", () => {
+		store.upsert(makeSession({ agentName: "a1", id: "s-1" }));
+		store.upsert(makeSession({ agentName: "a2", id: "s-2" }));
+
+		store.remove("a1");
+		expect(store.count()).toBe(1);
+
+		store.remove("a2");
+		expect(store.count()).toBe(0);
+	});
+
+	test("count matches getAll().length", () => {
+		for (let i = 0; i < 5; i++) {
+			store.upsert(makeSession({ agentName: `agent-${i}`, id: `s-${i}` }));
+		}
+		expect(store.count()).toBe(store.getAll().length);
+	});
+});
+
 // === getByRun ===
 
 describe("getByRun", () => {
