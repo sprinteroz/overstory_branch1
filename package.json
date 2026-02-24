@@ -44,7 +44,8 @@
 		"version:bump": "bun scripts/version-bump.ts"
 	},
 	"dependencies": {
-		"chalk": "^5.6.2"
+		"chalk": "^5.6.2",
+		"commander": "^14.0.3"
 	},
 	"devDependencies": {
 		"@types/bun": "latest",
