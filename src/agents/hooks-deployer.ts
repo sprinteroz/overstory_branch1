@@ -206,6 +206,20 @@ export function getPathBoundaryGuards(): HookEntry[] {
 }
 
 /**
+ * Escape a string for use inside a single-quoted POSIX shell string.
+ *
+ * POSIX single-quoted strings cannot contain single quotes at all.
+ * The standard technique is to end the single-quoted segment, emit an escaped
+ * single quote using $'\'', then start a new single-quoted segment:
+ *   'it'\''s fine'  →  it's fine
+ *
+ * Exported so tests can verify escaping directly.
+ */
+export function escapeForSingleQuotedShell(str: string): string {
+	return str.replace(/'/g, "'\\''");
+}
+
+/**
  * Build a PreToolUse guard that blocks a specific tool.
  *
  * Returns a JSON response with decision=block so Claude Code rejects
@@ -218,7 +232,7 @@ function blockGuard(toolName: string, reason: string): HookEntry {
 		hooks: [
 			{
 				type: "command",
-				command: `${ENV_GUARD} echo '${response}'`,
+				command: `${ENV_GUARD} echo '${escapeForSingleQuotedShell(response)}'`,
 			},
 		],
 	};

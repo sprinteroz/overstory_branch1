@@ -8,6 +8,7 @@ import {
 	buildBashPathBoundaryScript,
 	buildPathBoundaryGuardScript,
 	deployHooks,
+	escapeForSingleQuotedShell,
 	getBashPathBoundaryGuards,
 	getCapabilityGuards,
 	getDangerGuards,
@@ -2114,5 +2115,41 @@ describe("bash path boundary integration", () => {
 		);
 		expect(universalGuard).toBeDefined();
 		expect(universalGuard.hooks[0].command).toContain('"decision":"block"');
+	});
+});
+
+describe("escapeForSingleQuotedShell", () => {
+	test("no single quotes: string passes through unchanged", () => {
+		expect(escapeForSingleQuotedShell("hello world")).toBe("hello world");
+	});
+
+	test("single quotes escaped: it's becomes it'\\''s", () => {
+		expect(escapeForSingleQuotedShell("it's")).toBe("it'\\''s");
+	});
+
+	test("multiple single quotes: each one is escaped independently", () => {
+		expect(escapeForSingleQuotedShell("can't won't")).toBe("can'\\''t won'\\''t");
+	});
+
+	test("empty string: returns empty string", () => {
+		expect(escapeForSingleQuotedShell("")).toBe("");
+	});
+
+	test("blockGuard shell command outputs valid JSON when executed", async () => {
+		const guards = getCapabilityGuards("builder");
+		const taskGuard = guards.find((g) => g.matcher === "Task");
+		expect(taskGuard).toBeDefined();
+		const cmd = taskGuard?.hooks[0]?.command ?? "";
+		const echoCmd = cmd.replace('[ -z "$OVERSTORY_AGENT_NAME" ] && exit 0; ', "");
+		const proc = Bun.spawn(["sh", "-c", echoCmd], {
+			stdout: "pipe",
+			stderr: "pipe",
+			env: { ...process.env, OVERSTORY_AGENT_NAME: "test-agent" },
+		});
+		const output = await new Response(proc.stdout).text();
+		await proc.exited;
+		const parsed = JSON.parse(output.trim());
+		expect(parsed.decision).toBe("block");
+		expect(parsed.reason).toContain("overstory sling");
 	});
 });
