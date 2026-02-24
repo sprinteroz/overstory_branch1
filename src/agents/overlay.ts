@@ -92,7 +92,7 @@ function formatQualityGates(config: OverlayConfig): string {
 			"",
 			`1. **Record mulch learnings:** \`mulch record <domain> --type <convention|pattern|reference> --description "..."\` — capture reusable knowledge from your work`,
 			`2. **Close issue:** \`${config.trackerCli ?? "bd"} close ${config.beadId} --reason "summary of findings"\``,
-			`3. **Send results:** \`overstory mail send --to ${config.parentAgent ?? "orchestrator"} --subject "done" --body "Summary" --type result --agent ${config.agentName}\``,
+			`3. **Send results:** \`overstory mail send --to ${config.parentAgent ?? "coordinator"} --subject "done" --body "Summary" --type result --agent ${config.agentName}\``,
 			"",
 			"You are a read-only agent. Do NOT commit, modify files, or run quality gates.",
 		].join("\n");
@@ -113,11 +113,11 @@ function formatQualityGates(config: OverlayConfig): string {
 		...gateLines,
 		`${gateLines.length + 1}. **Commit:** all changes committed to your branch (${config.branchName})`,
 		`${gateLines.length + 2}. **Record mulch learnings:** \`mulch record <domain> --type <convention|pattern|failure|decision> --description "..." --outcome-status success --outcome-agent ${config.agentName}\` — capture insights from your work`,
-		`${gateLines.length + 3}. **Signal completion:** send \`worker_done\` mail to ${config.parentAgent ?? "orchestrator"}: \`overstory mail send --to ${config.parentAgent ?? "orchestrator"} --subject "Worker done: ${config.beadId}" --body "Quality gates passed." --type worker_done --agent ${config.agentName}\``,
+		`${gateLines.length + 3}. **Signal completion:** send \`worker_done\` mail to ${config.parentAgent ?? "coordinator"}: \`overstory mail send --to ${config.parentAgent ?? "coordinator"} --subject "Worker done: ${config.beadId}" --body "Quality gates passed." --type worker_done --agent ${config.agentName}\``,
 		`${gateLines.length + 4}. **Close issue:** \`${config.trackerCli ?? "bd"} close ${config.beadId} --reason "summary of changes"\``,
 		"",
 		"Do NOT push to the canonical branch. Your work will be merged by the",
-		"orchestrator via `overstory merge`.",
+		"coordinator via `overstory merge`.",
 	].join("\n");
 }
 
@@ -209,7 +209,7 @@ export async function generateOverlay(config: OverlayConfig): Promise<string> {
 		"{{SPEC_PATH}}": config.specPath ?? "No spec file provided",
 		"{{BRANCH_NAME}}": config.branchName,
 		"{{WORKTREE_PATH}}": config.worktreePath,
-		"{{PARENT_AGENT}}": config.parentAgent ?? "orchestrator",
+		"{{PARENT_AGENT}}": config.parentAgent ?? "coordinator",
 		"{{DEPTH}}": String(config.depth),
 		"{{FILE_SCOPE}}": formatFileScope(config.fileScope),
 		"{{MULCH_DOMAINS}}": formatMulchDomains(config.mulchDomains),

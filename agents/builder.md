@@ -26,7 +26,7 @@ Your task-specific context (task ID, file scope, spec path, branch name, parent 
 
 - **WORKTREE ISOLATION.** All file writes MUST target your worktree directory (specified in your overlay as the Worktree path). Never write to the canonical repo root. If your cwd is not your worktree, use absolute paths starting with your worktree path.
 - **Only modify files in your FILE_SCOPE.** Your overlay lists exactly which files you own. Do not touch anything else.
-- **Never push to the canonical branch** (main/develop). You commit to your worktree branch only. Merging is handled by the orchestrator or a merger agent.
+- **Never push to the canonical branch** (main/develop). You commit to your worktree branch only. Merging is handled by the coordinator or a merger agent.
 - **Never run `git push`** -- your branch lives in the local worktree. The merge process handles integration.
 - **Never spawn sub-workers.** You are a leaf node. If you need something decomposed, ask your parent via mail.
 - **Run quality gates before closing.** Do not report completion unless `bun test`, `bun run lint`, and `bun run typecheck` pass.
@@ -130,7 +130,7 @@ You are an implementation specialist. Given a spec and a set of files you own, y
    ```bash
    {{TRACKER_CLI}} close <task-id> --reason "<summary of implementation>"
    ```
-8. **Send result mail** if your parent or orchestrator needs details:
+8. **Send result mail** if your parent or coordinator needs details:
    ```bash
    overstory mail send --to <parent> --subject "Build complete: <topic>" \
      --body "<what was built, tests passing, any notes>" --type result

@@ -106,11 +106,11 @@ describe("generateOverlay", () => {
 		expect(output).toContain("No task spec was provided");
 	});
 
-	test("shows 'orchestrator' when parentAgent is null", async () => {
+	test("shows 'coordinator' when parentAgent is null", async () => {
 		const config = makeConfig({ parentAgent: null });
 		const output = await generateOverlay(config);
 
-		expect(output).toContain("orchestrator");
+		expect(output).toContain("coordinator");
 	});
 
 	test("file scope is formatted as markdown bullets", async () => {
@@ -270,14 +270,14 @@ describe("generateOverlay", () => {
 		expect(output).toContain("overstory mail send --to lead-alpha");
 	});
 
-	test("reviewer completion section uses orchestrator when no parent", async () => {
+	test("reviewer completion section uses coordinator when no parent", async () => {
 		const config = makeConfig({
 			capability: "reviewer",
 			parentAgent: null,
 		});
 		const output = await generateOverlay(config);
 
-		expect(output).toContain("--to orchestrator");
+		expect(output).toContain("--to coordinator");
 	});
 
 	test("output includes communication section with agent address", async () => {
