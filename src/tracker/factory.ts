@@ -49,8 +49,8 @@ export async function resolveBackend(
 	};
 	if (await dirExists(join(cwd, ".seeds"))) return "seeds";
 	if (await dirExists(join(cwd, ".beads"))) return "beads";
-	// Default fallback
-	return "beads";
+	// Default fallback — seeds is the preferred tracker
+	return "seeds";
 }
 
 /**

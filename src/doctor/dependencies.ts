@@ -1,3 +1,4 @@
+import { resolveBackend, trackerCliName } from "../tracker/factory.ts";
 import type { DoctorCheck, DoctorCheckFn } from "./types.ts";
 
 /**
@@ -9,11 +10,13 @@ export const checkDependencies: DoctorCheckFn = async (
 	config,
 	_overstoryDir,
 ): Promise<DoctorCheck[]> => {
-	// Determine which tracker CLI to check based on config backend
-	const trackerTool =
-		config.taskTracker.backend === "seeds"
-			? { name: "sd", versionFlag: "--version", required: true }
-			: { name: "bd", versionFlag: "--version", required: true };
+	// Determine which tracker CLI to check based on config backend (resolve "auto")
+	const resolvedBackend = await resolveBackend(config.taskTracker.backend, config.project.root);
+	const trackerTool = {
+		name: trackerCliName(resolvedBackend),
+		versionFlag: "--version",
+		required: true,
+	};
 
 	const requiredTools = [
 		{ name: "git", versionFlag: "--version", required: true },

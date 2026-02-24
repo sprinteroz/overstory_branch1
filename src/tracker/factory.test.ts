@@ -42,10 +42,10 @@ describe("resolveBackend", () => {
 	test("returns seeds for seeds backend", async () => {
 		expect(await resolveBackend("seeds", "/tmp")).toBe("seeds");
 	});
-	test("returns beads for auto when no tracker dirs exist", async () => {
+	test("returns seeds for auto when no tracker dirs exist", async () => {
 		const tempDir = await mkdtemp(join(tmpdir(), "tracker-test-"));
 		try {
-			expect(await resolveBackend("auto", tempDir)).toBe("beads");
+			expect(await resolveBackend("auto", tempDir)).toBe("seeds");
 		} finally {
 			await rm(tempDir, { recursive: true });
 		}

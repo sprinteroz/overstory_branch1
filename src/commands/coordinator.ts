@@ -21,6 +21,7 @@ import { loadConfig } from "../config.ts";
 import { AgentError, ValidationError } from "../errors.ts";
 import { openSessionStore } from "../sessions/compat.ts";
 import { createRunStore } from "../sessions/store.ts";
+import { resolveBackend, trackerCliName } from "../tracker/factory.ts";
 import type { AgentSession } from "../types.ts";
 import { isProcessRunning } from "../watchdog/health.ts";
 import {
@@ -400,7 +401,8 @@ async function startCoordinator(args: string[], deps: CoordinatorDeps = {}): Pro
 		await tmux.waitForTuiReady(tmuxSession);
 		await Bun.sleep(1_000);
 
-		const trackerCli = config.taskTracker.backend === "seeds" ? "sd" : "bd";
+		const resolvedBackend = await resolveBackend(config.taskTracker.backend, config.project.root);
+		const trackerCli = trackerCliName(resolvedBackend);
 		const beacon = buildCoordinatorBeacon(trackerCli);
 		await tmux.sendKeys(tmuxSession, beacon);
 

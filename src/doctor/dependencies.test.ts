@@ -64,7 +64,7 @@ describe("checkDependencies", () => {
 		expect(toolNames).toContain("git availability");
 		expect(toolNames).toContain("bun availability");
 		expect(toolNames).toContain("tmux availability");
-		expect(toolNames).toContain("bd availability");
+		expect(toolNames).toContain("sd availability");
 		expect(toolNames).toContain("mulch availability");
 	});
 
@@ -165,11 +165,11 @@ describe("checkDependencies", () => {
 		expect(toolNames).not.toContain("bd availability");
 	});
 
-	test("checks for bd when backend is auto (backward compat)", async () => {
+	test("checks for sd when backend is auto (seeds is default)", async () => {
 		const checks = await checkDependencies(mockConfig, "/tmp/.overstory");
 		const toolNames = checks.map((c) => c.name);
-		expect(toolNames).toContain("bd availability");
-		expect(toolNames).not.toContain("sd availability");
+		expect(toolNames).toContain("sd availability");
+		expect(toolNames).not.toContain("bd availability");
 	});
 
 	test("skips bd CGO check when backend is seeds", async () => {
