@@ -398,6 +398,102 @@ describe("--watch deprecation", () => {
 	});
 });
 
+describe("gatherStatus reconciliation", () => {
+	afterEach(() => {
+		invalidateStatusCache();
+	});
+
+	test("booting agent with dead tmux becomes zombie", async () => {
+		const tempDir = await createTempGitRepo();
+		const overstoryDir = join(tempDir, ".overstory");
+		await mkdir(overstoryDir, { recursive: true });
+
+		const store = createSessionStore(join(overstoryDir, "sessions.db"));
+		const now = new Date().toISOString();
+		const session = makeAgent({
+			agentName: "boot-builder",
+			capability: "builder",
+			state: "booting",
+			tmuxSession: "overstory-boot-builder",
+			runId: null,
+		});
+		session.startedAt = now;
+		session.lastActivity = now;
+		store.upsert(session);
+		store.close();
+
+		try {
+			// No real tmux running, so getCachedTmuxSessions() returns empty array
+			// evaluateHealth ZFC Rule 1: tmux dead → zombie
+			const result = await gatherStatus(tempDir, "orchestrator", false, undefined);
+			const agent = result.agents.find((a) => a.agentName === "boot-builder");
+			expect(agent).toBeDefined();
+			expect(agent?.state).toBe("zombie");
+		} finally {
+			await rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	test("completed agents skip reconciliation", async () => {
+		const tempDir = await createTempGitRepo();
+		const overstoryDir = join(tempDir, ".overstory");
+		await mkdir(overstoryDir, { recursive: true });
+
+		const store = createSessionStore(join(overstoryDir, "sessions.db"));
+		const now = new Date().toISOString();
+		const session = makeAgent({
+			agentName: "done-builder",
+			capability: "builder",
+			state: "completed",
+			tmuxSession: "overstory-done-builder",
+			runId: null,
+		});
+		session.startedAt = now;
+		session.lastActivity = now;
+		store.upsert(session);
+		store.close();
+
+		try {
+			const result = await gatherStatus(tempDir, "orchestrator", false, undefined);
+			const agent = result.agents.find((a) => a.agentName === "done-builder");
+			expect(agent).toBeDefined();
+			expect(agent?.state).toBe("completed");
+		} finally {
+			await rm(tempDir, { recursive: true, force: true });
+		}
+	});
+
+	test("working agent with dead tmux becomes zombie", async () => {
+		const tempDir = await createTempGitRepo();
+		const overstoryDir = join(tempDir, ".overstory");
+		await mkdir(overstoryDir, { recursive: true });
+
+		const store = createSessionStore(join(overstoryDir, "sessions.db"));
+		const now = new Date().toISOString();
+		const session = makeAgent({
+			agentName: "working-builder",
+			capability: "builder",
+			state: "working",
+			tmuxSession: "overstory-working-builder",
+			runId: null,
+		});
+		session.startedAt = now;
+		session.lastActivity = now;
+		store.upsert(session);
+		store.close();
+
+		try {
+			// No real tmux session → tmux dead → zombie via evaluateHealth ZFC Rule 1
+			const result = await gatherStatus(tempDir, "orchestrator", false, undefined);
+			const agent = result.agents.find((a) => a.agentName === "working-builder");
+			expect(agent).toBeDefined();
+			expect(agent?.state).toBe("zombie");
+		} finally {
+			await rm(tempDir, { recursive: true, force: true });
+		}
+	});
+});
+
 describe("subprocess caching (invalidateStatusCache)", () => {
 	afterEach(() => {
 		invalidateStatusCache();

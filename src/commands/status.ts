@@ -14,6 +14,7 @@ import { createMergeQueue } from "../merge/queue.ts";
 import { createMetricsStore } from "../metrics/store.ts";
 import { openSessionStore } from "../sessions/compat.ts";
 import type { AgentSession } from "../types.ts";
+import { evaluateHealth } from "../watchdog/health.ts";
 import { listWorktrees } from "../worktree/manager.ts";
 import { listSessions } from "../worktree/tmux.ts";
 
@@ -136,23 +137,23 @@ export async function gatherStatus(
 
 		const tmuxSessions = await getCachedTmuxSessions();
 
-		// Reconcile agent states: if tmux session is dead but agent state
-		// indicates it should be alive, mark it as zombie
+		// Reconcile agent states using the same health evaluation as the
+		// dashboard and watchdog. This handles:
+		//   1. tmux dead -> zombie (regardless of recorded state)
+		//   2. persistent capabilities (coordinator, monitor) booting -> working when tmux alive
+		//   3. time-based stale/zombie detection for non-persistent agents
 		const tmuxSessionNames = new Set(tmuxSessions.map((s) => s.name));
+		const healthThresholds = { staleMs: 300_000, zombieMs: 600_000 };
 		for (const session of sessions) {
-			if (
-				session.state === "booting" ||
-				session.state === "working" ||
-				session.state === "stalled"
-			) {
-				const tmuxAlive = tmuxSessionNames.has(session.tmuxSession);
-				if (!tmuxAlive) {
-					try {
-						store.updateState(session.agentName, "zombie");
-						session.state = "zombie";
-					} catch {
-						// Best effort: don't fail status display if update fails
-					}
+			if (session.state === "completed") continue;
+			const tmuxAlive = tmuxSessionNames.has(session.tmuxSession);
+			const check = evaluateHealth(session, tmuxAlive, healthThresholds);
+			if (check.state !== session.state) {
+				try {
+					store.updateState(session.agentName, check.state);
+					session.state = check.state;
+				} catch {
+					// Best effort: don't fail status display if update fails
 				}
 			}
 		}
