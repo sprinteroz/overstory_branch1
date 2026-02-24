@@ -34,7 +34,7 @@ export interface MergeQueue {
 interface MergeQueueRow {
 	id: number;
 	branch_name: string;
-	bead_id: string;
+	task_id: string;
 	agent_name: string;
 	files_modified: string; // JSON array stored as text
 	enqueued_at: string;
@@ -46,7 +46,7 @@ const CREATE_TABLE = `
 CREATE TABLE IF NOT EXISTS merge_queue (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   branch_name TEXT NOT NULL,
-  bead_id TEXT NOT NULL,
+  task_id TEXT NOT NULL,
   agent_name TEXT NOT NULL,
   files_modified TEXT NOT NULL DEFAULT '[]',
   enqueued_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now')),
@@ -74,7 +74,7 @@ function rowToEntry(row: MergeQueueRow): MergeEntry {
 
 	return {
 		branchName: row.branch_name,
-		beadId: row.bead_id,
+		beadId: row.task_id,
 		agentName: row.agent_name,
 		filesModified,
 		enqueuedAt: row.enqueued_at,
@@ -106,14 +106,14 @@ export function createMergeQueue(dbPath: string): MergeQueue {
 		MergeQueueRow,
 		{
 			$branch_name: string;
-			$bead_id: string;
+			$task_id: string;
 			$agent_name: string;
 			$files_modified: string;
 			$enqueued_at: string;
 		}
 	>(`
-		INSERT INTO merge_queue (branch_name, bead_id, agent_name, files_modified, enqueued_at)
-		VALUES ($branch_name, $bead_id, $agent_name, $files_modified, $enqueued_at)
+		INSERT INTO merge_queue (branch_name, task_id, agent_name, files_modified, enqueued_at)
+		VALUES ($branch_name, $task_id, $agent_name, $files_modified, $enqueued_at)
 		RETURNING *
 	`);
 
@@ -157,7 +157,7 @@ export function createMergeQueue(dbPath: string): MergeQueue {
 
 			const row = insertStmt.get({
 				$branch_name: input.branchName,
-				$bead_id: input.beadId,
+				$task_id: input.beadId,
 				$agent_name: input.agentName,
 				$files_modified: filesModifiedJson,
 				$enqueued_at: enqueuedAt,

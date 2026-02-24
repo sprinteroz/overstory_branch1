@@ -141,7 +141,7 @@ describe("checkMergeQueue", () => {
 
 		const db = new Database(dbPath);
 		db.prepare(
-			"INSERT INTO merge_queue (branch_name, bead_id, agent_name, files_modified, status, enqueued_at) VALUES (?, ?, ?, ?, ?, ?)",
+			"INSERT INTO merge_queue (branch_name, task_id, agent_name, files_modified, status, enqueued_at) VALUES (?, ?, ?, ?, ?, ?)",
 		).run(
 			"feature/stale",
 			"beads-abc",
@@ -171,7 +171,7 @@ describe("checkMergeQueue", () => {
 
 		const db = new Database(dbPath);
 		db.prepare(
-			"INSERT INTO merge_queue (branch_name, bead_id, agent_name, files_modified, status, enqueued_at, resolved_tier) VALUES (?, ?, ?, ?, ?, ?, ?)",
+			"INSERT INTO merge_queue (branch_name, task_id, agent_name, files_modified, status, enqueued_at, resolved_tier) VALUES (?, ?, ?, ?, ?, ?, ?)",
 		).run(
 			"feature/old-merged",
 			"beads-abc",
