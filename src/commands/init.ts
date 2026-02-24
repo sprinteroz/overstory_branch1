@@ -430,7 +430,7 @@ CREATE INDEX IF NOT EXISTS idx_thread ON messages(thread_id)`);
 		db.exec(`
 CREATE TABLE IF NOT EXISTS sessions (
   agent_name TEXT NOT NULL,
-  bead_id TEXT NOT NULL,
+  task_id TEXT NOT NULL,
   capability TEXT NOT NULL,
   started_at TEXT NOT NULL,
   completed_at TEXT,
@@ -438,7 +438,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   exit_code INTEGER,
   merge_result TEXT,
   parent_agent TEXT,
-  PRIMARY KEY (agent_name, bead_id)
+  PRIMARY KEY (agent_name, task_id)
 )`);
 		db.close();
 		migrated.push("metrics.db");

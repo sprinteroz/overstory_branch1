@@ -63,7 +63,7 @@ describe("recordSession", () => {
 		expect(retrieved[0]).toEqual(session);
 	});
 
-	test("INSERT OR REPLACE: same (agent_name, bead_id) key overwrites previous row", () => {
+	test("INSERT OR REPLACE: same (agent_name, task_id) key overwrites previous row", () => {
 		const session1 = makeSession({ durationMs: 100_000 });
 		const session2 = makeSession({ durationMs: 200_000 });
 
