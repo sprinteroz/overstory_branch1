@@ -13,7 +13,7 @@ agents:
   maxDepth: 2
 worktrees:
   baseDir: .overstory/worktrees
-beads:
+taskTracker:
   enabled: true
 mulch:
   enabled: true

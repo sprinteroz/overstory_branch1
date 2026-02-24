@@ -269,5 +269,19 @@
 		"status": "completed",
 		"createdAt": "2026-02-24T01:47:15.397Z",
 		"completedAt": "2026-02-24T02:04:38.239Z"
+	},
+	{
+		"id": "group-ff154d62",
+		"name": "p1-bugfix-batch",
+		"memberIssueIds": [
+			"seeds-3522",
+			"seeds-81fc",
+			"seeds-b878",
+			"overstory-jydl",
+			"seeds-32a8"
+		],
+		"status": "completed",
+		"createdAt": "2026-02-24T13:32:12.823Z",
+		"completedAt": "2026-02-24T14:07:25.808Z"
 	}
 ]
