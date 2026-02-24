@@ -87,7 +87,7 @@ describe("checkDatabases", () => {
 		metricsDb.exec(`
 			CREATE TABLE sessions (
 				agent_name TEXT NOT NULL,
-				bead_id TEXT NOT NULL,
+				task_id TEXT NOT NULL,
 				capability TEXT NOT NULL,
 				started_at TEXT NOT NULL,
 				completed_at TEXT,
@@ -101,7 +101,7 @@ describe("checkDatabases", () => {
 				cache_creation_tokens INTEGER NOT NULL DEFAULT 0,
 				estimated_cost_usd REAL,
 				model_used TEXT,
-				PRIMARY KEY (agent_name, bead_id)
+				PRIMARY KEY (agent_name, task_id)
 			)
 		`);
 		metricsDb.close();
@@ -116,7 +116,7 @@ describe("checkDatabases", () => {
 				capability TEXT NOT NULL,
 				worktree_path TEXT NOT NULL,
 				branch_name TEXT NOT NULL,
-				bead_id TEXT NOT NULL,
+				task_id TEXT NOT NULL,
 				tmux_session TEXT NOT NULL,
 				state TEXT NOT NULL DEFAULT 'booting',
 				pid INTEGER,
@@ -162,7 +162,7 @@ describe("checkDatabases", () => {
 		metricsDb.exec(`
 			CREATE TABLE sessions (
 				agent_name TEXT NOT NULL,
-				bead_id TEXT NOT NULL,
+				task_id TEXT NOT NULL,
 				capability TEXT NOT NULL,
 				started_at TEXT NOT NULL,
 				completed_at TEXT,
@@ -176,7 +176,7 @@ describe("checkDatabases", () => {
 				cache_creation_tokens INTEGER NOT NULL DEFAULT 0,
 				estimated_cost_usd REAL,
 				model_used TEXT,
-				PRIMARY KEY (agent_name, bead_id)
+				PRIMARY KEY (agent_name, task_id)
 			)
 		`);
 		metricsDb.close();
@@ -190,7 +190,7 @@ describe("checkDatabases", () => {
 				capability TEXT NOT NULL,
 				worktree_path TEXT NOT NULL,
 				branch_name TEXT NOT NULL,
-				bead_id TEXT NOT NULL,
+				task_id TEXT NOT NULL,
 				tmux_session TEXT NOT NULL,
 				state TEXT NOT NULL DEFAULT 'booting',
 				pid INTEGER,

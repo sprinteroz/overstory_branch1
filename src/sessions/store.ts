@@ -41,7 +41,7 @@ interface SessionRow {
 	capability: string;
 	worktree_path: string;
 	branch_name: string;
-	bead_id: string;
+	task_id: string;
 	tmux_session: string;
 	state: string;
 	pid: number | null;
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   capability TEXT NOT NULL,
   worktree_path TEXT NOT NULL,
   branch_name TEXT NOT NULL,
-  bead_id TEXT NOT NULL,
+  task_id TEXT NOT NULL,
   tmux_session TEXT NOT NULL,
   state TEXT NOT NULL DEFAULT 'booting'
     CHECK(state IN ('booting','working','completed','stalled','zombie')),
@@ -111,7 +111,7 @@ function rowToSession(row: SessionRow): AgentSession {
 		capability: row.capability,
 		worktreePath: row.worktree_path,
 		branchName: row.branch_name,
-		beadId: row.bead_id,
+		beadId: row.task_id,
 		tmuxSession: row.tmux_session,
 		state: row.state as AgentState,
 		pid: row.pid,
@@ -138,6 +138,18 @@ function rowToRun(row: RunRow): Run {
 }
 
 /**
+ * Migrate an existing sessions table from bead_id to task_id column.
+ * Safe to call multiple times — only renames if bead_id exists and task_id does not.
+ */
+function migrateBeadIdToTaskId(db: Database): void {
+	const rows = db.prepare("PRAGMA table_info(sessions)").all() as Array<{ name: string }>;
+	const existingColumns = new Set(rows.map((r) => r.name));
+	if (existingColumns.has("bead_id") && !existingColumns.has("task_id")) {
+		db.exec("ALTER TABLE sessions RENAME COLUMN bead_id TO task_id");
+	}
+}
+
+/**
  * Create a new SessionStore backed by a SQLite database at the given path.
  *
  * Initializes the database with WAL mode and a 5-second busy timeout.
@@ -157,6 +169,9 @@ export function createSessionStore(dbPath: string): SessionStore {
 	db.exec(CREATE_RUNS_TABLE);
 	db.exec(CREATE_RUNS_INDEXES);
 
+	// Migrate: rename bead_id → task_id on existing tables
+	migrateBeadIdToTaskId(db);
+
 	// Prepare statements for frequent operations
 	const upsertStmt = db.prepare<
 		void,
@@ -166,7 +181,7 @@ export function createSessionStore(dbPath: string): SessionStore {
 			$capability: string;
 			$worktree_path: string;
 			$branch_name: string;
-			$bead_id: string;
+			$task_id: string;
 			$tmux_session: string;
 			$state: string;
 			$pid: number | null;
@@ -180,11 +195,11 @@ export function createSessionStore(dbPath: string): SessionStore {
 		}
 	>(`
 		INSERT INTO sessions
-			(id, agent_name, capability, worktree_path, branch_name, bead_id,
+			(id, agent_name, capability, worktree_path, branch_name, task_id,
 			 tmux_session, state, pid, parent_agent, depth, run_id,
 			 started_at, last_activity, escalation_level, stalled_since)
 		VALUES
-			($id, $agent_name, $capability, $worktree_path, $branch_name, $bead_id,
+			($id, $agent_name, $capability, $worktree_path, $branch_name, $task_id,
 			 $tmux_session, $state, $pid, $parent_agent, $depth, $run_id,
 			 $started_at, $last_activity, $escalation_level, $stalled_since)
 		ON CONFLICT(agent_name) DO UPDATE SET
@@ -192,7 +207,7 @@ export function createSessionStore(dbPath: string): SessionStore {
 			capability = excluded.capability,
 			worktree_path = excluded.worktree_path,
 			branch_name = excluded.branch_name,
-			bead_id = excluded.bead_id,
+			task_id = excluded.task_id,
 			tmux_session = excluded.tmux_session,
 			state = excluded.state,
 			pid = excluded.pid,
@@ -255,7 +270,7 @@ export function createSessionStore(dbPath: string): SessionStore {
 				$capability: session.capability,
 				$worktree_path: session.worktreePath,
 				$branch_name: session.branchName,
-				$bead_id: session.beadId,
+				$task_id: session.beadId,
 				$tmux_session: session.tmuxSession,
 				$state: session.state,
 				$pid: session.pid,

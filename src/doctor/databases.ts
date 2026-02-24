@@ -36,7 +36,7 @@ export const checkDatabases: DoctorCheckFn = (_config, overstoryDir): DoctorChec
 			requiredColumns: {
 				sessions: [
 					"agent_name",
-					"bead_id",
+					"task_id",
 					"capability",
 					"started_at",
 					"completed_at",
@@ -63,7 +63,7 @@ export const checkDatabases: DoctorCheckFn = (_config, overstoryDir): DoctorChec
 					"capability",
 					"worktree_path",
 					"branch_name",
-					"bead_id",
+					"task_id",
 					"tmux_session",
 					"state",
 					"pid",
