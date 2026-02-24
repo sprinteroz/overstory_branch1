@@ -3,7 +3,7 @@
 	"lead-md-builder": 1771941309343,
 	"delegation-lead": 1771941445172,
 	"dashboard-lead": 1771941807469,
-	"coordinator": 1771946570910,
+	"coordinator": 1771954779478,
 	"bugfix-lead": 1771945845129,
 	"reliability-lead": 1771945127713,
 	"provider-tests-lead": 1771945024749,
@@ -17,5 +17,18 @@
 	"agent-guards-lead": 1771945944674,
 	"interactive-guards-builder": 1771945752343,
 	"doctor-cli-lead": 1771946452634,
-	"doctor-deps-builder": 1771946354022
+	"doctor-deps-builder": 1771946354022,
+	"commander-lead": 1771948959970,
+	"chalk-lead": 1771950404000,
+	"commander-builder": 1771948880187,
+	"chalk-builder": 1771950036698,
+	"commander-lead-2": 1771951902008,
+	"commander-builder-1": 1771951696726,
+	"messaging-lead": 1771951822149,
+	"observability-lead": 1771951905842,
+	"infra-lead": 1771951986507,
+	"mail-builder": 1771951908877,
+	"nudge-builder": 1771951452416,
+	"infra-cmdr-builder": 1771954485127,
+	"observability-builder": 1771952990343
 }

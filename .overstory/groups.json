@@ -295,5 +295,20 @@
 		"status": "completed",
 		"createdAt": "2026-02-24T14:46:20.873Z",
 		"completedAt": "2026-02-24T15:22:39.908Z"
+	},
+	{
+		"id": "group-06caf11f",
+		"name": "cli-framework-migration",
+		"memberIssueIds": [
+			"seeds-c6d6",
+			"seeds-9c7b",
+			"seeds-606c",
+			"seeds-4516",
+			"seeds-2243",
+			"seeds-9629"
+		],
+		"status": "completed",
+		"createdAt": "2026-02-24T15:53:19.762Z",
+		"completedAt": "2026-02-24T17:39:14.213Z"
 	}
 ]
