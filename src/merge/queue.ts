@@ -84,6 +84,18 @@ function rowToEntry(row: MergeQueueRow): MergeEntry {
 }
 
 /**
+ * Migrate an existing merge_queue table from bead_id to task_id column.
+ * Safe to call multiple times — only renames if bead_id exists and task_id does not.
+ */
+function migrateBeadIdToTaskId(db: Database): void {
+	const rows = db.prepare("PRAGMA table_info(merge_queue)").all() as Array<{ name: string }>;
+	const existingColumns = new Set(rows.map((r) => r.name));
+	if (existingColumns.has("bead_id") && !existingColumns.has("task_id")) {
+		db.exec("ALTER TABLE merge_queue RENAME COLUMN bead_id TO task_id");
+	}
+}
+
+/**
  * Create a new MergeQueue backed by a SQLite database at the given path.
  *
  * Initializes the database with WAL mode and a 5-second busy timeout.
@@ -100,6 +112,9 @@ export function createMergeQueue(dbPath: string): MergeQueue {
 	// Create schema
 	db.exec(CREATE_TABLE);
 	db.exec(CREATE_INDEXES);
+
+	// Migrate: rename bead_id → task_id on existing tables
+	migrateBeadIdToTaskId(db);
 
 	// Prepare statements for frequent operations
 	const insertStmt = db.prepare<

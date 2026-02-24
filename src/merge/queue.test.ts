@@ -1,3 +1,4 @@
+import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -330,6 +331,71 @@ describe("createMergeQueue", () => {
 			const all = queue1.list();
 			expect(all[0]?.status).toBe("merged");
 			expect(all[0]?.resolvedTier).toBe("clean-merge");
+		});
+	});
+
+	describe("bead_id → task_id migration", () => {
+		test("renames bead_id column to task_id on existing databases", () => {
+			// Create a database with the old bead_id schema
+			const db = new Database(queuePath);
+			db.exec("PRAGMA journal_mode = WAL");
+			db.exec(`
+				CREATE TABLE merge_queue (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					branch_name TEXT NOT NULL,
+					bead_id TEXT NOT NULL,
+					agent_name TEXT NOT NULL,
+					files_modified TEXT NOT NULL DEFAULT '[]',
+					enqueued_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now')),
+					status TEXT NOT NULL DEFAULT 'pending'
+						CHECK(status IN ('pending','merging','merged','conflict','failed')),
+					resolved_tier TEXT
+						CHECK(resolved_tier IS NULL OR resolved_tier IN ('clean-merge','auto-resolve','ai-resolve','reimagine'))
+				)
+			`);
+			db.exec(
+				"INSERT INTO merge_queue (branch_name, bead_id, agent_name, files_modified, status, enqueued_at) VALUES ('overstory/test/bead-1', 'bead-1', 'test', '[\"src/a.ts\"]', 'pending', '2026-01-01T00:00:00.000')",
+			);
+			db.close();
+
+			// Opening with createMergeQueue should migrate and work
+			const queue = createMergeQueue(queuePath);
+			const entries = queue.list();
+
+			expect(entries).toHaveLength(1);
+			expect(entries[0]?.beadId).toBe("bead-1");
+			expect(entries[0]?.branchName).toBe("overstory/test/bead-1");
+
+			// New inserts should also work
+			const newEntry = queue.enqueue({
+				branchName: "overstory/test/bead-2",
+				beadId: "bead-2",
+				agentName: "test",
+				filesModified: ["src/b.ts"],
+			});
+			expect(newEntry.beadId).toBe("bead-2");
+
+			queue.close();
+		});
+
+		test("no-op when task_id column already exists", () => {
+			// Create with current schema (has task_id)
+			const queue1 = createMergeQueue(queuePath);
+			queue1.enqueue({
+				branchName: "overstory/test/bead-1",
+				beadId: "bead-1",
+				agentName: "test",
+				filesModified: [],
+			});
+			queue1.close();
+
+			// Re-opening should not error
+			const queue2 = createMergeQueue(queuePath);
+			const entries = queue2.list();
+
+			expect(entries).toHaveLength(1);
+			expect(entries[0]?.beadId).toBe("bead-1");
+			queue2.close();
 		});
 	});
 

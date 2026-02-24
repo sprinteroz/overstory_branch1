@@ -85,6 +85,22 @@ export const checkDatabases: DoctorCheckFn = (_config, overstoryDir): DoctorChec
 				],
 			},
 		},
+		{
+			name: "merge-queue.db",
+			tables: ["merge_queue"],
+			requiredColumns: {
+				merge_queue: [
+					"id",
+					"branch_name",
+					"task_id",
+					"agent_name",
+					"files_modified",
+					"enqueued_at",
+					"status",
+					"resolved_tier",
+				],
+			},
+		},
 	];
 
 	for (const dbSpec of databases) {

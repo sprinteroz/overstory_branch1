@@ -51,13 +51,15 @@ describe("checkDatabases", () => {
 	test("fails when database files do not exist", () => {
 		const checks = checkDatabases(mockConfig, tempDir) as DoctorCheck[];
 
-		expect(checks).toHaveLength(3);
+		expect(checks).toHaveLength(4);
 		expect(checks[0]?.status).toBe("fail");
 		expect(checks[0]?.name).toBe("mail.db exists");
 		expect(checks[1]?.status).toBe("fail");
 		expect(checks[1]?.name).toBe("metrics.db exists");
 		expect(checks[2]?.status).toBe("fail");
 		expect(checks[2]?.name).toBe("sessions.db exists");
+		expect(checks[3]?.status).toBe("fail");
+		expect(checks[3]?.name).toBe("merge-queue.db exists");
 	});
 
 	test("passes when databases exist with correct schema", () => {
@@ -141,13 +143,31 @@ describe("checkDatabases", () => {
 		`);
 		sessionsDb.close();
 
+		// Create merge-queue.db
+		const mergeDb = new Database(join(tempDir, "merge-queue.db"));
+		mergeDb.exec("PRAGMA journal_mode=WAL");
+		mergeDb.exec(`
+			CREATE TABLE merge_queue (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				branch_name TEXT NOT NULL,
+				task_id TEXT NOT NULL,
+				agent_name TEXT NOT NULL,
+				files_modified TEXT NOT NULL DEFAULT '[]',
+				enqueued_at TEXT NOT NULL,
+				status TEXT NOT NULL DEFAULT 'pending',
+				resolved_tier TEXT
+			)
+		`);
+		mergeDb.close();
+
 		const checks = checkDatabases(mockConfig, tempDir) as DoctorCheck[];
 
-		expect(checks).toHaveLength(3);
+		expect(checks).toHaveLength(4);
 		expect(checks.every((c) => c?.status === "pass")).toBe(true);
 		expect(checks[0]?.name).toBe("mail.db health");
 		expect(checks[1]?.name).toBe("metrics.db health");
 		expect(checks[2]?.name).toBe("sessions.db health");
+		expect(checks[3]?.name).toBe("merge-queue.db health");
 	});
 
 	test("fails when table is missing", () => {

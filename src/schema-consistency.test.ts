@@ -17,6 +17,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createEventStore } from "./events/store.ts";
 import { createMailStore } from "./mail/store.ts";
+import { createMergeQueue } from "./merge/queue.ts";
 import { createMetricsStore } from "./metrics/store.ts";
 import { createSessionStore } from "./sessions/store.ts";
 
@@ -204,6 +205,32 @@ describe("SQL schema consistency", () => {
 				"thread_id",
 				"to_agent",
 				"type",
+			].sort();
+
+			expect(actual).toEqual(expected);
+		});
+	});
+
+	describe("MergeQueue", () => {
+		test("merge_queue table columns match MergeQueueRow interface", () => {
+			const dbPath = join(tmpDir, "merge-queue.db");
+			const queue = createMergeQueue(dbPath);
+
+			const db = new Database(dbPath, { readonly: true });
+			const actual = getTableColumns(db, "merge_queue");
+			db.close();
+			queue.close();
+
+			// Columns from MergeQueueRow interface in src/merge/queue.ts
+			const expected = [
+				"agent_name",
+				"branch_name",
+				"enqueued_at",
+				"files_modified",
+				"id",
+				"resolved_tier",
+				"status",
+				"task_id",
 			].sort();
 
 			expect(actual).toEqual(expected);
