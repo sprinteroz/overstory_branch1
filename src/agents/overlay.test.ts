@@ -417,6 +417,76 @@ describe("generateOverlay", () => {
 		expect(output).not.toContain("pytest");
 		expect(output).not.toContain("Quality Gates");
 	});
+
+	test("default trackerCli renders as bd in quality gates", async () => {
+		const config = makeConfig({ capability: "builder", beadId: "overstory-task1" });
+		const output = await generateOverlay(config);
+
+		expect(output).toContain("bd close overstory-task1");
+	});
+
+	test("custom trackerCli replaces bd in quality gates", async () => {
+		const config = makeConfig({
+			capability: "builder",
+			trackerCli: "sd",
+			beadId: "overstory-test1",
+		});
+		const output = await generateOverlay(config);
+
+		expect(output).toContain("sd close overstory-test1");
+		expect(output).not.toContain("bd close");
+	});
+
+	test("custom trackerCli replaces bd in constraints", async () => {
+		const config = makeConfig({
+			capability: "builder",
+			trackerCli: "sd",
+		});
+		const output = await generateOverlay(config);
+
+		expect(output).toContain("`sd close`");
+	});
+
+	test("custom trackerCli replaces bd in read-only completion section", async () => {
+		const config = makeConfig({
+			capability: "scout",
+			trackerCli: "sd",
+			beadId: "overstory-test2",
+		});
+		const output = await generateOverlay(config);
+
+		expect(output).toContain("sd close overstory-test2");
+		expect(output).not.toContain("bd close");
+	});
+
+	test("TRACKER_CLI in base definition is replaced", async () => {
+		const config = makeConfig({
+			trackerCli: "sd",
+			baseDefinition: "Run `{{TRACKER_CLI}} show` to check status.",
+		});
+		const output = await generateOverlay(config);
+
+		expect(output).toContain("Run `sd show` to check status.");
+		expect(output).not.toContain("{{TRACKER_CLI}}");
+	});
+
+	test("TRACKER_NAME in base definition is replaced", async () => {
+		const config = makeConfig({
+			trackerName: "seeds",
+			baseDefinition: "Close your {{TRACKER_NAME}} issue when done.",
+		});
+		const output = await generateOverlay(config);
+
+		expect(output).toContain("Close your seeds issue when done.");
+		expect(output).not.toContain("{{TRACKER_NAME}}");
+	});
+
+	test("defaults backward-compatible: no trackerCli/trackerName produces bd/beads", async () => {
+		const config = makeConfig({ capability: "builder", beadId: "overstory-back" });
+		const output = await generateOverlay(config);
+
+		expect(output).toContain("bd close overstory-back");
+	});
 });
 
 describe("writeOverlay", () => {

@@ -91,7 +91,7 @@ function formatQualityGates(config: OverlayConfig): string {
 			"Before reporting completion:",
 			"",
 			`1. **Record mulch learnings:** \`mulch record <domain> --type <convention|pattern|reference> --description "..."\` — capture reusable knowledge from your work`,
-			`2. **Close issue:** \`bd close ${config.beadId} --reason "summary of findings"\``,
+			`2. **Close issue:** \`${config.trackerCli ?? "bd"} close ${config.beadId} --reason "summary of findings"\``,
 			`3. **Send results:** \`overstory mail send --to ${config.parentAgent ?? "orchestrator"} --subject "done" --body "Summary" --type result --agent ${config.agentName}\``,
 			"",
 			"You are a read-only agent. Do NOT commit, modify files, or run quality gates.",
@@ -114,7 +114,7 @@ function formatQualityGates(config: OverlayConfig): string {
 		`${gateLines.length + 1}. **Commit:** all changes committed to your branch (${config.branchName})`,
 		`${gateLines.length + 2}. **Record mulch learnings:** \`mulch record <domain> --type <convention|pattern|failure|decision> --description "..." --outcome-status success --outcome-agent ${config.agentName}\` — capture insights from your work`,
 		`${gateLines.length + 3}. **Signal completion:** send \`worker_done\` mail to ${config.parentAgent ?? "orchestrator"}: \`overstory mail send --to ${config.parentAgent ?? "orchestrator"} --subject "Worker done: ${config.beadId}" --body "Quality gates passed." --type worker_done --agent ${config.agentName}\``,
-		`${gateLines.length + 4}. **Close issue:** \`bd close ${config.beadId} --reason "summary of changes"\``,
+		`${gateLines.length + 4}. **Close issue:** \`${config.trackerCli ?? "bd"} close ${config.beadId} --reason "summary of changes"\``,
 		"",
 		"Do NOT push to the canonical branch. Your work will be merged by the",
 		"orchestrator via `overstory merge`.",
@@ -132,7 +132,7 @@ function formatConstraints(config: OverlayConfig): string {
 			"",
 			"- You are **read-only**: do NOT modify, create, or delete any files",
 			"- Do NOT commit, push, or make any git state changes",
-			"- Report completion via `bd close` AND `overstory mail send --type result`",
+			`- Report completion via \`${config.trackerCli ?? "bd"} close\` AND \`overstory mail send --type result\``,
 			"- If you encounter a blocking issue, send mail with `--priority urgent --type error`",
 		].join("\n");
 	}
@@ -145,7 +145,7 @@ function formatConstraints(config: OverlayConfig): string {
 		"- Only modify files in your File Scope",
 		`- Commit only to your branch: ${config.branchName}`,
 		"- Never push to the canonical branch",
-		"- Report completion via `bd close` AND `overstory mail send --type result`",
+		`- Report completion via \`${config.trackerCli ?? "bd"} close\` AND \`overstory mail send --type result\``,
 		"- If you encounter a blocking issue, send mail with `--priority urgent --type error`",
 	].join("\n");
 }
@@ -220,6 +220,8 @@ export async function generateOverlay(config: OverlayConfig): Promise<string> {
 		"{{SPEC_INSTRUCTION}}": specInstruction,
 		"{{SKIP_SCOUT}}": config.skipScout ? SKIP_SCOUT_SECTION : "",
 		"{{BASE_DEFINITION}}": config.baseDefinition,
+		"{{TRACKER_CLI}}": config.trackerCli ?? "bd",
+		"{{TRACKER_NAME}}": config.trackerName ?? "beads",
 	};
 
 	let result = template;
