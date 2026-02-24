@@ -21,7 +21,8 @@
 		"developer-tools"
 	],
 	"bin": {
-		"overstory": "./src/index.ts"
+		"overstory": "./src/index.ts",
+		"ov": "./src/index.ts"
 	},
 	"main": "src/index.ts",
 	"files": ["src", "agents", "templates"],
