@@ -13,30 +13,31 @@ import { AgentError } from "../errors.ts";
 /**
  * Detect the directory containing the overstory binary.
  *
- * Checks process.argv[0] first (the bun/node executable path won't help,
- * but process.argv[1] is the script path for `bun run`), then falls back
- * to `which overstory` to find it on the current PATH.
+ * Tries `which ov` first (the short alias), then falls back to
+ * `which overstory` (the original name). Both are registered in
+ * package.json bin, but depending on how the tool was installed
+ * (bun link, npm link, global install), only one may be on PATH.
  *
  * Returns null if detection fails.
  */
 async function detectOverstoryBinDir(): Promise<string | null> {
-	// process.argv[1] is the script entry point (e.g., /path/to/overstory/src/index.ts)
-	// The overstory binary (bun link) resolves to a bin dir
-	// Try `which overstory` for the most reliable result
-	try {
-		const proc = Bun.spawn(["which", "ov"], {
-			stdout: "pipe",
-			stderr: "pipe",
-		});
-		const exitCode = await proc.exited;
-		if (exitCode === 0) {
-			const binPath = (await new Response(proc.stdout).text()).trim();
-			if (binPath.length > 0) {
-				return dirname(resolve(binPath));
+	// Try both command names — the alias migration may leave only one resolvable
+	for (const cmdName of ["ov", "overstory"]) {
+		try {
+			const proc = Bun.spawn(["which", cmdName], {
+				stdout: "pipe",
+				stderr: "pipe",
+			});
+			const exitCode = await proc.exited;
+			if (exitCode === 0) {
+				const binPath = (await new Response(proc.stdout).text()).trim();
+				if (binPath.length > 0) {
+					return dirname(resolve(binPath));
+				}
 			}
+		} catch {
+			// which not available or command not on PATH — try next
 		}
-	} catch {
-		// which not available or overstory not on PATH
 	}
 
 	// Fallback: if process.argv[1] points to overstory's own entry point (src/index.ts),

@@ -210,15 +210,19 @@ describe("createSession", () => {
 		}
 	});
 
-	test("still creates session when which overstory fails (uses fallback)", async () => {
+	test("still creates session when which ov and which overstory both fail (uses fallback)", async () => {
 		let callCount = 0;
 		spawnSpy.mockImplementation(() => {
 			callCount++;
 			if (callCount === 1) {
+				// which ov fails
+				return mockSpawnResult("", "ov not found", 1);
+			}
+			if (callCount === 2) {
 				// which overstory fails
 				return mockSpawnResult("", "overstory not found", 1);
 			}
-			if (callCount === 2) {
+			if (callCount === 3) {
 				// tmux new-session
 				return mockSpawnResult("", "", 0);
 			}
@@ -230,7 +234,8 @@ describe("createSession", () => {
 		expect(pid).toBe(5555);
 
 		// The tmux command should contain the original command
-		const tmuxCallArgs = spawnSpy.mock.calls[1] as unknown[];
+		// Call 0: which ov, Call 1: which overstory, Call 2: tmux new-session
+		const tmuxCallArgs = spawnSpy.mock.calls[2] as unknown[];
 		const cmd = tmuxCallArgs[0] as string[];
 		const tmuxCmd = cmd[7] as string;
 		expect(tmuxCmd).toContain("echo test");
