@@ -1,5 +1,5 @@
 /**
- * CLI command: overstory clean [--all] [--mail] [--sessions] [--metrics]
+ * CLI command: ov clean [--all] [--mail] [--sessions] [--metrics]
  *   [--logs] [--worktrees] [--branches] [--agents] [--specs]
  *
  * Nuclear cleanup of overstory runtime state.
@@ -394,7 +394,7 @@ async function checkMulchHealth(repoRoot: string): Promise<{
 }
 
 /**
- * Entry point for `overstory clean [flags]`.
+ * Entry point for `ov clean [flags]`.
  *
  * @param opts - Command options
  */

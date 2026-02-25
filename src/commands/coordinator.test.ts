@@ -1025,9 +1025,9 @@ describe("buildCoordinatorBeacon", () => {
 	test("includes startup instructions", () => {
 		const beacon = buildCoordinatorBeacon();
 		expect(beacon).toContain("mulch prime");
-		expect(beacon).toContain("overstory mail check --agent coordinator");
+		expect(beacon).toContain("ov mail check --agent coordinator");
 		expect(beacon).toContain("bd ready");
-		expect(beacon).toContain("overstory group status");
+		expect(beacon).toContain("ov group status");
 	});
 
 	test("defaults to bd ready when no cliName provided", () => {

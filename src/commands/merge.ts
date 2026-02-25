@@ -1,14 +1,14 @@
 /**
- * CLI command: overstory merge
+ * CLI command: ov merge
  *
  * Merges agent branches back to the canonical branch using
  * the merge queue and tiered conflict resolver.
  *
  * Usage:
- *   overstory merge --branch <name>   Merge a specific branch
- *   overstory merge --all             Merge all pending branches
- *   overstory merge --dry-run         Check for conflicts without merging
- *   overstory merge --json            Output results as JSON
+ *   ov merge --branch <name>   Merge a specific branch
+ *   ov merge --all             Merge all pending branches
+ *   ov merge --dry-run         Check for conflicts without merging
+ *   ov merge --json            Output results as JSON
  */
 
 import { join } from "node:path";
@@ -124,7 +124,7 @@ function formatDryRun(entry: MergeEntry): string {
 }
 
 /**
- * Entry point for `overstory merge [flags]`.
+ * Entry point for `ov merge [flags]`.
  *
  * @param opts - Command options
  */
@@ -136,7 +136,7 @@ export async function mergeCommand(opts: MergeOptions): Promise<void> {
 	const json = opts.json ?? false;
 
 	if (!branchName && !all) {
-		throw new ValidationError("Either --branch <name> or --all is required for overstory merge", {
+		throw new ValidationError("Either --branch <name> or --all is required for ov merge", {
 			field: "branch|all",
 		});
 	}

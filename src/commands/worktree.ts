@@ -1,5 +1,5 @@
 /**
- * CLI command: overstory worktree list | clean [--completed] [--all]
+ * CLI command: ov worktree list | clean [--completed] [--all]
  *
  * List shows worktrees with agent status.
  * Clean removes worktree dirs, branch refs (if merged), and tmux sessions.
@@ -22,7 +22,7 @@ import {
 import { isSessionAlive, killSession } from "../worktree/tmux.ts";
 
 /**
- * Handle `overstory worktree list`.
+ * Handle `ov worktree list`.
  */
 async function handleList(root: string, json: boolean): Promise<void> {
 	const worktrees = await listWorktrees(root);
@@ -71,7 +71,7 @@ async function handleList(root: string, json: boolean): Promise<void> {
 }
 
 /**
- * Handle `overstory worktree clean [--completed] [--all] [--force]`.
+ * Handle `ov worktree clean [--completed] [--all] [--force]`.
  */
 async function handleClean(
 	opts: { all: boolean; force: boolean; completedOnly: boolean },
@@ -335,7 +335,7 @@ export function createWorktreeCommand(): Command {
 }
 
 /**
- * Entry point for `overstory worktree <subcommand> [flags]`.
+ * Entry point for `ov worktree <subcommand> [flags]`.
  *
  * Subcommands: list, clean.
  */

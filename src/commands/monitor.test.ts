@@ -39,14 +39,14 @@ describe("buildMonitorBeacon", () => {
 		expect(beacon).toContain("mulch prime");
 	});
 
-	test("contains startup instruction: overstory status --json", () => {
+	test("contains startup instruction: ov status --json", () => {
 		const beacon = buildMonitorBeacon();
-		expect(beacon).toContain("overstory status --json");
+		expect(beacon).toContain("ov status --json");
 	});
 
-	test("contains startup instruction: overstory mail check --agent monitor", () => {
+	test("contains startup instruction: ov mail check --agent monitor", () => {
 		const beacon = buildMonitorBeacon();
-		expect(beacon).toContain("overstory mail check --agent monitor");
+		expect(beacon).toContain("ov mail check --agent monitor");
 	});
 
 	test("contains startup instruction: patrol loop", () => {
@@ -86,7 +86,7 @@ describe("monitorCommand", () => {
 		stdoutSpy.mockRestore();
 	});
 
-	test("--help prints help text containing 'overstory monitor'", async () => {
+	test("--help prints help text containing 'monitor'", async () => {
 		await monitorCommand(["--help"]);
 		const output = stdoutWrites.join("");
 		expect(output).toContain("monitor");

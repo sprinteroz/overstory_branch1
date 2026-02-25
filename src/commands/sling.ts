@@ -1,5 +1,5 @@
 /**
- * CLI command: overstory sling <task-id>
+ * CLI command: ov sling <task-id>
  *
  * CRITICAL PATH. Orchestrates a full agent spawn:
  * 1. Load config + manifest
@@ -135,7 +135,7 @@ export interface BeaconOptions {
  *   Startup protocol:
  *   1. Read your assignment in .claude/CLAUDE.md
  *   2. Load expertise: mulch prime
- *   3. Check mail: overstory mail check --agent <name>
+ *   3. Check mail: ov mail check --agent <name>
  *   4. Begin working on task <bead-id>
  */
 export function buildBeacon(opts: BeaconOptions): string {
@@ -144,7 +144,7 @@ export function buildBeacon(opts: BeaconOptions): string {
 	const parts = [
 		`[OVERSTORY] ${opts.agentName} (${opts.capability}) ${timestamp} task:${opts.taskId}`,
 		`Depth: ${opts.depth} | Parent: ${parent}`,
-		`Startup: read .claude/CLAUDE.md, run mulch prime, check mail (overstory mail check --agent ${opts.agentName}), then begin task ${opts.taskId}`,
+		`Startup: read .claude/CLAUDE.md, run mulch prime, check mail (ov mail check --agent ${opts.agentName}), then begin task ${opts.taskId}`,
 	];
 	return parts.join(" — ");
 }
@@ -225,14 +225,14 @@ export function validateHierarchy(
 }
 
 /**
- * Entry point for `overstory sling <task-id> [flags]`.
+ * Entry point for `ov sling <task-id> [flags]`.
  *
  * @param taskId - The task ID to assign to the agent
  * @param opts - Command options
  */
 export async function slingCommand(taskId: string, opts: SlingOptions): Promise<void> {
 	if (!taskId) {
-		throw new ValidationError("Task ID is required: overstory sling <task-id>", {
+		throw new ValidationError("Task ID is required: ov sling <task-id>", {
 			field: "taskId",
 		});
 	}

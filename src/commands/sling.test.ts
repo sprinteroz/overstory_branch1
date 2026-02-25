@@ -405,14 +405,14 @@ describe("buildBeacon", () => {
 
 		expect(beacon).toContain("read .claude/CLAUDE.md");
 		expect(beacon).toContain("mulch prime");
-		expect(beacon).toContain("overstory mail check --agent scout-1");
+		expect(beacon).toContain("ov mail check --agent scout-1");
 		expect(beacon).toContain("begin task overstory-xyz");
 	});
 
 	test("uses agent name in mail check command", () => {
 		const beacon = buildBeacon(makeBeaconOpts({ agentName: "reviewer-beta" }));
 
-		expect(beacon).toContain("overstory mail check --agent reviewer-beta");
+		expect(beacon).toContain("ov mail check --agent reviewer-beta");
 	});
 
 	test("reflects capability in header", () => {

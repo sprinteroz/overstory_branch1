@@ -1,5 +1,5 @@
 /**
- * CLI command: overstory supervisor start|stop|status
+ * CLI command: ov supervisor start|stop|status
  *
  * Manages per-project supervisor agent lifecycle. The supervisor is a persistent
  * agent that runs at the project root (NOT in a worktree), assigned to a specific
@@ -52,7 +52,7 @@ export function buildSupervisorBeacon(opts: {
 	const parts = [
 		`[OVERSTORY] ${opts.name} (supervisor) ${timestamp} task:${opts.taskId}`,
 		`Depth: ${opts.depth} | Parent: ${opts.parent} | Role: per-project supervisor`,
-		`Startup: run mulch prime, check mail (overstory mail check --agent ${opts.name}), read task (${cli} show ${opts.taskId}), then begin supervising`,
+		`Startup: run mulch prime, check mail (ov mail check --agent ${opts.name}), read task (${cli} show ${opts.taskId}), then begin supervising`,
 	];
 	return parts.join(" — ");
 }
@@ -427,7 +427,7 @@ async function statusSupervisor(opts: { name?: string; json: boolean }): Promise
 }
 
 /**
- * Create the Commander command for `overstory supervisor`.
+ * Create the Commander command for `ov supervisor`.
  */
 export function createSupervisorCommand(): Command {
 	const cmd = new Command("supervisor").description("Manage per-project supervisor agents");
@@ -480,7 +480,7 @@ export function createSupervisorCommand(): Command {
 }
 
 /**
- * Entry point for `overstory supervisor <subcommand>`.
+ * Entry point for `ov supervisor <subcommand>`.
  */
 export async function supervisorCommand(args: string[]): Promise<void> {
 	const cmd = createSupervisorCommand();

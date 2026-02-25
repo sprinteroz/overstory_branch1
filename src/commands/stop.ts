@@ -1,5 +1,5 @@
 /**
- * CLI command: overstory stop <agent-name>
+ * CLI command: ov stop <agent-name>
  *
  * Explicitly terminates a running agent by:
  * 1. Looking up the agent session by name
@@ -37,7 +37,7 @@ export interface StopDeps {
 }
 
 /**
- * Entry point for `overstory stop <agent-name>`.
+ * Entry point for `ov stop <agent-name>`.
  *
  * @param agentName - Name of the agent to stop
  * @param opts - Command options

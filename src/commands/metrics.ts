@@ -1,5 +1,5 @@
 /**
- * CLI command: overstory metrics [--last <n>] [--json]
+ * CLI command: ov metrics [--last <n>] [--json]
  *
  * Shows metrics summary from SQLite store: session durations, success rates,
  * merge tier distribution, agent utilization.

@@ -1,5 +1,5 @@
 /**
- * CLI command: overstory spec write <task-id> --body <content>
+ * CLI command: ov spec write <bead-id> --body <content>
  *
  * Writes a task specification to `.overstory/specs/<task-id>.md`.
  * Scouts use this to persist spec documents as files instead of
@@ -62,17 +62,16 @@ export async function writeSpec(
 }
 
 /**
- * Entry point for `overstory spec write <task-id> [flags]`.
+ * Entry point for `ov spec write <bead-id> [flags]`.
  *
  * @param taskId - The task ID for the spec file
  * @param opts - Command options
  */
 export async function specWriteCommand(taskId: string, opts: SpecWriteOptions): Promise<void> {
 	if (!taskId || taskId.trim().length === 0) {
-		throw new ValidationError(
-			"Task ID is required: overstory spec write <task-id> --body <content>",
-			{ field: "taskId" },
-		);
+		throw new ValidationError("Task ID is required: ov spec write <task-id> --body <content>", {
+			field: "taskId",
+		});
 	}
 
 	let body = opts.body;

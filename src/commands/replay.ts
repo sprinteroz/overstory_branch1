@@ -1,5 +1,5 @@
 /**
- * CLI command: overstory replay [--run <id>] [--agent <name>...] [--json]
+ * CLI command: ov replay [--run <id>] [--agent <name>...] [--json]
  *              [--since <ts>] [--until <ts>] [--limit <n>]
  *
  * Shows an interleaved chronological replay of events across multiple agents.

@@ -1,5 +1,5 @@
 /**
- * CLI command: overstory log <event> --agent <name> [--stdin]
+ * CLI command: ov log <event> --agent <name> [--stdin]
  *
  * Called by Pre/PostToolUse and Stop hooks.
  * Events: tool-start, tool-end, session-end.
@@ -542,7 +542,7 @@ async function runLog(opts: {
 				if (agentSession) {
 					// Auto-complete the current run when the coordinator exits.
 					// This handles the case where the user closes the tmux window
-					// without running `overstory coordinator stop`.
+					// without running `ov coordinator stop`.
 					if (agentSession.capability === "coordinator") {
 						try {
 							const currentRunPath = join(config.project.root, ".overstory", "current-run.txt");
@@ -710,7 +710,7 @@ export function createLogCommand(): Command {
 }
 
 /**
- * Entry point for `overstory log <event> --agent <name>`.
+ * Entry point for `ov log <event> --agent <name>`.
  */
 export async function logCommand(args: string[]): Promise<void> {
 	const cmd = createLogCommand();

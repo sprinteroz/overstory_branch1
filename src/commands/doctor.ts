@@ -1,5 +1,5 @@
 /**
- * CLI command: overstory doctor [options]
+ * CLI command: ov doctor [options]
  *
  * Runs health checks on overstory subsystems and reports problems.
  */

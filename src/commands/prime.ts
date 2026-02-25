@@ -1,5 +1,5 @@
 /**
- * `overstory prime` command.
+ * `ov prime` command.
  *
  * Loads context for the orchestrator or a specific agent and outputs it
  * to stdout for injection into Claude Code's context via hooks.
@@ -24,7 +24,7 @@ import { getCurrentSessionName } from "../worktree/tmux.ts";
  * Wildcard+whitelist pattern: ignore everything except tracked config files.
  */
 const OVERSTORY_GITIGNORE = `# Wildcard+whitelist: ignore everything, whitelist tracked files
-# Auto-healed by overstory prime on each session start
+# Auto-healed by ov prime on each session start
 *
 !.gitignore
 !config.yaml

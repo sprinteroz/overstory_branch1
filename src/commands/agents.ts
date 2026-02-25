@@ -1,5 +1,5 @@
 /**
- * CLI command: overstory agents <sub> [--json]
+ * CLI command: ov agents <sub> [--json]
  *
  * Discover and query agents by capability.
  */
@@ -181,7 +181,7 @@ function printAgents(agents: DiscoveredAgent[]): void {
 }
 
 /**
- * Create the Commander command for `overstory agents`.
+ * Create the Commander command for `ov agents`.
  */
 export function createAgentsCommand(): Command {
 	const cmd = new Command("agents").description("Discover and query agents");
@@ -229,7 +229,7 @@ export function createAgentsCommand(): Command {
 }
 
 /**
- * Entry point for `overstory agents <subcommand>`.
+ * Entry point for `ov agents <subcommand>`.
  */
 export async function agentsCommand(args: string[]): Promise<void> {
 	const cmd = createAgentsCommand();

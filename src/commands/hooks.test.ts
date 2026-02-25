@@ -22,13 +22,13 @@ const SAMPLE_HOOKS = {
 		SessionStart: [
 			{
 				matcher: "",
-				hooks: [{ type: "command", command: "overstory prime --agent orchestrator" }],
+				hooks: [{ type: "command", command: "ov prime --agent orchestrator" }],
 			},
 		],
 		Stop: [
 			{
 				matcher: "",
-				hooks: [{ type: "command", command: "overstory log session-end --agent orchestrator" }],
+				hooks: [{ type: "command", command: "ov log session-end --agent orchestrator" }],
 			},
 		],
 	},
@@ -106,7 +106,7 @@ describe("hooks install", () => {
 		const content = await Bun.file(targetPath).text();
 		const parsed = JSON.parse(content) as Record<string, unknown>;
 		expect(parsed.hooks).toBeDefined();
-		expect(content).toContain("overstory prime");
+		expect(content).toContain("ov prime");
 	});
 
 	test("preserves existing non-hooks keys in settings.local.json", async () => {
@@ -182,7 +182,7 @@ describe("hooks install", () => {
 		// Existing user hook is preserved
 		expect(content).toContain("user-hook");
 		// Overstory hooks are added
-		expect(content).toContain("overstory prime");
+		expect(content).toContain("ov prime");
 	});
 
 	test("throws when .overstory/hooks.json does not exist", async () => {
@@ -284,7 +284,7 @@ describe("hooks install merge behavior", () => {
 		// User's PreToolUse hook preserved
 		expect(content).toContain("user-write-hook");
 		// Overstory's SessionStart hook added
-		expect(content).toContain("overstory prime");
+		expect(content).toContain("ov prime");
 		// Both event types present
 		expect(parsed.hooks.PreToolUse).toBeDefined();
 		expect(parsed.hooks.SessionStart).toBeDefined();
@@ -361,7 +361,7 @@ describe("hooks install merge behavior", () => {
 		const parsed = JSON.parse(content) as { hooks: Record<string, unknown[]> };
 		expect(parsed.hooks.SessionStart).toBeDefined();
 		expect(parsed.hooks.Stop).toBeDefined();
-		expect(content).toContain("overstory prime");
+		expect(content).toContain("ov prime");
 	});
 
 	describe("mergeHooksByEventType unit tests", () => {

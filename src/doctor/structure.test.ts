@@ -104,7 +104,7 @@ describe("checkStructure", () => {
 		await Bun.write(
 			join(overstoryDir, ".gitignore"),
 			`# Wildcard+whitelist: ignore everything, whitelist tracked files
-# Auto-healed by overstory prime on each session start
+# Auto-healed by ov prime on each session start
 *
 !.gitignore
 !config.yaml

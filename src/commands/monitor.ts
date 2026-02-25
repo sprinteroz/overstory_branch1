@@ -1,5 +1,5 @@
 /**
- * CLI command: overstory monitor start|stop|status
+ * CLI command: ov monitor start|stop|status
  *
  * Manages the persistent Tier 2 monitor agent lifecycle. The monitor runs
  * at the project root (NOT in a worktree), continuously patrols the agent
@@ -9,7 +9,7 @@
  * Unlike regular agents spawned by sling, the monitor:
  * - Has no worktree (operates on the main working tree)
  * - Has no bead assignment (it monitors, not implements)
- * - Has no overlay CLAUDE.md (context comes via overstory status + mail)
+ * - Has no overlay CLAUDE.md (context comes via ov status + mail)
  * - Persists across patrol cycles
  */
 
@@ -46,7 +46,7 @@ export function buildMonitorBeacon(): string {
 	const parts = [
 		`[OVERSTORY] ${MONITOR_NAME} (monitor/tier-2) ${timestamp}`,
 		"Depth: 0 | Parent: none | Role: continuous fleet patrol",
-		`Startup: run mulch prime, check fleet (overstory status --json), check mail (overstory mail check --agent ${MONITOR_NAME}), then begin patrol loop`,
+		`Startup: run mulch prime, check fleet (ov status --json), check mail (ov mail check --agent ${MONITOR_NAME}), then begin patrol loop`,
 	];
 	return parts.join(" — ");
 }
@@ -356,7 +356,7 @@ export function createMonitorCommand(): Command {
 }
 
 /**
- * Entry point for `overstory monitor <subcommand>`.
+ * Entry point for `ov monitor <subcommand>`.
  */
 export async function monitorCommand(args: string[]): Promise<void> {
 	const cmd = createMonitorCommand();

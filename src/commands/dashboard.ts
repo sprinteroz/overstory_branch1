@@ -1,5 +1,5 @@
 /**
- * CLI command: overstory dashboard [--interval <ms>] [--all]
+ * CLI command: ov dashboard [--interval <ms>] [--all]
  *
  * Rich terminal dashboard using raw ANSI escape codes (zero runtime deps).
  * Polls existing data sources and renders multi-panel layout with agent status,
@@ -402,7 +402,7 @@ async function loadDashboardData(
  * Render the header bar (line 1).
  */
 function renderHeader(width: number, interval: number, currentRunId?: string | null): string {
-	const left = color.bold(`overstory dashboard v${PKG_VERSION}`);
+	const left = color.bold(`ov dashboard v${PKG_VERSION}`);
 	const now = new Date().toLocaleTimeString();
 	const scope = currentRunId ? ` [run: ${currentRunId.slice(0, 8)}]` : " [all runs]";
 	const right = `${now}${scope} | refresh: ${interval}ms`;

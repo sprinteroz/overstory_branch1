@@ -1,5 +1,5 @@
 /**
- * CLI command: overstory init [--force]
+ * CLI command: ov init [--force]
  *
  * Scaffolds the `.overstory/` directory in the current project with:
  * - config.yaml (serialized from DEFAULT_CONFIG)
@@ -328,7 +328,7 @@ function buildHooksJson(): string {
 					hooks: [
 						{
 							type: "command",
-							command: `${toolNameExtract} overstory log tool-start --agent orchestrator --tool-name "$TOOL_NAME"`,
+							command: `${toolNameExtract} ov log tool-start --agent orchestrator --tool-name "$TOOL_NAME"`,
 						},
 					],
 				},
@@ -339,7 +339,7 @@ function buildHooksJson(): string {
 					hooks: [
 						{
 							type: "command",
-							command: `${toolNameExtract} overstory log tool-end --agent orchestrator --tool-name "$TOOL_NAME"`,
+							command: `${toolNameExtract} ov log tool-end --agent orchestrator --tool-name "$TOOL_NAME"`,
 						},
 					],
 				},
@@ -450,11 +450,11 @@ CREATE TABLE IF NOT EXISTS sessions (
 /**
  * Content for .overstory/.gitignore — runtime state that should not be tracked.
  * Uses wildcard+whitelist pattern: ignore everything, whitelist tracked files.
- * Auto-healed by overstory prime on each session start.
+ * Auto-healed by ov prime on each session start.
  * Config files (config.yaml, agent-manifest.json, hooks.json) remain tracked.
  */
 export const OVERSTORY_GITIGNORE = `# Wildcard+whitelist: ignore everything, whitelist tracked files
-# Auto-healed by overstory prime on each session start
+# Auto-healed by ov prime on each session start
 *
 !.gitignore
 !config.yaml
@@ -476,13 +476,13 @@ Overstory turns a single Claude Code session into a multi-agent team by spawning
 
 ## Key Commands
 
-- \`overstory init\`          — Initialize this directory
-- \`overstory status\`        — Show active agents and state
-- \`overstory sling <id>\`    — Spawn a worker agent
-- \`overstory mail check\`    — Check agent messages
-- \`overstory merge\`         — Merge agent work back
-- \`overstory dashboard\`     — Live TUI monitoring
-- \`overstory doctor\`        — Run health checks
+- \`ov init\`          — Initialize this directory
+- \`ov status\`        — Show active agents and state
+- \`ov sling <id>\`    — Spawn a worker agent
+- \`ov mail check\`    — Check agent messages
+- \`ov merge\`         — Merge agent work back
+- \`ov dashboard\`     — Live TUI monitoring
+- \`ov doctor\`        — Run health checks
 
 ## Structure
 
@@ -526,7 +526,7 @@ function printCreated(relativePath: string): void {
 }
 
 /**
- * Entry point for `overstory init [--force]`.
+ * Entry point for `ov init [--force]`.
  *
  * Scaffolds the .overstory/ directory structure in the current working directory.
  *
@@ -636,6 +636,6 @@ export async function initCommand(opts: InitOptions): Promise<void> {
 	}
 
 	process.stdout.write("\nDone.\n");
-	process.stdout.write("  Next: run `overstory hooks install` to enable Claude Code hooks.\n");
-	process.stdout.write("  Then: run `overstory status` to see the current state.\n");
+	process.stdout.write("  Next: run `ov hooks install` to enable Claude Code hooks.\n");
+	process.stdout.write("  Then: run `ov status` to see the current state.\n");
 }

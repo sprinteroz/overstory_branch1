@@ -1,5 +1,5 @@
 /**
- * CLI command: overstory trace <target> [--json] [--since <ts>] [--until <ts>] [--limit <n>]
+ * CLI command: ov trace <target> [--json] [--since <ts>] [--until <ts>] [--limit <n>]
  *
  * Shows a chronological timeline of events for an agent or bead task.
  * Target can be an agent name or a task ID (resolved to agent name via SessionStore).

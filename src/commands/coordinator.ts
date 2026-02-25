@@ -1,9 +1,9 @@
 /**
- * CLI command: overstory coordinator start|stop|status
+ * CLI command: ov coordinator start|stop|status
  *
  * Manages the persistent coordinator agent lifecycle. The coordinator runs
  * at the project root (NOT in a worktree), receives work via mail and beads,
- * and dispatches agents via overstory sling.
+ * and dispatches agents via ov sling.
  *
  * Unlike regular agents spawned by sling, the coordinator:
  * - Has no worktree (operates on the main working tree)
@@ -115,7 +115,7 @@ async function removeWatchdogPid(projectRoot: string): Promise<void> {
 
 /**
  * Default watchdog implementation for production use.
- * Starts/stops the watchdog daemon via `overstory watch --background`.
+ * Starts/stops the watchdog daemon via `ov watch --background`.
  */
 function createDefaultWatchdog(projectRoot: string): NonNullable<CoordinatorDeps["_watchdog"]> {
 	return {
@@ -189,7 +189,7 @@ function createDefaultWatchdog(projectRoot: string): NonNullable<CoordinatorDeps
 
 /**
  * Default monitor implementation for production use.
- * Starts/stops the monitor agent via `overstory monitor start/stop`.
+ * Starts/stops the monitor agent via `ov monitor start/stop`.
  */
 function createDefaultMonitor(projectRoot: string): NonNullable<CoordinatorDeps["_monitor"]> {
 	return {
@@ -248,9 +248,9 @@ export function buildCoordinatorBeacon(cliName = "bd"): string {
 	const parts = [
 		`[OVERSTORY] ${COORDINATOR_NAME} (coordinator) ${timestamp}`,
 		"Depth: 0 | Parent: none | Role: persistent orchestrator",
-		"HIERARCHY: You ONLY spawn leads (overstory sling --capability lead). Leads spawn scouts, builders, reviewers. NEVER spawn non-lead agents directly.",
+		"HIERARCHY: You ONLY spawn leads (ov sling --capability lead). Leads spawn scouts, builders, reviewers. NEVER spawn non-lead agents directly.",
 		"DELEGATION: For any exploration/scouting, spawn a lead who will spawn scouts. Do NOT explore the codebase yourself beyond initial planning.",
-		`Startup: run mulch prime, check mail (overstory mail check --agent ${COORDINATOR_NAME}), check ${cliName} ready, check overstory group status, then begin work`,
+		`Startup: run mulch prime, check mail (ov mail check --agent ${COORDINATOR_NAME}), check ${cliName} ready, check ov group status, then begin work`,
 	];
 	return parts.join(" — ");
 }
@@ -686,7 +686,7 @@ async function statusCoordinator(
 }
 
 /**
- * Create the Commander command for `overstory coordinator`.
+ * Create the Commander command for `ov coordinator`.
  */
 export function createCoordinatorCommand(deps: CoordinatorDeps = {}): Command {
 	const cmd = new Command("coordinator").description("Manage the persistent coordinator agent");
@@ -735,7 +735,7 @@ export function createCoordinatorCommand(deps: CoordinatorDeps = {}): Command {
 }
 
 /**
- * Entry point for `overstory coordinator <subcommand>`.
+ * Entry point for `ov coordinator <subcommand>`.
  *
  * @param args - CLI arguments after "coordinator"
  * @param deps - Optional dependency injection for testing (tmux)

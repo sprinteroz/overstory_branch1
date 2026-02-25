@@ -1,5 +1,5 @@
 /**
- * CLI command: overstory errors [--agent <name>] [--run <id>] [--json] [--since <ts>] [--until <ts>] [--limit <n>]
+ * CLI command: ov errors [--agent <name>] [--run <id>] [--json] [--since <ts>] [--until <ts>] [--limit <n>]
  *
  * Shows aggregated error-level events across all agents.
  * Errors can be filtered by agent name, run ID, or time range.
