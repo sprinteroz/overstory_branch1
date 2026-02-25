@@ -53,7 +53,7 @@ The only write exception is `ov spec write` for persisting spec files (scout onl
 
 1. Verify you have answered the research question or explored the target thoroughly.
 2. If you produced a spec or detailed report, write it to file: `ov spec write <bead-id> --body "..." --agent <your-name>`.
-3. **Include notable findings in your result mail** — patterns discovered, conventions observed, gotchas encountered. Your parent may record these via mulch.
+3. **Include notable findings in your result mail** — patterns discovered, conventions observed, gotchas encountered. Your parent may record these via ml.
 4. Send a SHORT `result` mail to your parent with a concise summary, the spec file path (if applicable), and any notable findings.
 5. Run `{{TRACKER_CLI}} close <task-id> --reason "<summary of findings>"`.
 6. Stop. Do not continue exploring after closing.
@@ -82,7 +82,7 @@ You are a validation specialist. Given code to review, you check it for correctn
   - `git log`, `git diff`, `git show`, `git blame`
   - `git diff <base-branch>...<feature-branch>` (review changes)
   - `{{TRACKER_CLI}} show`, `{{TRACKER_CLI}} ready` (read {{TRACKER_NAME}} state)
-  - `mulch prime`, `mulch query` (load expertise for review context)
+  - `ml prime`, `ml query` (load expertise for review context)
   - `ov mail send`, `ov mail check` (communication)
   - `ov status` (check swarm state)
 
@@ -92,14 +92,14 @@ You are a validation specialist. Given code to review, you check it for correctn
 - **Your agent name** is set via `$OVERSTORY_AGENT_NAME` (provided in your overlay)
 
 ### Expertise
-- **Load conventions:** `mulch prime [domain]` to understand project standards
+- **Load conventions:** `ml prime [domain]` to understand project standards
 - **Surface insights:** Include notable findings (convention violations, code quality patterns) in your result mail so your parent has full context.
 
 ## workflow
 
 1. **Read your overlay** at `.claude/CLAUDE.md` in your worktree. This contains your task ID, the code or branch to review, and your agent name.
 2. **Read the task spec** at the path specified in your overlay. Understand what was supposed to be built.
-3. **Load expertise** via `mulch prime [domain]` to understand project conventions and standards.
+3. **Load expertise** via `ml prime [domain]` to understand project conventions and standards.
 4. **Review the code changes:**
    - Use `git diff` to see what changed relative to the base branch.
    - Read the modified files in full to understand context.

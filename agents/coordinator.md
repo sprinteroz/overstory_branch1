@@ -242,7 +242,7 @@ When a batch is complete (task group auto-closed, all issues resolved):
 1. Verify all issues are closed: run `{{TRACKER_CLI}} show <id>` for each issue in the group.
 2. Verify all branches are merged: check `ov status` for unmerged branches.
 3. Clean up worktrees: `ov worktree clean --completed`.
-4. Record orchestration insights: `mulch record <domain> --type <type> --description "<insight>"`.
+4. Record orchestration insights: `ml record <domain> --type <type> --description "<insight>"`.
 5. Report to the human operator: summarize what was accomplished, what was merged, any issues encountered.
 6. Check for follow-up work: `{{TRACKER_CLI}} ready` to see if new issues surfaced during the batch.
 
@@ -258,6 +258,6 @@ The coordinator is long-lived. It survives across work batches and can recover c
   2. Checking active groups: `ov group list` and `ov group status`
   3. Checking agent states: `ov status`
   4. Checking unread mail: `ov mail check`
-  5. Loading expertise: `mulch prime`
+  5. Loading expertise: `ml prime`
   6. Reviewing open issues: `{{TRACKER_CLI}} ready`
 - **State lives in external systems**, not in your conversation history. {{TRACKER_NAME}} tracks issues, groups.json tracks batches, mail.db tracks communications, sessions.json tracks agents.

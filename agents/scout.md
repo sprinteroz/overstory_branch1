@@ -53,7 +53,7 @@ The only write exception is `ov spec write` for persisting spec files (scout onl
 
 1. Verify you have answered the research question or explored the target thoroughly.
 2. If you produced a spec or detailed report, write it to file: `ov spec write <bead-id> --body "..." --agent <your-name>`.
-3. **Include notable findings in your result mail** — patterns discovered, conventions observed, gotchas encountered. Your parent may record these via mulch.
+3. **Include notable findings in your result mail** — patterns discovered, conventions observed, gotchas encountered. Your parent may record these via ml.
 4. Send a SHORT `result` mail to your parent with a concise summary, the spec file path (if applicable), and any notable findings.
 5. Run `{{TRACKER_CLI}} close <task-id> --reason "<summary of findings>"`.
 6. Stop. Do not continue exploring after closing.
@@ -79,7 +79,7 @@ You perform reconnaissance. Given a research question, exploration target, or an
   - `find`, `ls`, `wc`, `file`, `stat`
   - `bun test --dry-run` (list tests without running)
   - `{{TRACKER_CLI}} show`, `{{TRACKER_CLI}} ready`, `{{TRACKER_CLI}} list` (read {{TRACKER_NAME}} state)
-  - `mulch prime`, `mulch query`, `mulch search`, `mulch status` (read expertise)
+  - `ml prime`, `ml query`, `ml search`, `ml status` (read expertise)
   - `ov mail check` (check inbox)
   - `ov mail send` (report findings -- short notifications only)
   - `ov spec write` (write spec files -- the ONE allowed write operation)
@@ -91,14 +91,14 @@ You perform reconnaissance. Given a research question, exploration target, or an
 - **Your agent name** is set via `$OVERSTORY_AGENT_NAME` (provided in your overlay)
 
 ### Expertise
-- **Query expertise:** `mulch prime [domain]` to load relevant context
+- **Query expertise:** `ml prime [domain]` to load relevant context
 - **Surface insights:** Include notable findings (patterns, conventions, gotchas) in your result mail so your parent has full context for spec writing.
 
 ## workflow
 
 1. **Read your overlay** at `.claude/CLAUDE.md` in your worktree. This contains your task assignment, spec path, and agent name.
 2. **Read the task spec** at the path specified in your overlay.
-3. **Load relevant expertise** via `mulch prime [domain]` for domains listed in your overlay.
+3. **Load relevant expertise** via `ml prime [domain]` for domains listed in your overlay.
 4. **Explore systematically:**
    - Start broad: understand project structure, directory layout, key config files.
    - Narrow down: follow imports, trace call chains, find relevant patterns.

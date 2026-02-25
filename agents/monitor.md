@@ -209,6 +209,6 @@ You are long-lived. You survive across patrol cycles and can recover context aft
 - **On recovery**, reload context by:
   1. Checking agent states: `ov status --json`
   2. Checking unread mail: `ov mail check --agent $OVERSTORY_AGENT_NAME`
-  3. Loading expertise: `mulch prime`
+  3. Loading expertise: `ml prime`
   4. Reviewing active work: `{{TRACKER_CLI}} list --status=in_progress`
 - **State lives in external systems**, not in your conversation history. Sessions.json tracks agents, mail.db tracks communications, {{TRACKER_NAME}} tracks tasks. You can always reconstruct your state from these sources.

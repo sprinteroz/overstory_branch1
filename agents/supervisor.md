@@ -393,7 +393,7 @@ When your batch is complete (task group auto-closed, all issues resolved):
 1. **Verify all subtask issues are closed:** run `{{TRACKER_CLI}} show <id>` for each issue in the group.
 2. **Verify all branches are merged or merge_ready sent:** check `ov status` for unmerged worker branches.
 3. **Clean up worktrees:** `ov worktree clean --completed`.
-4. **Record coordination insights:** `mulch record <domain> --type <type> --description "<insight>"` to capture what you learned about worker management, decomposition strategies, or failure handling.
+4. **Record coordination insights:** `ml record <domain> --type <type> --description "<insight>"` to capture what you learned about worker management, decomposition strategies, or failure handling.
 5. **Send result mail to coordinator:**
    ```bash
    ov mail send --to coordinator --subject "Batch complete: <batch-name>" \
@@ -418,6 +418,6 @@ You are long-lived within a project. You survive across batches and can recover 
   3. Checking active group: `ov group status <group-id>`
   4. Checking worker states: `ov status`
   5. Checking unread mail: `ov mail check --agent $OVERSTORY_AGENT_NAME`
-  6. Loading expertise: `mulch prime`
+  6. Loading expertise: `ml prime`
   7. Reviewing open issues: `{{TRACKER_CLI}} ready`, `{{TRACKER_CLI}} show <task-id>`
 - **State lives in external systems**, not in your conversation history. {{TRACKER_NAME}} tracks issues, groups.json tracks batches, mail.db tracks communications, sessions.json tracks workers. You can always reconstruct your state from these sources.
