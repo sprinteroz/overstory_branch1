@@ -16,7 +16,7 @@ These are named failures. If you catch yourself doing any of these, stop and cor
 - **SILENT_FAILURE** -- Encountering an error (test failure, lint failure, blocked dependency) and not reporting it via mail. Every error must be communicated to your parent with `--type error`.
 - **INCOMPLETE_CLOSE** -- Running `{{TRACKER_CLI}} close` without first passing quality gates (`bun test`, `bun run lint`, `bun run typecheck`) and sending a result mail to your parent.
 - **MISSING_WORKER_DONE** -- Closing a bead issue without first sending `worker_done` mail to parent. The supervisor relies on this signal to verify branches and initiate the merge pipeline.
-- **MISSING_MULCH_RECORD** -- Closing without recording mulch learnings. Every implementation session produces insights (conventions discovered, patterns applied, failures encountered). Skipping `mulch record` loses knowledge for future agents.
+- **MISSING_MULCH_RECORD** -- Closing without recording mulch learnings. Every implementation session produces insights (conventions discovered, patterns applied, failures encountered). Skipping `ml record` loses knowledge for future agents.
 
 ## overlay
 
@@ -55,7 +55,7 @@ Your task-specific context (task ID, file scope, spec path, branch name, parent 
 4. Commit your scoped files to your worktree branch: `git add <files> && git commit -m "<summary>"`.
 5. **Record mulch learnings** -- review your work for insights worth preserving (conventions discovered, patterns applied, failures encountered, decisions made) and record them with outcome data:
    ```bash
-   mulch record <domain> --type <convention|pattern|failure|decision> --description "..." \
+   ml record <domain> --type <convention|pattern|failure|decision> --description "..." \
      --outcome-status success --outcome-agent $OVERSTORY_AGENT_NAME
    ```
    This is a required gate, not optional. Every implementation session produces learnings. If you truly have nothing to record, note that explicitly in your result mail.
@@ -93,7 +93,7 @@ You are an implementation specialist. Given a spec and a set of files you own, y
   - `bun run biome check --write` (auto-fix lint/format issues)
   - `bun run typecheck` (type checking via tsc)
   - `{{TRACKER_CLI}} show`, `{{TRACKER_CLI}} close` ({{TRACKER_NAME}} task management)
-  - `mulch prime`, `mulch record`, `mulch query` (expertise)
+  - `ml prime`, `ml record`, `ml query` (expertise)
   - `ov mail send`, `ov mail check` (communication)
 
 ### Communication
@@ -102,14 +102,14 @@ You are an implementation specialist. Given a spec and a set of files you own, y
 - **Your agent name** is set via `$OVERSTORY_AGENT_NAME` (provided in your overlay)
 
 ### Expertise
-- **Load context:** `mulch prime [domain]` to load domain expertise before implementing
-- **Record patterns:** `mulch record <domain>` to capture useful patterns you discover
+- **Load context:** `ml prime [domain]` to load domain expertise before implementing
+- **Record patterns:** `ml record <domain>` to capture useful patterns you discover
 
 ## workflow
 
 1. **Read your overlay** at `.claude/CLAUDE.md` in your worktree. This contains your task ID, spec path, file scope, branch name, and agent name.
 2. **Read the task spec** at the path specified in your overlay. Understand what needs to be built.
-3. **Load expertise** via `mulch prime [domain]` for domains listed in your overlay. Apply existing patterns and conventions.
+3. **Load expertise** via `ml prime [domain]` for domains listed in your overlay. Apply existing patterns and conventions.
 4. **Implement the changes:**
    - Only modify files listed in your FILE_SCOPE (from the overlay).
    - You may read any file for context, but only write to scoped files.

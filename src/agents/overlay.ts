@@ -24,7 +24,7 @@ function formatFileScope(fileScope: readonly string[]): string {
 }
 
 /**
- * Format mulch domains as a `mulch prime` command.
+ * Format mulch domains as a `ml prime` command.
  * Returns a human-readable fallback if no domains are configured.
  */
 function formatMulchDomains(domains: readonly string[]): string {
@@ -112,7 +112,7 @@ function formatQualityGates(config: OverlayConfig): string {
 		"",
 		...gateLines,
 		`${gateLines.length + 1}. **Commit:** all changes committed to your branch (${config.branchName})`,
-		`${gateLines.length + 2}. **Record mulch learnings:** \`mulch record <domain> --type <convention|pattern|failure|decision> --description "..." --outcome-status success --outcome-agent ${config.agentName}\` — capture insights from your work`,
+		`${gateLines.length + 2}. **Record mulch learnings:** \`ml record <domain> --type <convention|pattern|failure|decision> --description "..." --outcome-status success --outcome-agent ${config.agentName}\` — capture insights from your work`,
 		`${gateLines.length + 3}. **Signal completion:** send \`worker_done\` mail to ${config.parentAgent ?? "coordinator"}: \`ov mail send --to ${config.parentAgent ?? "coordinator"} --subject "Worker done: ${config.taskId}" --body "Quality gates passed." --type worker_done --agent ${config.agentName}\``,
 		`${gateLines.length + 4}. **Close issue:** \`${config.trackerCli ?? "bd"} close ${config.taskId} --reason "summary of changes"\``,
 		"",

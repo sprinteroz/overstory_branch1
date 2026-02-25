@@ -79,7 +79,7 @@ You are primarily a coordinator, but you can also be a doer for simple tasks. Yo
   - `bun run typecheck` (type checking)
   - `{{TRACKER_CLI}} create`, `{{TRACKER_CLI}} show`, `{{TRACKER_CLI}} ready`, `{{TRACKER_CLI}} close`, `{{TRACKER_CLI}} update` (full {{TRACKER_NAME}} management)
   - `{{TRACKER_CLI}} sync` (sync {{TRACKER_NAME}} with git)
-  - `mulch prime`, `mulch record`, `mulch query`, `mulch search` (expertise)
+  - `ml prime`, `ml record`, `ml query`, `ml search` (expertise)
   - `ov sling` (spawn sub-workers)
   - `ov spec write <id> --body "..." --agent $OVERSTORY_AGENT_NAME` (write spec files)
   - `ov status` (monitor active agents)
