@@ -30,9 +30,9 @@ const EVENT_LABELS: Record<EventType, { label: string; color: ColorFn }> = {
 
 /**
  * Detect whether a target string looks like a task ID.
- * Bead IDs follow the pattern: word-alphanumeric (e.g., "overstory-rj1k", "myproject-abc1").
+ * Task IDs follow the pattern: word-alphanumeric (e.g., "overstory-rj1k", "myproject-abc1").
  */
-function looksLikeBeadId(target: string): boolean {
+function looksLikeTaskId(target: string): boolean {
 	return /^[a-z][a-z0-9]*-[a-z0-9]{3,}$/i.test(target);
 }
 
@@ -220,7 +220,7 @@ async function executeTrace(target: string, opts: TraceOpts): Promise<void> {
 	// Resolve target to agent name
 	let agentName = target;
 
-	if (looksLikeBeadId(target)) {
+	if (looksLikeTaskId(target)) {
 		// Try to resolve task ID to agent name via SessionStore
 		const { store: sessionStore } = openSessionStore(overstoryDir);
 		try {

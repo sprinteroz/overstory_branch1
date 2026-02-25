@@ -579,13 +579,13 @@ describe("traceCommand", () => {
 			expect(parsed).toEqual([]);
 		});
 
-		test("short agent names without bead pattern are not resolved as task IDs", async () => {
+		test("short agent names without task pattern are not resolved as task IDs", async () => {
 			const dbPath = join(tempDir, ".overstory", "events.db");
 			const store = createEventStore(dbPath);
 			store.insert(makeEvent({ agentName: "scout" }));
 			store.close();
 
-			// "scout" does not match bead pattern word-alphanumeric
+			// "scout" does not match task pattern word-alphanumeric
 			await traceCommand(["scout", "--json"]);
 			const out = output();
 

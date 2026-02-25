@@ -1,7 +1,7 @@
 /**
- * CLI command: overstory spec write <bead-id> --body <content>
+ * CLI command: overstory spec write <task-id> --body <content>
  *
- * Writes a task specification to `.overstory/specs/<bead-id>.md`.
+ * Writes a task specification to `.overstory/specs/<task-id>.md`.
  * Scouts use this to persist spec documents as files instead of
  * sending entire specs via mail messages.
  *
@@ -30,7 +30,7 @@ async function readStdin(): Promise<string> {
 }
 
 /**
- * Write a spec file to .overstory/specs/<bead-id>.md.
+ * Write a spec file to .overstory/specs/<task-id>.md.
  *
  * Exported for direct use in tests.
  */
@@ -62,9 +62,9 @@ export async function writeSpec(
 }
 
 /**
- * Entry point for `overstory spec write <bead-id> [flags]`.
+ * Entry point for `overstory spec write <task-id> [flags]`.
  *
- * @param taskId - The bead/task ID for the spec file
+ * @param taskId - The task ID for the spec file
  * @param opts - Command options
  */
 export async function specWriteCommand(taskId: string, opts: SpecWriteOptions): Promise<void> {
