@@ -1175,7 +1175,7 @@ describe("mailCommand", () => {
 			]);
 
 			// Verify warning on stderr
-			expect(stderrOutput).toContain("WARNING");
+			expect(stderrOutput).toContain("Warning:");
 			expect(stderrOutput).toContain("NO reviewer sessions found");
 			expect(stderrOutput).toContain("lead-1");
 			expect(stderrOutput).toContain("2 builder(s)");
@@ -1208,7 +1208,7 @@ describe("mailCommand", () => {
 			]);
 
 			// Verify note on stderr
-			expect(stderrOutput).toContain("NOTE");
+			expect(stderrOutput).toContain("Note:");
 			expect(stderrOutput).toContain("Only 1 reviewer(s) for 3 builder(s)");
 			expect(stderrOutput).toContain("review-verified");
 		});
