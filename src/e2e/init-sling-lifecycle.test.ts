@@ -22,9 +22,13 @@ import type { OverlayConfig } from "../types.ts";
 const EXPECTED_AGENT_DEFS = [
 	"builder.md",
 	"coordinator.md",
+	"issue-reviews.md",
 	"lead.md",
 	"merger.md",
 	"monitor.md",
+	"pr-reviews.md",
+	"prioritize.md",
+	"release.md",
 	"reviewer.md",
 	"scout.md",
 	"supervisor.md",
@@ -109,7 +113,7 @@ describe("E2E: init→sling lifecycle on external project", () => {
 		expect(config.project.name).toBeTruthy();
 	});
 
-	test("manifest loads successfully with all 8 agents", async () => {
+	test("manifest loads successfully with all 12 agents", async () => {
 		await initCommand({});
 
 		const manifestPath = join(tempDir, ".overstory", "agent-manifest.json");

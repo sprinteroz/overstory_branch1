@@ -20,6 +20,10 @@ const AGENT_DEF_FILES = [
 	"supervisor.md",
 	"coordinator.md",
 	"monitor.md",
+	"issue-reviews.md",
+	"pr-reviews.md",
+	"prioritize.md",
+	"release.md",
 ];
 
 /** Resolve the source agents directory (same logic as init.ts). */
@@ -46,7 +50,7 @@ describe("initCommand: agent-defs deployment", () => {
 		await cleanupTempDir(tempDir);
 	});
 
-	test("creates .overstory/agent-defs/ with all 8 agent definition files", async () => {
+	test("creates .overstory/agent-defs/ with all 12 agent definition files", async () => {
 		await initCommand({});
 
 		const agentDefsDir = join(tempDir, ".overstory", "agent-defs");

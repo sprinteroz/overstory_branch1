@@ -34,7 +34,13 @@ import type { TrackerIssue } from "../tracker/factory.ts";
 import { createTrackerClient, resolveBackend, trackerCliName } from "../tracker/factory.ts";
 import type { AgentSession, OverlayConfig } from "../types.ts";
 import { createWorktree } from "../worktree/manager.ts";
-import { createSession, ensureTmuxAvailable, sendKeys, waitForTuiReady } from "../worktree/tmux.ts";
+import {
+	capturePaneContent,
+	createSession,
+	ensureTmuxAvailable,
+	sendKeys,
+	waitForTuiReady,
+} from "../worktree/tmux.ts";
 
 /**
  * Calculate how many milliseconds to sleep before spawning a new agent,
@@ -605,6 +611,23 @@ export async function slingCommand(taskId: string, opts: SlingOptions): Promise<
 		for (const delay of [1_000, 2_000]) {
 			await Bun.sleep(delay);
 			await sendKeys(tmuxSessionName, "");
+		}
+
+		// 13d. Verify beacon was received — if pane still shows the welcome
+		// screen ("Try "), resend the beacon. Claude Code's TUI sometimes
+		// consumes the Enter keystroke during late initialization, swallowing
+		// the beacon text entirely (overstory-3271).
+		const verifyAttempts = 5;
+		for (let v = 0; v < verifyAttempts; v++) {
+			await Bun.sleep(2_000);
+			const paneContent = await capturePaneContent(tmuxSessionName);
+			if (paneContent && !paneContent.includes('Try "')) {
+				break; // Agent is processing — beacon was received
+			}
+			// Still at welcome screen — resend beacon
+			await sendKeys(tmuxSessionName, beacon);
+			await Bun.sleep(1_000);
+			await sendKeys(tmuxSessionName, ""); // Follow-up Enter
 		}
 
 		// 14. Output result

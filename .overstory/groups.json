@@ -320,5 +320,65 @@
 		"status": "completed",
 		"createdAt": "2026-02-24T18:56:53.989Z",
 		"completedAt": "2026-02-24T20:03:39.011Z"
+	},
+	{
+		"id": "group-59211cc6",
+		"name": "stability-sprint",
+		"memberIssueIds": [
+			"seeds-db01",
+			"seeds-96ed",
+			"seeds-52e4",
+			"seeds-ef20",
+			"seeds-de10"
+		],
+		"status": "completed",
+		"createdAt": "2026-02-24T21:34:48.363Z",
+		"completedAt": "2026-02-24T22:12:11.440Z"
+	},
+	{
+		"id": "group-fd52df9e",
+		"name": "priority-sweep-5",
+		"memberIssueIds": [
+			"overstory-e2e0",
+			"overstory-f0f9",
+			"overstory-e879",
+			"overstory-34f3",
+			"overstory-648d",
+			"overstory-8d46",
+			"overstory-4p77",
+			"overstory-bd16",
+			"overstory-431e",
+			"overstory-ce20",
+			"overstory-2a2b"
+		],
+		"status": "active",
+		"createdAt": "2026-02-24T22:59:10.743Z",
+		"completedAt": null
+	},
+	{
+		"id": "group-7ea581b7",
+		"name": "quality-and-bugs-6",
+		"memberIssueIds": [
+			"overstory-a705",
+			"overstory-3271",
+			"overstory-18d5"
+		],
+		"status": "active",
+		"createdAt": "2026-02-25T02:57:04.728Z",
+		"completedAt": null
+	},
+	{
+		"id": "group-d655d724",
+		"name": "output-and-fixes-batch",
+		"memberIssueIds": [
+			"overstory-a705",
+			"overstory-3271",
+			"overstory-9ab0",
+			"overstory-596c",
+			"overstory-18d5"
+		],
+		"status": "active",
+		"createdAt": "2026-02-25T03:20:11.734Z",
+		"completedAt": null
 	}
 ]

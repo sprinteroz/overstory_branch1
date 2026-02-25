@@ -454,6 +454,23 @@ async function handleSend(opts: SendOpts, cwd: string): Promise<void> {
 			}
 		}
 
+		// For dispatch messages, also send an immediate tmux nudge.
+		// Dispatch targets newly spawned agents that may be idle at the welcome
+		// screen where file-based nudges can't reach (no hook fires on idle agents).
+		// The I/O corruption concern (overstory-ii1o) only applies during active
+		// tool execution — newly spawned agents are idle, so sendKeys is safe.
+		if (type === "dispatch") {
+			try {
+				const { nudgeAgent } = await import("./nudge.ts");
+				const nudgeMessage = `[DISPATCH] ${subject}: ${body.slice(0, 500)}`;
+				// Small delay to let the agent's TUI stabilize after sling
+				await Bun.sleep(3_000);
+				await nudgeAgent(cwd, to, nudgeMessage, true); // force=true to skip debounce
+			} catch {
+				// Non-fatal: the file-based nudge is the fallback
+			}
+		}
+
 		// Reviewer coverage check for merge_ready (advisory warning)
 		if (type === "merge_ready") {
 			try {
