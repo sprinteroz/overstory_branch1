@@ -30,7 +30,7 @@ You are the top-level decision-maker for automated work. When a human gives you 
 **You may ONLY spawn leads. This is code-enforced by `sling.ts` -- attempting to spawn builder, scout, reviewer, or merger without `--parent` will throw a HierarchyError.**
 
 ```bash
-overstory sling <bead-id> \
+overstory sling <task-id> \
   --capability lead \
   --name <lead-name> \
   --depth 1
@@ -56,15 +56,15 @@ Coordinator (you, depth 0)
 - **Your agent name** is `coordinator` (or as set by `$OVERSTORY_AGENT_NAME`)
 
 #### Mail Types You Send
-- `dispatch` -- assign a work stream to a lead (includes beadId, objective, file area)
+- `dispatch` -- assign a work stream to a lead (includes taskId, objective, file area)
 - `status` -- progress updates, clarifications, answers to questions
 - `error` -- report unrecoverable failures to the human operator
 
 #### Mail Types You Receive
-- `merge_ready` -- lead confirms all builders are done, branch verified and ready to merge (branch, beadId, agentName, filesModified)
-- `merged` -- merger confirms successful merge (branch, beadId, tier)
-- `merge_failed` -- merger reports merge failure (branch, beadId, conflictFiles, errorMessage)
-- `escalation` -- any agent escalates an issue (severity: warning|error|critical, beadId, context)
+- `merge_ready` -- lead confirms all builders are done, branch verified and ready to merge (branch, taskId, agentName, filesModified)
+- `merged` -- merger confirms successful merge (branch, taskId, tier)
+- `merge_failed` -- merger reports merge failure (branch, taskId, conflictFiles, errorMessage)
+- `escalation` -- any agent escalates an issue (severity: warning|error|critical, taskId, context)
 - `health_check` -- watchdog probes liveness (agentName, checkType)
 - `status` -- leads report progress
 - `result` -- leads report completed work streams
@@ -90,7 +90,7 @@ Coordinator (you, depth 0)
    ```
 5. **Dispatch leads** for each work stream:
    ```bash
-   overstory sling <bead-id> --capability lead --name <lead-name> --depth 1
+   overstory sling <task-id> --capability lead --name <lead-name> --depth 1
    ```
 6. **Send dispatch mail** to each lead with the high-level objective:
    ```bash
@@ -157,7 +157,7 @@ Attempt recovery. Options in order of preference:
 overstory nudge <lead-name> "Error reported. Retry or adjust approach. Check mail for details."
 
 # Option 2: Reassign
-overstory sling <bead-id> --capability lead --name <new-lead-name> --depth 1
+overstory sling <task-id> --capability lead --name <new-lead-name> --depth 1
 ```
 
 ### Critical

@@ -128,15 +128,15 @@ Coordinator (you, depth 0)
 - **Your agent name** is `coordinator` (or as set by `$OVERSTORY_AGENT_NAME`)
 
 #### Mail Types You Send
-- `dispatch` -- assign a work stream to a lead (includes beadId, objective, file area)
+- `dispatch` -- assign a work stream to a lead (includes taskId, objective, file area)
 - `status` -- progress updates, clarifications, answers to questions
 - `error` -- report unrecoverable failures to the human operator
 
 #### Mail Types You Receive
-- `merge_ready` -- lead confirms all builders are done, branch verified and ready to merge (branch, beadId, agentName, filesModified)
-- `merged` -- merger confirms successful merge (branch, beadId, tier)
-- `merge_failed` -- merger reports merge failure (branch, beadId, conflictFiles, errorMessage)
-- `escalation` -- any agent escalates an issue (severity: warning|error|critical, beadId, context)
+- `merge_ready` -- lead confirms all builders are done, branch verified and ready to merge (branch, taskId, agentName, filesModified)
+- `merged` -- merger confirms successful merge (branch, taskId, tier)
+- `merge_failed` -- merger reports merge failure (branch, taskId, conflictFiles, errorMessage)
+- `escalation` -- any agent escalates an issue (severity: warning|error|critical, taskId, context)
 - `health_check` -- watchdog probes liveness (agentName, checkType)
 - `status` -- leads report progress
 - `result` -- leads report completed work streams

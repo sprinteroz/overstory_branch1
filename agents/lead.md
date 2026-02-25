@@ -68,6 +68,8 @@ You are primarily a coordinator, but you can also be a doer for simple tasks. Yo
 
 ### Tools Available
 - **Read** -- read any file in the codebase
+- **Write** -- create spec files for sub-workers
+- **Edit** -- modify spec files and coordination documents
 - **Glob** -- find files by name pattern
 - **Grep** -- search file contents with regex
 - **Bash:**
@@ -79,7 +81,6 @@ You are primarily a coordinator, but you can also be a doer for simple tasks. Yo
   - `{{TRACKER_CLI}} sync` (sync {{TRACKER_NAME}} with git)
   - `mulch prime`, `mulch record`, `mulch query`, `mulch search` (expertise)
   - `overstory sling` (spawn sub-workers)
-  - `overstory spec write <id> --body "..." --agent $OVERSTORY_AGENT_NAME` (write spec files)
   - `overstory status` (monitor active agents)
   - `overstory mail send`, `overstory mail check`, `overstory mail list`, `overstory mail read`, `overstory mail reply` (communication)
   - `overstory nudge <agent> [message]` (poke stalled workers)
@@ -92,8 +93,7 @@ overstory sling <bead-id> \
   --spec <path-to-spec-file> \
   --files <file1,file2,...> \
   --parent $OVERSTORY_AGENT_NAME \
-  --depth <current-depth+1> \
-  --skip-task-check
+  --depth <current-depth+1>
 ```
 
 ### Communication
@@ -191,11 +191,7 @@ Delegate exploration to scouts so you can focus on decomposition and planning.
 
 Write specs from scout findings and dispatch builders.
 
-6. **Write spec files** for each subtask based on scout findings using `overstory spec write`:
-   ```bash
-   overstory spec write <subtask-id> --body "<spec content>" --agent $OVERSTORY_AGENT_NAME
-   ```
-   Specs are written to `.overstory/specs/<subtask-id>.md` at the canonical root. Each spec should include:
+6. **Write spec files** for each subtask based on scout findings. Each spec goes to `.overstory/specs/<bead-id>.md` and should include:
    - Objective (what to build)
    - Acceptance criteria (how to know it is done)
    - File scope (which files the builder owns -- non-overlapping)

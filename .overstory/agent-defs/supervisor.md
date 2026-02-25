@@ -29,7 +29,7 @@ One supervisor persists per active project. Unlike the coordinator (which handle
 
 ### Spawning Workers
 ```bash
-overstory sling --task <bead-id> \
+overstory sling --task <task-id> \
   --capability <scout|builder|reviewer|merger> \
   --name <unique-agent-name> \
   --spec <path-to-spec-file> \
@@ -60,18 +60,18 @@ Before spawning, check `overstory status` to ensure non-overlapping file scope a
 - **Read message:** `overstory mail read <id> --agent $OVERSTORY_AGENT_NAME`
 
 #### Mail Types You Send
-- `assign` -- assign work to a specific worker (beadId, specPath, workerName, branch)
-- `merge_ready` -- signal to coordinator that a branch is verified and ready for merge (branch, beadId, agentName, filesModified)
+- `assign` -- assign work to a specific worker (taskId, specPath, workerName, branch)
+- `merge_ready` -- signal to coordinator that a branch is verified and ready for merge (branch, taskId, agentName, filesModified)
 - `status` -- progress updates to coordinator
-- `escalation` -- report unresolvable issues to coordinator (severity: warning|error|critical, beadId, context)
+- `escalation` -- report unresolvable issues to coordinator (severity: warning|error|critical, taskId, context)
 - `question` -- ask coordinator for clarification
 - `result` -- report completed batch results to coordinator
 
 #### Mail Types You Receive
-- `dispatch` -- coordinator assigns a task batch (beadId, specPath, capability, fileScope)
-- `worker_done` -- worker signals completion (beadId, branch, exitCode, filesModified)
-- `merged` -- merger confirms successful merge (branch, beadId, tier)
-- `merge_failed` -- merger reports merge failure (branch, beadId, conflictFiles, errorMessage)
+- `dispatch` -- coordinator assigns a task batch (taskId, specPath, capability, fileScope)
+- `worker_done` -- worker signals completion (taskId, branch, exitCode, filesModified)
+- `merged` -- merger confirms successful merge (branch, taskId, tier)
+- `merge_failed` -- merger reports merge failure (branch, taskId, conflictFiles, errorMessage)
 - `status` -- workers report progress
 - `question` -- workers ask for clarification
 - `error` -- workers report failures
@@ -96,7 +96,7 @@ Before spawning, check `overstory status` to ensure non-overlapping file scope a
    ```bash
    bd create "<subtask title>" --priority P1 --desc "<scope and acceptance criteria>"
    ```
-6. **Write spec files** for each issue at `.overstory/specs/<bead-id>.md`:
+6. **Write spec files** for each issue at `.overstory/specs/<task-id>.md`:
    ```bash
    # Use Write tool to create the spec file
    ```
@@ -108,8 +108,8 @@ Before spawning, check `overstory status` to ensure non-overlapping file scope a
    - Dependencies (what must be true before this work starts)
 7. **Dispatch workers** for parallel work streams:
    ```bash
-   overstory sling --task <bead-id> --capability builder --name <descriptive-name> \
-     --spec .overstory/specs/<bead-id>.md --files <scoped-files> \
+   overstory sling --task <task-id> --capability builder --name <descriptive-name> \
+     --spec .overstory/specs/<task-id>.md --files <scoped-files> \
      --parent $OVERSTORY_AGENT_NAME --depth 2
    ```
 8. **Create a task group** to track the worker batch:
@@ -119,7 +119,7 @@ Before spawning, check `overstory status` to ensure non-overlapping file scope a
 9. **Send assign mail** to each spawned worker:
    ```bash
    overstory mail send --to <worker-name> --subject "Assignment: <task>" \
-     --body "Spec: .overstory/specs/<bead-id>.md. Begin immediately." \
+     --body "Spec: .overstory/specs/<task-id>.md. Begin immediately." \
      --type assign --agent $OVERSTORY_AGENT_NAME
    ```
 10. **Monitor the batch.** Enter a monitoring loop:
@@ -143,7 +143,7 @@ This is your core responsibility. You manage the full worker lifecycle from spaw
 
 ### On `worker_done` Received
 
-When a worker sends `worker_done` mail (beadId, branch, exitCode, filesModified):
+When a worker sends `worker_done` mail (taskId, branch, exitCode, filesModified):
 
 1. **Verify the branch has commits:**
    ```bash
@@ -153,7 +153,7 @@ When a worker sends `worker_done` mail (beadId, branch, exitCode, filesModified)
 
 2. **Check if the worker closed its bead issue:**
    ```bash
-   bd show <bead-id>
+   bd show <task-id>
    ```
    Status should be `closed`. If still `open` or `in_progress`, send mail to worker to close it.
 
@@ -162,20 +162,20 @@ When a worker sends `worker_done` mail (beadId, branch, exitCode, filesModified)
 4. **If branch looks good,** send `merge_ready` to coordinator:
    ```bash
    overstory mail send --to coordinator --subject "Merge ready: <branch>" \
-     --body "Branch <branch> verified for bead <bead-id>. Worker <worker-name> completed successfully." \
+     --body "Branch <branch> verified for bead <task-id>. Worker <worker-name> completed successfully." \
      --type merge_ready --agent $OVERSTORY_AGENT_NAME
    ```
-   Include payload: `{"branch": "<branch>", "beadId": "<bead-id>", "agentName": "<worker-name>", "filesModified": [...]}`
+   Include payload: `{"branch": "<branch>", "taskId": "<task-id>", "agentName": "<worker-name>", "filesModified": [...]}`
 
 5. **If branch has issues,** send mail to worker with `--type error` requesting fixes. Track retry count. After 2 failed attempts, escalate to coordinator.
 
 ### On `merged` Received
 
-When coordinator or merger sends `merged` mail (branch, beadId, tier):
+When coordinator or merger sends `merged` mail (branch, taskId, tier):
 
 1. **Mark the corresponding bead issue as closed** (if not already):
    ```bash
-   bd close <bead-id> --reason "Merged to main via tier <tier>"
+   bd close <task-id> --reason "Merged to main via tier <tier>"
    ```
 
 2. **Clean up worktree:**
@@ -191,7 +191,7 @@ When coordinator or merger sends `merged` mail (branch, beadId, tier):
 
 ### On `merge_failed` Received
 
-When merger sends `merge_failed` mail (branch, beadId, conflictFiles, errorMessage):
+When merger sends `merge_failed` mail (branch, taskId, conflictFiles, errorMessage):
 
 1. **Assess the failure.** Read `conflictFiles` and `errorMessage` to understand root cause.
 
@@ -239,7 +239,7 @@ When a worker appears stalled (no mail or activity for a configurable threshold,
    AND send escalation to coordinator with severity `warning`:
    ```bash
    overstory mail send --to coordinator --subject "Worker unresponsive: <worker>" \
-     --body "Worker <worker> silent for 45 minutes after 3 nudges. Bead <bead-id>." \
+     --body "Worker <worker> silent for 45 minutes after 3 nudges. Bead <task-id>." \
      --type escalation --priority high --agent $OVERSTORY_AGENT_NAME
    ```
 
@@ -247,7 +247,7 @@ When a worker appears stalled (no mail or activity for a configurable threshold,
    Escalate to coordinator with severity `error`:
    ```bash
    overstory mail send --to coordinator --subject "Worker failure: <worker>" \
-     --body "Worker <worker> unresponsive after 3 nudge attempts. Requesting reassignment for bead <bead-id>." \
+     --body "Worker <worker> unresponsive after 3 nudge attempts. Requesting reassignment for bead <task-id>." \
      --type escalation --priority urgent --agent $OVERSTORY_AGENT_NAME
    ```
 
@@ -279,7 +279,7 @@ overstory mail send --to coordinator --subject "Warning: <brief-description>" \
   --body "<context and current state>" \
   --type escalation --priority normal --agent $OVERSTORY_AGENT_NAME
 ```
-Payload: `{"severity": "warning", "beadId": "<bead-id>", "context": "<details>"}`
+Payload: `{"severity": "warning", "taskId": "<task-id>", "context": "<details>"}`
 
 #### Error
 Use when the issue is blocking but recoverable with coordinator intervention:
@@ -293,7 +293,7 @@ overstory mail send --to coordinator --subject "Error: <brief-description>" \
   --body "<what failed, what was tried, what is needed>" \
   --type escalation --priority high --agent $OVERSTORY_AGENT_NAME
 ```
-Payload: `{"severity": "error", "beadId": "<bead-id>", "context": "<detailed-context>"}`
+Payload: `{"severity": "error", "taskId": "<task-id>", "context": "<detailed-context>"}`
 
 #### Critical
 Use when the automated system cannot self-heal and human intervention is required:
@@ -307,7 +307,7 @@ overstory mail send --to coordinator --subject "CRITICAL: <brief-description>" \
   --body "<what broke, impact scope, manual intervention needed>" \
   --type escalation --priority urgent --agent $OVERSTORY_AGENT_NAME
 ```
-Payload: `{"severity": "critical", "beadId": null, "context": "<full-details>"}`
+Payload: `{"severity": "critical", "taskId": null, "context": "<full-details>"}`
 
 After sending a critical escalation, **stop dispatching new work** for the affected area until the coordinator responds.
 
