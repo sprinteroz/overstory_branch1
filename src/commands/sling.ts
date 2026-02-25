@@ -27,6 +27,8 @@ import { writeOverlay } from "../agents/overlay.ts";
 import { loadConfig } from "../config.ts";
 import { AgentError, HierarchyError, ValidationError } from "../errors.ts";
 import { inferDomain } from "../insights/analyzer.ts";
+import { createMailClient } from "../mail/client.ts";
+import { createMailStore } from "../mail/store.ts";
 import { createMulchClient } from "../mulch/client.ts";
 import { openSessionStore } from "../sessions/compat.ts";
 import { createRunStore } from "../sessions/store.ts";
@@ -109,6 +111,45 @@ export interface SlingOptions {
 	skipTaskCheck?: boolean;
 	forceHierarchy?: boolean;
 	json?: boolean;
+}
+
+export interface AutoDispatchOptions {
+	agentName: string;
+	taskId: string;
+	capability: string;
+	specPath: string | null;
+	parentAgent: string | null;
+}
+
+/**
+ * Build a structured auto-dispatch mail message for a newly slung agent.
+ *
+ * Sending this mail before creating the tmux session ensures it exists
+ * in the DB when SessionStart fires, eliminating the race where dispatch
+ * mail arrives after the agent boots and sits idle forever.
+ */
+export function buildAutoDispatch(opts: AutoDispatchOptions): {
+	from: string;
+	to: string;
+	subject: string;
+	body: string;
+} {
+	const from = opts.parentAgent ?? "orchestrator";
+	const specLine = opts.specPath
+		? `Spec file: ${opts.specPath}`
+		: "No spec file provided. Check your overlay for task details.";
+	const body = [
+		`You have been assigned task ${opts.taskId} as a ${opts.capability} agent.`,
+		specLine,
+		`Read your overlay at .claude/CLAUDE.md and begin immediately.`,
+	].join(" ");
+
+	return {
+		from,
+		to: opts.agentName,
+		subject: `Dispatch: ${opts.taskId}`,
+		body,
+	};
 }
 
 /**
@@ -513,6 +554,30 @@ export async function slingCommand(taskId: string, opts: SlingOptions): Promise<
 
 		// 9. Deploy hooks config (capability-specific guards)
 		await deployHooks(worktreePath, name, capability);
+
+		// 9b. Send auto-dispatch mail so it exists when SessionStart hook fires.
+		// This eliminates the race where coordinator sends dispatch AFTER agent boots.
+		const dispatch = buildAutoDispatch({
+			agentName: name,
+			taskId,
+			capability,
+			specPath: absoluteSpecPath,
+			parentAgent,
+		});
+		const mailStore = createMailStore(join(overstoryDir, "mail.db"));
+		try {
+			const mailClient = createMailClient(mailStore);
+			mailClient.send({
+				from: dispatch.from,
+				to: dispatch.to,
+				subject: dispatch.subject,
+				body: dispatch.body,
+				type: "dispatch",
+				priority: "normal",
+			});
+		} finally {
+			mailStore.close();
+		}
 
 		// 10. Claim tracker issue
 		if (config.taskTracker.enabled && !skipTaskCheck) {

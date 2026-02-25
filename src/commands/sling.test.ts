@@ -3,7 +3,9 @@ import { resolveModel, resolveProviderEnv } from "../agents/manifest.ts";
 import { HierarchyError } from "../errors.ts";
 import type { AgentManifest, OverstoryConfig } from "../types.ts";
 import {
+	type AutoDispatchOptions,
 	type BeaconOptions,
+	buildAutoDispatch,
 	buildBeacon,
 	calculateStaggerDelay,
 	checkBeadLock,
@@ -849,5 +851,85 @@ describe("sling provider env injection building blocks", () => {
 			"anthropic/claude-3-5-sonnet",
 		);
 		expect(builderResult.env?.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe("anthropic/claude-3-5-haiku");
+	});
+});
+
+/**
+ * Tests for buildAutoDispatch.
+ *
+ * buildAutoDispatch constructs a pre-spawn dispatch mail message that is
+ * inserted into the mail DB before the tmux session is created. This ensures
+ * the agent's SessionStart hook can immediately deliver context without
+ * waiting for the coordinator to send a separate dispatch message.
+ */
+
+function makeAutoDispatchOpts(overrides?: Partial<AutoDispatchOptions>): AutoDispatchOptions {
+	return {
+		agentName: "builder-1",
+		taskId: "overstory-abc",
+		capability: "builder",
+		specPath: "/path/to/spec.md",
+		parentAgent: "lead-alpha",
+		...overrides,
+	};
+}
+
+describe("buildAutoDispatch", () => {
+	test("uses parent agent as sender when provided", () => {
+		const dispatch = buildAutoDispatch({
+			agentName: "builder-1",
+			taskId: "overstory-abc",
+			capability: "builder",
+			specPath: "/path/to/spec.md",
+			parentAgent: "lead-alpha",
+		});
+		expect(dispatch.from).toBe("lead-alpha");
+		expect(dispatch.to).toBe("builder-1");
+		expect(dispatch.subject).toContain("overstory-abc");
+		expect(dispatch.body).toContain("spec.md");
+	});
+
+	test("uses orchestrator as sender when no parent", () => {
+		const dispatch = buildAutoDispatch({
+			agentName: "lead-1",
+			taskId: "overstory-xyz",
+			capability: "lead",
+			specPath: null,
+			parentAgent: null,
+		});
+		expect(dispatch.from).toBe("orchestrator");
+		expect(dispatch.body).toContain("No spec file");
+	});
+
+	test("includes capability in body", () => {
+		const dispatch = buildAutoDispatch({
+			agentName: "scout-1",
+			taskId: "overstory-abc",
+			capability: "scout",
+			specPath: null,
+			parentAgent: "lead-alpha",
+		});
+		expect(dispatch.body).toContain("scout");
+	});
+
+	test("includes spec path when provided", () => {
+		const dispatch = buildAutoDispatch({
+			agentName: "builder-1",
+			taskId: "overstory-abc",
+			capability: "builder",
+			specPath: "/abs/path/to/spec.md",
+			parentAgent: "lead-alpha",
+		});
+		expect(dispatch.body).toContain("/abs/path/to/spec.md");
+	});
+
+	test("subject contains task ID", () => {
+		const dispatch = buildAutoDispatch(makeAutoDispatchOpts({ taskId: "overstory-zz99" }));
+		expect(dispatch.subject).toContain("overstory-zz99");
+	});
+
+	test("to is the agent name", () => {
+		const dispatch = buildAutoDispatch(makeAutoDispatchOpts({ agentName: "my-builder" }));
+		expect(dispatch.to).toBe("my-builder");
 	});
 });
